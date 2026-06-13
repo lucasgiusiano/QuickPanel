@@ -24,6 +24,9 @@ public partial class SettingsWindow : Window
         InitializeComponent();
         BuildSwatches();
         LoadState();
+
+        var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        VersionText.Text = $"QuickPanel v{v?.Major}.{v?.Minor}.{v?.Build}";
     }
 
     private void BuildSwatches()

@@ -11,6 +11,19 @@
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+
+    <!-- Metadata del producto -->
+    <Product>QuickPanel</Product>
+    <AssemblyTitle>QuickPanel</AssemblyTitle>
+    <Description>Panel flotante que recrea la barra lateral de Edge con apps web nativas.</Description>
+    <Company>Lucas Giusiano</Company>
+    <Authors>Lucas Giusiano</Authors>
+    <Copyright>Copyright © 2026 Lucas Giusiano</Copyright>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <PackageProjectUrl>https://github.com/MergeCraft/QuickPanel</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/MergeCraft/QuickPanel</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>

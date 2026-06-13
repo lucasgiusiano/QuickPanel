@@ -55,7 +55,7 @@
                           Foreground="{DynamicResource Md3OnSurface}" Click="Startup_Click"/>
             </StackPanel>
 
-            <TextBlock Grid.Row="2" Text="QuickPanel v1.0" FontSize="11"
+            <TextBlock Grid.Row="2" x:Name="VersionText" Text="QuickPanel" FontSize="11"
                        Foreground="{DynamicResource Md3OnSurfaceVariant}" HorizontalAlignment="Center"/>
         </Grid>
     </Border>

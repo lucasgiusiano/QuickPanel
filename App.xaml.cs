@@ -21,6 +21,9 @@ public partial class App : Application
         _mutex = new System.Threading.Mutex(true, "QuickPanel_SingleInstance", out bool isNew);
         if (!isNew) { Shutdown(); return; }
 
+        // Sin WebView2 la app no puede mostrar paneles: abortar con aviso.
+        if (!Services.WebView2Check.EnsureAvailable()) { Shutdown(); return; }
+
         SettingsService.Load();
         ThemeService.Apply(SettingsService.Current.SeedColor);
         StartupService.SetRunAtStartup(SettingsService.Current.RunAtStartup);

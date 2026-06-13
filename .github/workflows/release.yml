@@ -1,0 +1,37 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish
+        run: dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+
+      - name: Remove debug symbols
+        run: Remove-Item -Path "bin\Release\net8.0-windows\win-x64\publish\*.pdb" -Force -ErrorAction SilentlyContinue
+        shell: pwsh
+
+      - name: Zip artifact
+        run: Compress-Archive -Path "bin\Release\net8.0-windows\win-x64\publish\*" -DestinationPath "QuickPanel-${{ github.ref_name }}.zip"
+        shell: pwsh
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: QuickPanel-${{ github.ref_name }}.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
