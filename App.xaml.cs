@@ -1,0 +1,84 @@
+using System.Windows;
+using System.Windows.Threading;
+using QuickPanel.Core;
+using QuickPanel.Services;
+
+// WinForms solo para NotifyIcon, namespace completo para evitar colisiones
+using WinForms = System.Windows.Forms;
+
+namespace QuickPanel;
+
+public partial class App : Application
+{
+    private EdgeWindowMonitor? _monitor;
+    private WinForms.NotifyIcon? _tray;
+    private static System.Threading.Mutex? _mutex;
+
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        _mutex = new System.Threading.Mutex(true, "QuickPanel_SingleInstance", out bool isNew);
+        if (!isNew) { Shutdown(); return; }
+
+        SettingsService.Load();
+        ThemeService.Apply(SettingsService.Current.SeedColor);
+        StartupService.SetRunAtStartup(SettingsService.Current.RunAtStartup);
+
+        SetupTray();
+
+        DispatcherUnhandledException += OnUnhandledException;
+
+        _monitor = new EdgeWindowMonitor();
+    }
+
+    private void SetupTray()
+    {
+        System.Drawing.Icon icon;
+        try
+        {
+            var path = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico");
+            icon = System.IO.File.Exists(path)
+                ? new System.Drawing.Icon(path)
+                : System.Drawing.SystemIcons.Application;
+        }
+        catch { icon = System.Drawing.SystemIcons.Application; }
+
+        _tray = new WinForms.NotifyIcon
+        {
+            Icon    = icon,
+            Visible = true,
+            Text    = "QuickPanel"
+        };
+
+        var menu = new WinForms.ContextMenuStrip();
+        menu.Items.Add("Configuración", null, (_, _) =>
+        {
+            var win = new Settings.SettingsWindow(null);
+            win.Show();
+        });
+        menu.Items.Add(new WinForms.ToolStripSeparator());
+        menu.Items.Add("Salir", null, (_, _) => ExitApp());
+        _tray.ContextMenuStrip = menu;
+    }
+
+    private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        System.Diagnostics.Debug.WriteLine($"[QuickPanel] {e.Exception}");
+        e.Handled = true;
+    }
+
+    private void ExitApp()
+    {
+        _monitor?.Dispose();
+        if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
+        Shutdown();
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _monitor?.Dispose();
+        if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
+        base.OnExit(e);
+    }
+}

@@ -1,0 +1,14 @@
+<Window x:Class="QuickPanel.Overlay.MenuWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="QuickPanel Menu"
+        WindowStyle="None" AllowsTransparency="True" Background="{x:Null}"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ResizeMode="NoResize"
+        SizeToContent="Manual"
+        Deactivated="Window_Deactivated"
+        KeyDown="Window_KeyDown">
+
+    <Canvas x:Name="Root"/>
+</Window>
