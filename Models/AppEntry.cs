@@ -12,8 +12,23 @@ public class AppEntry
         try
         {
             var host = new Uri(url).Host;
+
+            // Para subdominios de apps conocidas, usar el dominio raíz da un
+            // favicon más confiable (ej. web.whatsapp.com -> whatsapp.com).
+            host = NormalizeHost(host);
+
             return $"https://www.google.com/s2/favicons?sz=64&domain={host}";
         }
         catch { return ""; }
+    }
+
+    private static string NormalizeHost(string host)
+    {
+        // Quitar subdominios comunes que rompen el favicon
+        string[] strip = { "web.", "app.", "mail.", "open.", "accounts." };
+        foreach (var p in strip)
+            if (host.StartsWith(p, StringComparison.OrdinalIgnoreCase))
+                return host[p.Length..];
+        return host;
     }
 }

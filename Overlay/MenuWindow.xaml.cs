@@ -192,7 +192,9 @@ public partial class MenuWindow : Window
         BitmapImage? img = null;
         try
         {
-            var url = string.IsNullOrEmpty(app.Favicon) ? AppEntry.FaviconFor(app.Url) : app.Favicon;
+            // Recalcular siempre desde la URL (la normalización arregla subdominios
+            // como web.whatsapp.com que daban favicon vacío).
+            var url = AppEntry.FaviconFor(app.Url);
             if (!string.IsNullOrEmpty(url))
             {
                 img = new BitmapImage();

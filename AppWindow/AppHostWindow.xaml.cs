@@ -41,8 +41,8 @@ public partial class AppHostWindow : Window
         Loaded += async (_, _) =>
         {
             AnchorToEdge();
-            PlayOpenAnimation();
             await InitWebViewAsync();
+            ForceWebViewRepaint();
         };
     }
 
@@ -67,6 +67,12 @@ public partial class AppHostWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         if (_edgeHwnd != IntPtr.Zero)
             Win32.SetWindowLongPtr(hwnd, Win32.GWLP_HWNDPARENT, _edgeHwnd);
+
+        // TOOLWINDOW evita que la ventana minimizada aparezca como recuadro
+        // en la esquina inferior izquierda (estilo Windows clásico).
+        var ex = Win32.GetWindowLongPtr(hwnd, Win32.GWL_EXSTYLE).ToInt64();
+        Win32.SetWindowLongPtr(hwnd, Win32.GWL_EXSTYLE,
+            new IntPtr(ex | Win32.WS_EX_TOOLWINDOW));
     }
 
     public void AnchorToEdge()
@@ -82,21 +88,8 @@ public partial class AppHostWindow : Window
 
     public void Reanchor()
     {
-        if (!IsVisible) return;
+        if (_hidden) return;
         AnchorToEdge();
-    }
-
-    private void PlayOpenAnimation()
-    {
-        var dur  = TimeSpan.FromMilliseconds(280);
-        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-
-        HostScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty,
-            new DoubleAnimation(0.0, 1.0, dur) { EasingFunction = ease });
-        HostScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty,
-            new DoubleAnimation(0.35, 1.0, dur) { EasingFunction = ease });
-        RootHost.BeginAnimation(OpacityProperty,
-            new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(180)));
     }
 
     // ── Resize de un solo lado (borde fijo = lado del menú) ──
@@ -140,6 +133,8 @@ public partial class AppHostWindow : Window
             s.AreDefaultContextMenusEnabled    = true;
             s.IsStatusBarEnabled               = false;
             s.AreBrowserAcceleratorKeysEnabled = true;
+            s.IsGeneralAutofillEnabled         = true;
+            s.IsPasswordAutosaveEnabled        = true;
 
             Web.CoreWebView2.NewWindowRequested += (_, ev) =>
             {
@@ -152,6 +147,11 @@ public partial class AppHostWindow : Window
                 var t = Web.CoreWebView2.DocumentTitle;
                 if (!string.IsNullOrWhiteSpace(t)) TitleText.Text = t;
             };
+
+            // WhatsApp Web invalida la sesión si el almacenamiento no es "persistente".
+            // Pedimos persistencia explícita en cada documento que carga.
+            await Web.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
+                "if (navigator.storage && navigator.storage.persist) { navigator.storage.persist(); }");
 
             Web.CoreWebView2.Navigate(_app.Url);
         }
@@ -182,14 +182,59 @@ public partial class AppHostWindow : Window
     private static string Sanitize(string s) =>
         string.Concat(s.Where(c => char.IsLetterOrDigit(c) || c is '-' or '_'));
 
+    private bool _hidden;
+
     public void ShowAndFocus()
     {
-        AnchorToEdge();
+        _hidden = false;
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Opacity = 1;
+
+        // ORDEN CLAVE: mostrar primero, luego posicionar, luego forzar repintado.
+        // Redimensionar la ventana mientras está oculta deja el WebView2 en blanco
+        // (optimización interna que no re-renderiza hasta recibir foco/resize).
         Show();
-        PlayOpenAnimation();
+        AnchorToEdge();
         Activate();
         Topmost = true; Topmost = false;
+        ForceWebViewRepaint();
+    }
+
+    /// <summary>
+    /// Oculta el panel con Hide() sin tocar tamaño/posición (reposicionar oculto
+    /// es lo que deja el WebView en blanco). No destruye el WebView: conserva
+    /// sesión y página en memoria.
+    /// </summary>
+    private void HidePanel()
+    {
+        _hidden = true;
+        Hide();
+    }
+
+    /// <summary>
+    /// Fuerza a WebView2 a re-renderizar tras mostrar/posicionar la ventana.
+    /// El control WPF no expone UpdateWindowPos, así que provocamos el repintado
+    /// con un micro-cambio de layout que el motor sí detecta.
+    /// </summary>
+    private void ForceWebViewRepaint()
+    {
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
+        {
+            try
+            {
+                // Nudge de 1px: cambia el tamaño y lo restaura en el siguiente frame,
+                // lo que dispara el re-render interno del WebView.
+                var w = Width;
+                Width = w - 1;
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, () =>
+                {
+                    Width = w;
+                });
+
+                Web.InvalidateVisual();
+            }
+            catch { }
+        });
     }
 
     public void ForceClose()
@@ -199,7 +244,7 @@ public partial class AppHostWindow : Window
     }
 
     private void BtnReload_Click(object sender, RoutedEventArgs e) => Web.CoreWebView2?.Reload();
-    private void BtnClose_Click(object sender, RoutedEventArgs e)  => Hide();
+    private void BtnClose_Click(object sender, RoutedEventArgs e)  => HidePanel();
 
     protected override void OnDeactivated(EventArgs e)
     {
@@ -208,13 +253,13 @@ public partial class AppHostWindow : Window
         // (el botón flotante, el menú, otro panel), no ocultamos.
         Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
         {
-            if (_forceClose) return;
+            if (_forceClose || _hidden) return;
             var active = System.Windows.Application.Current.Windows
                 .OfType<Window>()
                 .FirstOrDefault(w => w.IsActive);
 
             bool focusOnOwnWindow = active != null && active != this;
-            if (!focusOnOwnWindow) Hide();
+            if (!focusOnOwnWindow) HidePanel();
         });
     }
 
@@ -223,7 +268,7 @@ public partial class AppHostWindow : Window
         if (!_forceClose)
         {
             e.Cancel = true;
-            Hide();
+            HidePanel();
             return;
         }
         try { Web.Dispose(); } catch { }
