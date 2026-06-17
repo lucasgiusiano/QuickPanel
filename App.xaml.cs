@@ -26,7 +26,9 @@ public partial class App : Application
 
         SettingsService.Load();
         ThemeService.Apply(SettingsService.Current.SeedColor);
-        StartupService.SetRunAtStartup(SettingsService.Current.RunAtStartup);
+        // Sincroniza solo si difiere: no re-escribe la clave en cada arranque
+        // (evita pisar cambios externos / duplicar la entrada del instalador).
+        StartupService.SyncFromPreference(SettingsService.Current.RunAtStartup);
 
         SetupTray();
 
@@ -34,6 +36,11 @@ public partial class App : Application
 
         _monitor = new EdgeWindowMonitor();
     }
+
+    /// <summary>Re-ancla los paneles abiertos en todas las ventanas de Edge
+    /// (ej. tras cambiar el tamaño S/M/L en Configuración).</summary>
+    public static void ReanchorAllPanels() =>
+        (Current as App)?._monitor?.ReanchorAllPanels();
 
     private void SetupTray()
     {

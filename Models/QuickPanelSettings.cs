@@ -1,7 +1,12 @@
+using QuickPanel.Services;
+
 namespace QuickPanel.Models;
 
 public class QuickPanelSettings
 {
+    /// <summary>Plan del usuario. Se actualiza desde la Store al verificar IAP.</summary>
+    public LicenseTier Tier { get; set; } = LicenseTier.Free;
+
     /// <summary>Color semilla del esquema MD3 (hex).</summary>
     public string SeedColor { get; set; } = "#6366F1";
 

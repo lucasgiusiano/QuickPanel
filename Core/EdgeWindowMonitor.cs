@@ -92,6 +92,13 @@ public sealed class EdgeWindowMonitor : IDisposable
         foreach (var o in _overlays.Values) o.Reposition();
     }
 
+    /// <summary>Re-ancla solo los paneles de app abiertos, sin tocar el botón ni el menú
+    /// (ej. tras cambiar el tamaño S/M/L).</summary>
+    public void ReanchorAllPanels()
+    {
+        foreach (var o in _overlays.Values) o.ReanchorOpenPanels();
+    }
+
     public void Dispose()
     {
         _scanTimer.Stop();

@@ -65,6 +65,16 @@ public sealed class OverlayManager : IDisposable
         CloseMenu(); // si Edge se mueve, el menú queda desfasado: se cierra
     }
 
+    /// <summary>Re-ancla los paneles de app abiertos (sin reposicionar el botón
+    /// ni cerrar el menú). Usado tras cambiar el tamaño del panel en caliente.</summary>
+    public void ReanchorOpenPanels()
+    {
+        foreach (var w in _appWindows.Values)
+        {
+            try { w.Reanchor(); } catch { }
+        }
+    }
+
     /// <summary>Guarda la posición actual del botón como fracción del rect de Edge.</summary>
     public void SaveButtonPositionFromCurrent()
     {
@@ -136,6 +146,16 @@ public sealed class OverlayManager : IDisposable
     public void OpenAddAppDialog()
     {
         CloseMenu();
+
+        if (!LicenseService.CanAddApp(SettingsService.Current.Apps.Count))
+        {
+            MessageBox.Show(
+                $"El plan gratuito permite hasta {LicenseService.FreeAppLimit} apps. " +
+                "Pasá a Pro o Complete para agregar apps ilimitadas.",
+                "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
         var dlg = new AddAppDialog();
         if (dlg.ShowDialog() == true && dlg.Result != null)
         {

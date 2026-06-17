@@ -95,6 +95,10 @@ public partial class SettingsWindow : Window
             SettingsService.Current.PanelWidth  = double.Parse(parts[0]);
             SettingsService.Current.PanelHeight = double.Parse(parts[1]);
             SettingsService.Save();
+
+            // Aplicar en caliente a los paneles ya abiertos (antes había que
+            // cerrarlos y reabrirlos para que tomara el nuevo tamaño).
+            App.ReanchorAllPanels();
         }
     }
 
