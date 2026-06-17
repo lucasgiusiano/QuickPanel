@@ -73,6 +73,7 @@ public partial class SettingsWindow : Window
         }).IsChecked = true;
 
         ChkStartup.IsChecked = s.RunAtStartup;
+        PlanText.Text = $"Plan actual: {LicenseService.Name(LicenseService.CurrentTier)}";
     }
 
     private void Move_Click(object sender, RoutedEventArgs e)
@@ -113,6 +114,72 @@ public partial class SettingsWindow : Window
     private void Header_Drag(object sender, MouseButtonEventArgs e)
     {
         try { DragMove(); } catch { }
+    }
+
+    private void Plans_Click(object sender, RoutedEventArgs e)
+    {
+        new UpgradeWindow().ShowDialog();
+        // Refrescar el texto por si cambió el plan
+        PlanText.Text = $"Plan actual: {LicenseService.Name(LicenseService.CurrentTier)}";
+    }
+
+    private void Export_Click(object sender, RoutedEventArgs e)
+    {
+        if (!LicenseService.HasFeature(Feature.ImportExport))
+        {
+            new UpgradeWindow("Exportar e importar la configuración es parte del plan Complete.").ShowDialog();
+            return;
+        }
+
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter   = "QuickPanel config (*.json)|*.json",
+            FileName = "quickpanel-config.json"
+        };
+        if (dlg.ShowDialog() == true)
+        {
+            try
+            {
+                SettingsService.Export(dlg.FileName);
+                MessageBox.Show("Configuración exportada.", "QuickPanel",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch
+            {
+                MessageBox.Show("No se pudo exportar la configuración.", "QuickPanel",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+    }
+
+    private void Import_Click(object sender, RoutedEventArgs e)
+    {
+        if (!LicenseService.HasFeature(Feature.ImportExport))
+        {
+            new UpgradeWindow("Exportar e importar la configuración es parte del plan Complete.").ShowDialog();
+            return;
+        }
+
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "QuickPanel config (*.json)|*.json"
+        };
+        if (dlg.ShowDialog() == true)
+        {
+            if (SettingsService.Import(dlg.FileName))
+            {
+                ThemeService.Apply(SettingsService.Current.SeedColor);
+                App.ReanchorAllPanels();
+                MessageBox.Show("Configuración importada.", "QuickPanel",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                Close();
+            }
+            else
+            {
+                MessageBox.Show("El archivo no es una configuración válida.", "QuickPanel",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();

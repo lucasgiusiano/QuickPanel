@@ -34,4 +34,25 @@ public static class SettingsService
         }
         catch { /* no romper la app por IO */ }
     }
+
+    /// <summary>Exporta la configuración actual a un archivo JSON.</summary>
+    public static void Export(string path) =>
+        File.WriteAllText(path, JsonSerializer.Serialize(Current, JsonOpts));
+
+    /// <summary>
+    /// Importa la configuración desde un archivo JSON y la persiste.
+    /// Devuelve true si se importó correctamente.
+    /// </summary>
+    public static bool Import(string path)
+    {
+        try
+        {
+            var loaded = JsonSerializer.Deserialize<QuickPanelSettings>(File.ReadAllText(path));
+            if (loaded == null) return false;
+            Current = loaded;
+            Save();
+            return true;
+        }
+        catch { return false; }
+    }
 }

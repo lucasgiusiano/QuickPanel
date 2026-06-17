@@ -27,7 +27,8 @@
                         Style="{StaticResource TitleBtn}"/>
             </Grid>
 
-            <StackPanel Grid.Row="1">
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+            <StackPanel>
 
                 <!-- Mover botón -->
                 <TextBlock Text="Posición del botón" Style="{StaticResource SettingLabel}"/>
@@ -53,7 +54,26 @@
                 <TextBlock Text="Sistema" Style="{StaticResource SettingLabel}"/>
                 <CheckBox x:Name="ChkStartup" Content="Iniciar con Windows"
                           Foreground="{DynamicResource Md3OnSurface}" Click="Startup_Click"/>
+
+                <!-- Plan -->
+                <TextBlock Text="Plan" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>
+                <Grid Margin="0,0,0,12">
+                    <TextBlock x:Name="PlanText" VerticalAlignment="Center"
+                               Foreground="{DynamicResource Md3OnSurface}"/>
+                    <Button Content="Ver planes" Click="Plans_Click" HorizontalAlignment="Right"
+                            Style="{StaticResource Md3TextButton}"/>
+                </Grid>
+
+                <!-- Backup -->
+                <TextBlock Text="Configuración" Style="{StaticResource SettingLabel}" Margin="0,8,0,8"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Exportar" Click="Export_Click"
+                            Style="{StaticResource Md3TextButton}" Margin="0,0,8,0"/>
+                    <Button Content="Importar" Click="Import_Click"
+                            Style="{StaticResource Md3TextButton}"/>
+                </StackPanel>
             </StackPanel>
+            </ScrollViewer>
 
             <TextBlock Grid.Row="2" x:Name="VersionText" Text="QuickPanel" FontSize="11"
                        Foreground="{DynamicResource Md3OnSurfaceVariant}" HorizontalAlignment="Center"/>

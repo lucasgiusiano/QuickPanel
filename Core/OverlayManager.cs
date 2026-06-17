@@ -149,11 +149,13 @@ public sealed class OverlayManager : IDisposable
 
         if (!LicenseService.CanAddApp(SettingsService.Current.Apps.Count))
         {
-            MessageBox.Show(
-                $"El plan gratuito permite hasta {LicenseService.FreeAppLimit} apps. " +
-                "Pasá a Pro o Complete para agregar apps ilimitadas.",
-                "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
+            new UpgradeWindow(
+                $"Llegaste al límite de {LicenseService.FreeAppLimit} apps del plan Free. " +
+                "Pasá a Pro para agregar apps ilimitadas.").ShowDialog();
+
+            // Si compró/cambió de plan, continuar con el alta.
+            if (!LicenseService.CanAddApp(SettingsService.Current.Apps.Count))
+                return;
         }
 
         var dlg = new AddAppDialog();
