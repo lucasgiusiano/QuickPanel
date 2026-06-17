@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -22,9 +23,11 @@ public partial class MenuWindow : Window
     private readonly OverlayManager _manager;
     private readonly FloatingButtonWindow _button;
 
-    private const double Item   = 48;
-    private const double Gap    = 12;
-    private const double ColGap = 12;
+    // Tamaño de los círculos del menú, configurable (Complete) desde Configuración.
+    // Gap y ColGap escalan junto con el ítem para mantener proporciones.
+    private double Item   => SettingsService.Current.MenuItemSize;
+    private double Gap    => Item * 0.25;
+    private double ColGap => Item * 0.25;
 
     public MenuWindow(OverlayManager manager, FloatingButtonWindow button)
     {
@@ -107,6 +110,12 @@ public partial class MenuWindow : Window
         var apps = SettingsService.Current.Apps;
         if (apps.Count == 0) return;
 
+        // El layout dibuja desde la posición más cercana al botón hacia afuera.
+        // Cuando despliega hacia arriba, eso es visualmente "de abajo hacia arriba",
+        // así que se invierte el orden de la lista para que la app #1 del listado
+        // de Administrar apps quede arriba también en el menú (orden visual = orden lógico).
+        var ordered = upward ? Enumerable.Reverse(apps).ToList() : apps;
+
         double startY = upward
             ? by - (Item / 2 + Gap + Item + Gap + Item / 2)
             : by + (Item / 2 + Gap + Item / 2);
@@ -116,7 +125,7 @@ public partial class MenuWindow : Window
         double margin = 16;
         int delay = 2;
 
-        foreach (var app in apps)
+        foreach (var app in ordered)
         {
             // Overflow contra el rect de EDGE (no la pantalla)
             bool overflow = upward
@@ -154,11 +163,12 @@ public partial class MenuWindow : Window
 
         if (img != null)
         {
+            double imgSize = Item * 0.5;
             border.Child = new System.Windows.Controls.Image
             {
                 Source              = img,
-                Width               = 24,
-                Height              = 24,
+                Width               = imgSize,
+                Height              = imgSize,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment   = VerticalAlignment.Center
             };
@@ -168,7 +178,7 @@ public partial class MenuWindow : Window
             border.Child = new TextBlock
             {
                 Text                = glyph,
-                FontSize            = 22,
+                FontSize            = Item * 0.46,
                 Foreground          = fg,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment   = VerticalAlignment.Center

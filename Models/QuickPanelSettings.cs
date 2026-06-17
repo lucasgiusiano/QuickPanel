@@ -17,6 +17,9 @@ public class QuickPanelSettings
     public double PanelWidth { get; set; } = 440;
     public double PanelHeight { get; set; } = 760;
 
+    /// <summary>Diámetro de los círculos del menú flotante en DIPs (Complete).</summary>
+    public double MenuItemSize { get; set; } = 48;
+
     /// <summary>Posición del botón relativa al rect de la ventana de Edge (0..1).</summary>
     public double ButtonRelX { get; set; } = 0.97;
     public double ButtonRelY { get; set; } = 0.92;

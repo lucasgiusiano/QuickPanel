@@ -27,6 +27,29 @@ public partial class ManageAppsWindow : Window
         BuildRows();
     }
 
+    /// <summary>
+    /// Badge pequeño (corona Pro / diamante Complete) para marcar opciones de pago.
+    /// Tooltip explica el plan requerido al pasar el mouse.
+    /// </summary>
+    private FrameworkElement? PlanBadge(Feature feature)
+    {
+        if (LicenseService.HasFeature(feature)) return null; // ya desbloqueado: sin badge
+
+        var tier = LicenseService.MinTierFor(feature);
+        var (glyph, brushKey) = tier == LicenseTier.Complete ? ("◆", "Md3Error") : ("♛", "Md3Primary");
+
+        var badge = new TextBlock
+        {
+            Text       = glyph,
+            FontSize   = 10,
+            Margin     = new Thickness(2, -8, -2, 0),
+            Foreground = (Brush)FindResource(brushKey),
+            ToolTip    = $"Requiere plan {LicenseService.Name(tier)}",
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        return badge;
+    }
+
     private void BuildRows()
     {
         Rows.Children.Clear();
@@ -55,13 +78,30 @@ public partial class ManageAppsWindow : Window
             CornerRadius = new CornerRadius(12),
             Margin       = new Thickness(0, 0, 0, 8),
             Padding      = new Thickness(10),
-            Background   = (Brush)FindResource("Md3SurfaceContainer")
+            Background   = (Brush)FindResource("Md3SurfaceContainer"),
+            Tag          = app,                 // usado por el drag&drop para identificar la fila
+            AllowDrop    = true,
+            Cursor       = Cursors.SizeAll
         };
 
         var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });            // ícono
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // handle
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // ícono
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // nombre
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });            // acciones
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // acciones
+
+        // ── Handle de arrastre ──
+        var handle = new TextBlock
+        {
+            Text              = "⠿",
+            FontSize          = 16,
+            Margin            = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground        = (Brush)FindResource("Md3OnSurfaceVariant"),
+            Cursor            = Cursors.SizeAll
+        };
+        Grid.SetColumn(handle, 0);
+        grid.Children.Add(handle);
 
         // ── Ícono ──
         var icon = new Border
@@ -77,7 +117,7 @@ public partial class ManageAppsWindow : Window
         if (img != null)
             icon.Child = new Image { Source = img, Width = 20, Height = 20,
                 HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        Grid.SetColumn(icon, 0);
+        Grid.SetColumn(icon, 1);
         grid.Children.Add(icon);
 
         // ── Nombre editable ──
@@ -96,37 +136,68 @@ public partial class ManageAppsWindow : Window
                 SettingsService.Save();
             }
         };
-        Grid.SetColumn(name, 1);
+        Grid.SetColumn(name, 2);
         grid.Children.Add(name);
 
         // ── Acciones ──
         var actions = new StackPanel { Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
 
-        actions.Children.Add(IconButton("▲", "Subir", index > 0, () => Move(index, -1)));
-        actions.Children.Add(IconButton("▼", "Bajar", index < total - 1, () => Move(index, +1)));
-        actions.Children.Add(IconButton("🖼", "Ícono", true, () => PickIcon(app)));
-        actions.Children.Add(IconButton("🎨", "Color", true, b => PickColor(app, b)));
-        actions.Children.Add(IconButton("✕", "Quitar", true, () => Remove(app)));
+        actions.Children.Add(IconButton("🖼", "Ícono personalizado", PlanBadge(Feature.CustomIcons), () => PickIcon(app)));
+        actions.Children.Add(IconButton("🎨", "Color de la app", PlanBadge(Feature.PerAppColor), b => PickColor(app, b)));
+        actions.Children.Add(IconButton("✕", "Quitar", (FrameworkElement?)null, () => Remove(app)));
 
-        Grid.SetColumn(actions, 2);
+        Grid.SetColumn(actions, 3);
         grid.Children.Add(actions);
 
         card.Child = grid;
+        WireDragDrop(card);
         return card;
     }
 
-    // ── Acciones ──
+    // ── Drag & drop de filas ──
 
-    private void Move(int index, int delta)
+    private Border? _dragSource;
+
+    private void WireDragDrop(Border row)
     {
-        var apps = SettingsService.Current.Apps;
-        int j = index + delta;
-        if (j < 0 || j >= apps.Count) return;
-        (apps[index], apps[j]) = (apps[j], apps[index]);
-        SettingsService.Save();
-        BuildRows();
+        row.PreviewMouseLeftButtonDown += (_, e) =>
+        {
+            // Si el clic empezó en un control interactivo (texto, botón), no iniciar drag.
+            if (e.OriginalSource is TextBox or Button or TextBlock { Text.Length: > 1 }) return;
+
+            _dragSource = row;
+            DragDrop.DoDragDrop(row, row, DragDropEffects.Move);
+        };
+
+        row.DragOver += (_, e) =>
+        {
+            e.Effects = e.Data.GetDataPresent(typeof(Border)) ? DragDropEffects.Move : DragDropEffects.None;
+            row.Opacity = 0.7;
+            e.Handled = true;
+        };
+
+        row.DragLeave += (_, _) => row.Opacity = 1.0;
+
+        row.Drop += (_, e) =>
+        {
+            row.Opacity = 1.0;
+            if (_dragSource == null || _dragSource == row) return;
+            if (_dragSource.Tag is not AppEntry from || row.Tag is not AppEntry to) return;
+
+            var apps = SettingsService.Current.Apps;
+            int iFrom = apps.IndexOf(from);
+            int iTo   = apps.IndexOf(to);
+            if (iFrom < 0 || iTo < 0) return;
+
+            apps.RemoveAt(iFrom);
+            apps.Insert(iTo, from);
+            SettingsService.Save();
+            BuildRows();
+        };
     }
+
+    // ── Acciones ──
 
     private void PickIcon(AppEntry app)
     {
@@ -246,20 +317,29 @@ public partial class ManageAppsWindow : Window
 
     // ── Helpers ──
 
-    private Button IconButton(string glyph, string tip, bool enabled, Action onClick)
-        => IconButton(glyph, tip, enabled, _ => onClick());
+    private Grid IconButton(string glyph, string tip, FrameworkElement? badge, Action onClick)
+        => IconButton(glyph, tip, badge, _ => onClick());
 
-    private Button IconButton(string glyph, string tip, bool enabled, Action<UIElement> onClick)
+    /// <summary>Botón de ícono con badge de plan superpuesto (esquina sup. derecha) si corresponde.</summary>
+    private Grid IconButton(string glyph, string tip, FrameworkElement? badge, Action<UIElement> onClick)
     {
         var btn = new Button
         {
-            Content   = glyph,
-            ToolTip   = tip,
-            IsEnabled = enabled,
-            Style     = (Style)FindResource("TitleBtn")
+            Content = glyph,
+            ToolTip = badge?.ToolTip ?? tip,
+            Style   = (Style)FindResource("TitleBtn")
         };
         btn.Click += (s, _) => onClick((UIElement)s);
-        return btn;
+
+        var wrap = new Grid();
+        wrap.Children.Add(btn);
+        if (badge != null)
+        {
+            badge.HorizontalAlignment = HorizontalAlignment.Right;
+            badge.IsHitTestVisible    = false; // el click pasa al botón de abajo
+            wrap.Children.Add(badge);
+        }
+        return wrap;
     }
 
     private Brush? AccentBrush(AppEntry app)

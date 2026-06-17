@@ -145,5 +145,32 @@
             <Setter Property="Margin" Value="0,0,0,8"/>
         </Style>
 
+        <!-- Tarjeta de selección de tamaño (S/M/L): reemplaza el RadioButton nativo
+             por una tarjeta con borde resaltado cuando está seleccionada. -->
+        <Style x:Key="SizeCardRadio" TargetType="RadioButton">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="b" Width="64" Height="64" CornerRadius="14"
+                                Background="{DynamicResource Md3SurfaceContainer}"
+                                BorderBrush="{DynamicResource Md3Outline}" BorderThickness="1.4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="{DynamicResource Md3SurfaceContainerHigh}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="b" Property="BorderBrush" Value="{DynamicResource Md3Primary}"/>
+                                <Setter TargetName="b" Property="BorderThickness" Value="2"/>
+                                <Setter TargetName="b" Property="Background" Value="{DynamicResource Md3SurfaceContainerHigh}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Application.Resources>
 </Application>

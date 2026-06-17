@@ -55,16 +55,19 @@
                                  Foreground="{DynamicResource Md3OnSurface}" Click="Theme_Click" Tag="System"/>
                 </StackPanel>
 
-                <!-- Tamaño panel -->
+                <!-- Tamaño panel de apps -->
                 <TextBlock Text="Tamaño del panel" Style="{StaticResource SettingLabel}"/>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                    <RadioButton x:Name="SizeS" Content="S" GroupName="size" Margin="0,0,12,0"
-                                 Foreground="{DynamicResource Md3OnSurface}" Click="Size_Click" Tag="360,600"/>
-                    <RadioButton x:Name="SizeM" Content="M" GroupName="size" Margin="0,0,12,0"
-                                 Foreground="{DynamicResource Md3OnSurface}" Click="Size_Click" Tag="440,760"/>
-                    <RadioButton x:Name="SizeL" Content="L" GroupName="size" Margin="0,0,12,0"
-                                 Foreground="{DynamicResource Md3OnSurface}" Click="Size_Click" Tag="520,900"/>
-                </StackPanel>
+                <TextBlock Text="Controla el tamaño de la ventana donde se abren tus apps (WhatsApp, Gmail, etc.)"
+                           FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
+                           Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+                <StackPanel x:Name="PanelSizeRow" Orientation="Horizontal" Margin="0,0,0,20"/>
+
+                <!-- Tamaño del menú flotante -->
+                <TextBlock Text="Tamaño del menú" Style="{StaticResource SettingLabel}"/>
+                <TextBlock Text="Controla el tamaño de los íconos del menú flotante (el que despliega tus apps)"
+                           FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
+                           Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+                <StackPanel x:Name="MenuSizeRow" Orientation="Horizontal" Margin="0,0,0,20"/>
 
                 <!-- Startup -->
                 <TextBlock Text="Sistema" Style="{StaticResource SettingLabel}"/>
