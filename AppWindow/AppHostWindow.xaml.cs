@@ -21,6 +21,18 @@ public partial class AppHostWindow : Window
     private readonly Func<double> _maxWidth;
     private bool _forceClose;
 
+    /// <summary>Id de la app que hostea esta ventana.</summary>
+    public string AppId => _app.Id;
+
+    /// <summary>Cantidad de no leídos detectada en el título (0 si no hay).</summary>
+    public int Unread { get; private set; }
+
+    /// <summary>Se dispara cuando cambia el conteo de no leídos.</summary>
+    public event Action<AppHostWindow>? UnreadChanged;
+
+    /// <summary>Oculta el panel (invocado por hotkey).</summary>
+    public void HideFromHotkey() => HidePanel();
+
     public AppHostWindow(
         AppEntry app, IntPtr edgeHwnd, PanelSide side, double originRelY,
         Func<double, PanelGeometry.Rect> computeBounds, Func<double> maxWidth)
@@ -146,6 +158,7 @@ public partial class AppHostWindow : Window
             {
                 var t = Web.CoreWebView2.DocumentTitle;
                 if (!string.IsNullOrWhiteSpace(t)) TitleText.Text = t;
+                UpdateUnread(t);
             };
 
             // Historial (Pro): registrar cada navegación de nivel superior.
@@ -252,6 +265,23 @@ public partial class AppHostWindow : Window
 
     private void BtnReload_Click(object sender, RoutedEventArgs e) => Web.CoreWebView2?.Reload();
     private void BtnClose_Click(object sender, RoutedEventArgs e)  => HidePanel();
+
+    /// <summary>
+    /// Extrae el conteo de no leídos del título de la web app. La mayoría usa
+    /// formatos como "(3) WhatsApp", "WhatsApp (3)" o "• Inbox (12)".
+    /// </summary>
+    private void UpdateUnread(string? title)
+    {
+        int count = 0;
+        if (!string.IsNullOrEmpty(title))
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(title, @"\((\d+)\)");
+            if (m.Success && int.TryParse(m.Groups[1].Value, out var n)) count = n;
+        }
+        if (count == Unread) return;
+        Unread = count;
+        UnreadChanged?.Invoke(this);
+    }
 
     private void RecordHistory(string url)
     {

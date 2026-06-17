@@ -102,6 +102,18 @@ public partial class FloatingButtonWindow : Window
         MoveHalo.Visibility = Visibility.Visible;
     }
 
+    /// <summary>Muestra/oculta el badge de no leídos con el total (0 = oculto, 99+ tope).</summary>
+    public void SetBadge(int count)
+    {
+        if (count <= 0)
+        {
+            Badge.Visibility = Visibility.Collapsed;
+            return;
+        }
+        BadgeText.Text = count > 99 ? "99+" : count.ToString();
+        Badge.Visibility = Visibility.Visible;
+    }
+
     private void ExitMoveMode()
     {
         _moveMode = false;

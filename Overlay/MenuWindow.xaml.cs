@@ -238,6 +238,35 @@ public partial class MenuWindow : Window
         };
 
         grid.ToolTip = app.Name;
+
+        // Badge de no leídos por app (si está habilitado y la app tiene panel abierto).
+        bool showBadges = SettingsService.Current.ShowBadges
+                          && LicenseService.HasFeature(Feature.Notifications);
+        if (showBadges && _manager.Unread.TryGetValue(app.Id, out var n) && n > 0)
+        {
+            double bs = Item * 0.42;
+            var badge = new Border
+            {
+                Width  = bs,
+                Height = bs,
+                CornerRadius = new CornerRadius(bs / 2),
+                Background   = new SolidColorBrush(Color.FromRgb(0xE5, 0x48, 0x4D)),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment   = VerticalAlignment.Top,
+                IsHitTestVisible    = false,
+                Child = new TextBlock
+                {
+                    Text       = n > 99 ? "99+" : n.ToString(),
+                    FontSize   = bs * 0.5,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = System.Windows.Media.Brushes.White,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment   = VerticalAlignment.Center
+                }
+            };
+            grid.Children.Add(badge);
+        }
+
         return grid;
     }
 

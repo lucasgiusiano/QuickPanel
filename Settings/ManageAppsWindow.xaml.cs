@@ -152,6 +152,7 @@ public partial class ManageAppsWindow : Window
         var actions = new StackPanel { Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
 
+        actions.Children.Add(IconButton("⌨", HotkeyTip(app), PlanBadge(Feature.GlobalHotkeys), () => AssignHotkey(app)));
         actions.Children.Add(IconButton("🖼", "Ícono personalizado", PlanBadge(Feature.CustomIcons), () => PickIcon(app)));
         actions.Children.Add(IconButton("🎨", "Color de la app", PlanBadge(Feature.PerAppColor), b => PickColor(app, b)));
         actions.Children.Add(IconButton("✕", "Quitar", (FrameworkElement?)null, () => Remove(app)));
@@ -207,6 +208,44 @@ public partial class ManageAppsWindow : Window
     }
 
     // ── Acciones ──
+
+    private static string HotkeyTip(AppEntry app)
+        => app.Hotkey.IsSet ? $"Atajo: {app.Hotkey}" : "Asignar atajo de teclado";
+
+    private void AssignHotkey(AppEntry app)
+    {
+        if (!LicenseService.HasFeature(Feature.GlobalHotkeys))
+        {
+            new UpgradeWindow("Los atajos de teclado globales son parte del plan Complete.").ShowDialog();
+            return;
+        }
+
+        var dlg = new HotkeyCaptureDialog(app.Name) { Owner = this };
+        if (dlg.ShowDialog() != true || dlg.Result == null) return;
+
+        var hk = dlg.Result;
+
+        // Evitar duplicados: si otra app o acción ya usa esta combinación, avisar.
+        if (hk.IsSet && IsHotkeyTaken(hk, app))
+        {
+            MessageBox.Show("Esa combinación ya está asignada a otra app o acción.",
+                "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        app.Hotkey = hk;
+        SettingsService.Save();
+        App.ReloadHotkeys();
+        BuildRows();
+    }
+
+    private static bool IsHotkeyTaken(Hotkey hk, AppEntry except)
+    {
+        string s = hk.ToString();
+        if (SettingsService.Current.Apps.Any(a => a.Id != except.Id && a.Hotkey.IsSet && a.Hotkey.ToString() == s))
+            return true;
+        return SettingsService.Current.ActionHotkeys.Values.Any(h => h != null && h.IsSet && h.ToString() == s);
+    }
 
     private void PickIcon(AppEntry app)
     {
@@ -318,10 +357,30 @@ public partial class ManageAppsWindow : Window
         var dlg = new AddAppDialog();
         if (dlg.ShowDialog() == true && dlg.Result != null)
         {
+            AutoAssignHotkey(dlg.Result);
             SettingsService.Current.Apps.Add(dlg.Result);
             SettingsService.Save();
+            App.ReloadHotkeys();
             BuildRows();
         }
+    }
+
+    /// <summary>
+    /// Asigna Ctrl+Alt+[1..0] a las primeras 10 apps automáticamente.
+    /// La 10ª usa la tecla 0; de la 11ª en adelante no se asigna nada.
+    /// </summary>
+    private static void AutoAssignHotkey(AppEntry app)
+    {
+        int pos = SettingsService.Current.Apps.Count; // índice que tendrá la nueva app
+        if (pos > 9) return; // ya hay 10 (0..9): sin atajo automático
+
+        var key = pos < 9
+            ? Key.D1 + pos       // D1..D9 para posiciones 0..8
+            : Key.D0;            // posición 9 (10ª app) -> 0
+
+        var hk = new Hotkey { Ctrl = true, Alt = true, Key = key };
+        if (!IsHotkeyTaken(hk, app))
+            app.Hotkey = hk;
     }
 
     // ── Helpers ──

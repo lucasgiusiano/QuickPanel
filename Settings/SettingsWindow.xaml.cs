@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using QuickPanel.Core;
+using QuickPanel.Models;
 using QuickPanel.Services;
 
 namespace QuickPanel.Settings;
@@ -260,7 +261,9 @@ public partial class SettingsWindow : Window
 
         ChkStartup.IsChecked = s.RunAtStartup;
         ChkAutoHide.IsChecked = s.AutoHide;
+        ChkBadges.IsChecked = s.ShowBadges;
         PopulateStartAppCombo();
+        BuildActionHotkeys();
         PlanText.Text = $"Plan actual: {LicenseService.Name(LicenseService.CurrentTier)}";
 
         (s.ThemeMode switch
@@ -346,6 +349,91 @@ public partial class SettingsWindow : Window
         }
         SettingsService.Current.AutoHide = ChkAutoHide.IsChecked == true;
         SettingsService.Save();
+    }
+
+    private void Badges_Click(object sender, RoutedEventArgs e)
+    {
+        if (ChkBadges.IsChecked == true && !LicenseService.HasFeature(Feature.Notifications))
+        {
+            new UpgradeWindow("El contador de no leídos es parte del plan Pro.").ShowDialog();
+            ChkBadges.IsChecked = false;
+            return;
+        }
+        SettingsService.Current.ShowBadges = ChkBadges.IsChecked == true;
+        SettingsService.Save();
+    }
+
+    private static readonly (HotkeyAction action, string label)[] ActionList =
+    {
+        (HotkeyAction.ToggleMenu,      "Abrir/cerrar menú"),
+        (HotkeyAction.HideActivePanel, "Ocultar panel activo"),
+        (HotkeyAction.NextApp,         "App siguiente"),
+        (HotkeyAction.PrevApp,         "App anterior"),
+    };
+
+    private void BuildActionHotkeys()
+    {
+        ActionHotkeysRow.Children.Clear();
+        foreach (var (action, label) in ActionList)
+        {
+            var key = action.ToString();
+            SettingsService.Current.ActionHotkeys.TryGetValue(key, out var hk);
+
+            var row = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            row.Children.Add(new TextBlock
+            {
+                Text = label, VerticalAlignment = VerticalAlignment.Center,
+                Foreground = (Brush)FindResource("Md3OnSurface")
+            });
+
+            var btn = new Button
+            {
+                Content = hk?.IsSet == true ? hk.ToString() : "Asignar",
+                Style   = (Style)FindResource("Md3TextButton")
+            };
+            Grid.SetColumn(btn, 1);
+            btn.Click += (_, _) => AssignActionHotkey(action, label);
+            row.Children.Add(btn);
+
+            ActionHotkeysRow.Children.Add(row);
+        }
+    }
+
+    private void AssignActionHotkey(HotkeyAction action, string label)
+    {
+        if (!LicenseService.HasFeature(Feature.GlobalHotkeys))
+        {
+            new UpgradeWindow("Los atajos de teclado globales son parte del plan Complete.").ShowDialog();
+            return;
+        }
+
+        var dlg = new HotkeyCaptureDialog(label) { Owner = this };
+        if (dlg.ShowDialog() != true || dlg.Result == null) return;
+
+        var hk = dlg.Result;
+        if (hk.IsSet && ActionHotkeyTaken(hk, action))
+        {
+            MessageBox.Show("Esa combinación ya está asignada a otra app o acción.",
+                "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        SettingsService.Current.ActionHotkeys[action.ToString()] = hk;
+        SettingsService.Save();
+        App.ReloadHotkeys();
+        BuildActionHotkeys();
+    }
+
+    private static bool ActionHotkeyTaken(Hotkey hk, HotkeyAction except)
+    {
+        string s = hk.ToString();
+        if (SettingsService.Current.Apps.Any(a => a.Hotkey.IsSet && a.Hotkey.ToString() == s))
+            return true;
+        return SettingsService.Current.ActionHotkeys
+            .Any(kv => kv.Key != except.ToString() && kv.Value != null && kv.Value.IsSet && kv.Value.ToString() == s);
     }
 
     private bool _populatingCombo;

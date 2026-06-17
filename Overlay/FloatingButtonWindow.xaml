@@ -45,5 +45,13 @@
                  StrokeDashArray="3 2"
                  Visibility="Collapsed"
                  IsHitTestVisible="False"/>
+
+        <!-- Badge de no leídos (total) -->
+        <Border x:Name="Badge" Width="20" Height="20" CornerRadius="10"
+                Background="#E5484D" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Margin="0,4,4,0" Visibility="Collapsed" IsHitTestVisible="False">
+            <TextBlock x:Name="BadgeText" Text="0" FontSize="11" FontWeight="Bold"
+                       Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
     </Grid>
 </Window>

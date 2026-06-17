@@ -11,6 +11,7 @@ namespace QuickPanel;
 public partial class App : Application
 {
     private EdgeWindowMonitor? _monitor;
+    private HotkeyService? _hotkeys;
     private WinForms.NotifyIcon? _tray;
     private static System.Threading.Mutex? _mutex;
 
@@ -35,7 +36,12 @@ public partial class App : Application
         DispatcherUnhandledException += OnUnhandledException;
 
         _monitor = new EdgeWindowMonitor();
+        _hotkeys = new HotkeyService(_monitor);
     }
+
+    /// <summary>Re-registra los hotkeys tras cambios en Configuración / Administrar apps.</summary>
+    public static void ReloadHotkeys() =>
+        (Current as App)?._hotkeys?.Reload();
 
     /// <summary>Re-ancla los paneles abiertos en todas las ventanas de Edge
     /// (ej. tras cambiar el tamaño S/M/L en Configuración).</summary>
@@ -80,6 +86,7 @@ public partial class App : Application
 
     private void ExitApp()
     {
+        _hotkeys?.Dispose();
         _monitor?.Dispose();
         if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
         Shutdown();
@@ -87,6 +94,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _hotkeys?.Dispose();
         _monitor?.Dispose();
         if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
         base.OnExit(e);

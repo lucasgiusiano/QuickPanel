@@ -16,6 +16,9 @@ public class AppEntry
     /// <summary>Últimas URLs visitadas en esta app (Pro). Más reciente primero, máx. 20.</summary>
     public List<string> History { get; set; } = new();
 
+    /// <summary>Atajo de teclado global para abrir esta app (Complete).</summary>
+    public Hotkey Hotkey { get; set; } = new();
+
     /// <summary>True si tiene un ícono custom válido en disco.</summary>
     public bool HasCustomIcon =>
         !string.IsNullOrEmpty(IconPath) && System.IO.File.Exists(IconPath);

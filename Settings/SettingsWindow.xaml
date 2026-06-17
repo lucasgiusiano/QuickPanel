@@ -80,6 +80,18 @@
                 <ComboBox x:Name="StartAppCombo" SelectionChanged="StartApp_Changed"
                           Foreground="{DynamicResource Md3OnSurface}"/>
 
+                <!-- Notificaciones -->
+                <TextBlock Text="Notificaciones" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>
+                <CheckBox x:Name="ChkBadges" Content="Mostrar contador de no leídos"
+                          Foreground="{DynamicResource Md3OnSurface}" Click="Badges_Click"/>
+
+                <!-- Atajos de acciones -->
+                <TextBlock Text="Atajos de teclado" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>
+                <TextBlock Text="Atajos globales para acciones (los atajos por app se configuran en Administrar apps)"
+                           FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
+                           Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+                <StackPanel x:Name="ActionHotkeysRow"/>
+
                 <!-- Plan -->
                 <TextBlock Text="Plan" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>
                 <Grid Margin="0,0,0,12">

@@ -32,5 +32,11 @@ public class QuickPanelSettings
     /// <summary>Auto-ocultar el botón flotante cuando el mouse está lejos (Pro).</summary>
     public bool AutoHide { get; set; } = false;
 
+    /// <summary>Mostrar contadores de no leídos (Pro). Desactivable.</summary>
+    public bool ShowBadges { get; set; } = true;
+
+    /// <summary>Atajos globales de acciones (Complete). Clave = nombre de HotkeyAction.</summary>
+    public Dictionary<string, Hotkey> ActionHotkeys { get; set; } = new();
+
     public List<AppEntry> Apps { get; set; } = new();
 }

@@ -159,9 +159,39 @@ public sealed class OverlayManager : IDisposable
             computeBounds: w => PanelGeometry.Compute(EdgeHwnd, side, w, ButtonRect()),
             maxWidth: () => PanelGeometry.MaxWidth(EdgeHwnd, side, ButtonRect()));
 
-        win.Closed += (_, _) => _appWindows.Remove(app.Id);
+        win.Closed += (_, _) =>
+        {
+            _appWindows.Remove(app.Id);
+            _unread.Remove(app.Id);
+            NotifyUnread();
+        };
+        win.UnreadChanged += w =>
+        {
+            _unread[w.AppId] = w.Unread;
+            NotifyUnread();
+        };
         _appWindows[app.Id] = win;
         win.Show();
+    }
+
+    // ── Notificaciones (contador de no leídos) ──
+
+    private readonly Dictionary<string, int> _unread = new();
+
+    /// <summary>No leídos por appId (solo apps con panel abierto).</summary>
+    public IReadOnlyDictionary<string, int> Unread => _unread;
+
+    /// <summary>Total de no leídos de todas las apps abiertas.</summary>
+    public int UnreadTotal => _unread.Values.Sum();
+
+    /// <summary>Se dispara cuando cambia algún contador (lo escuchan botón y menú).</summary>
+    public event Action? UnreadUpdated;
+
+    private void NotifyUnread()
+    {
+        bool show = SettingsService.Current.ShowBadges && LicenseService.HasFeature(Feature.Notifications);
+        _button.SetBadge(show ? UnreadTotal : 0);
+        UnreadUpdated?.Invoke();
     }
 
     public void OpenAddAppDialog()
@@ -207,6 +237,36 @@ public sealed class OverlayManager : IDisposable
     }
 
     public void EnterMoveMode() => _button.EnterMoveMode();
+
+    // ── Acciones para hotkeys ──
+
+    /// <summary>Abre/enfoca una app por su Id (usado por hotkeys).</summary>
+    public void OpenAppById(string id)
+    {
+        var app = SettingsService.Current.Apps.FirstOrDefault(a => a.Id == id);
+        if (app != null) OpenApp(app, 0.5);
+    }
+
+    /// <summary>Oculta el panel de app actualmente activo/visible (usado por hotkey).</summary>
+    public void HideActivePanel()
+    {
+        var w = _appWindows.Values.FirstOrDefault(x => x.IsActive)
+             ?? _appWindows.Values.FirstOrDefault(x => x.IsVisible);
+        w?.HideFromHotkey();
+    }
+
+    /// <summary>Cicla a la app siguiente (+1) o anterior (-1) en la lista (usado por hotkey).</summary>
+    public void CycleApp(int dir)
+    {
+        var apps = SettingsService.Current.Apps;
+        if (apps.Count == 0) return;
+
+        // Punto de partida: la app visible actual, o la primera.
+        var currentId = _appWindows.Values.FirstOrDefault(x => x.IsVisible)?.AppId;
+        int idx = currentId != null ? apps.FindIndex(a => a.Id == currentId) : -1;
+        int next = ((idx + dir) % apps.Count + apps.Count) % apps.Count;
+        OpenApp(apps[next], 0.5);
+    }
 
     public void Dispose()
     {

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Windows.Threading;
+using QuickPanel.Services;
 
 namespace QuickPanel.Core;
 
@@ -8,13 +9,27 @@ namespace QuickPanel.Core;
 /// Combina un scan periódico (alta/baja de ventanas) con un WinEvent hook global
 /// de LOCATIONCHANGE para seguir movimientos/redimensionados en tiempo real.
 /// </summary>
-public sealed class EdgeWindowMonitor : IDisposable
+public sealed class EdgeWindowMonitor : IDisposable, IHotkeyTarget
 {
     private readonly Dictionary<IntPtr, OverlayManager> _overlays = new();
     private readonly DispatcherTimer _scanTimer;
     private readonly Win32.WinEventDelegate _locationDelegate; // referencia viva: evita GC del delegate
     private IntPtr _locationHook;
+    private IntPtr _lastActiveEdge;
     private readonly Dispatcher _dispatcher;
+
+    /// <summary>Overlay de la Edge en foco; si no es Edge, la última activa; si no, la primera.</summary>
+    public OverlayManager? ActiveOverlay
+    {
+        get
+        {
+            var fg = Win32.GetForegroundWindow();
+            if (_overlays.TryGetValue(fg, out var o)) { _lastActiveEdge = fg; return o; }
+            if (_lastActiveEdge != IntPtr.Zero && _overlays.TryGetValue(_lastActiveEdge, out var last))
+                return last;
+            return _overlays.Values.FirstOrDefault();
+        }
+    }
 
     public EdgeWindowMonitor()
     {
