@@ -26,5 +26,11 @@ public class QuickPanelSettings
 
     public bool RunAtStartup { get; set; } = true;
 
+    /// <summary>Id de la app a abrir automáticamente al iniciar (Pro). Vacío = ninguna.</summary>
+    public string StartAppId { get; set; } = "";
+
+    /// <summary>Auto-ocultar el botón flotante cuando el mouse está lejos (Pro).</summary>
+    public bool AutoHide { get; set; } = false;
+
     public List<AppEntry> Apps { get; set; } = new();
 }

@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Windows;
 using QuickPanel.AppWindow;
 using QuickPanel.Models;
@@ -21,6 +22,8 @@ public sealed class OverlayManager : IDisposable
 
     private const double ButtonSizeDip = 56;
 
+    private static bool _startAppLaunched;
+
     public OverlayManager(IntPtr edgeHwnd)
     {
         EdgeHwnd = edgeHwnd;
@@ -31,6 +34,24 @@ public sealed class OverlayManager : IDisposable
         _button.Show();
 
         Reposition();
+        TryLaunchStartApp();
+    }
+
+    /// <summary>Abre la app configurada como "inicio" una sola vez por sesión,
+    /// en la primera ventana de Edge detectada (Pro).</summary>
+    private void TryLaunchStartApp()
+    {
+        if (_startAppLaunched) return;
+        var id = SettingsService.Current.StartAppId;
+        if (string.IsNullOrEmpty(id)) return;
+
+        var app = SettingsService.Current.Apps.FirstOrDefault(a => a.Id == id);
+        if (app == null) return;
+
+        _startAppLaunched = true;
+        // Diferido: el botón/overlay recién se está montando.
+        _button.Dispatcher.BeginInvoke(new Action(() => OpenApp(app, 0.5)),
+            System.Windows.Threading.DispatcherPriority.Background);
     }
 
     // ── Posicionamiento ──

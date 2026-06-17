@@ -16,6 +16,7 @@
         <Grid Margin="24">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
@@ -27,11 +28,14 @@
                         Style="{StaticResource TitleBtn}"/>
             </Grid>
 
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+            <TextBox x:Name="SearchBox" Grid.Row="1" Style="{StaticResource Md3TextBox}"
+                     Tag="Buscar app..." Margin="0,0,0,12" TextChanged="Search_Changed"/>
+
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
                 <StackPanel x:Name="Rows"/>
             </ScrollViewer>
 
-            <Grid Grid.Row="2" Margin="0,16,0,0">
+            <Grid Grid.Row="3" Margin="0,16,0,0">
                 <Button Content="＋ Agregar app" Click="Add_Click"
                         Style="{StaticResource Md3TextButton}" HorizontalAlignment="Left"/>
                 <Button Content="Listo" Click="Close_Click"

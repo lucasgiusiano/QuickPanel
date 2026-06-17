@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Linq;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
@@ -53,13 +54,19 @@ public partial class ManageAppsWindow : Window
     private void BuildRows()
     {
         Rows.Children.Clear();
-        var apps = SettingsService.Current.Apps;
+        var all = SettingsService.Current.Apps;
+
+        string q = SearchBox?.Text?.Trim() ?? "";
+        var apps = string.IsNullOrEmpty(q)
+            ? all
+            : all.Where(a => a.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
+                          || a.Url.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
 
         if (apps.Count == 0)
         {
             Rows.Children.Add(new TextBlock
             {
-                Text       = "No agregaste apps todavía.",
+                Text       = string.IsNullOrEmpty(q) ? "No agregaste apps todavía." : "Sin resultados.",
                 FontSize   = 13,
                 Margin     = new Thickness(0, 8, 0, 0),
                 Foreground = (Brush)FindResource("Md3OnSurfaceVariant")
@@ -70,6 +77,8 @@ public partial class ManageAppsWindow : Window
         for (int i = 0; i < apps.Count; i++)
             Rows.Children.Add(BuildRow(apps[i], i, apps.Count));
     }
+
+    private void Search_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e) => BuildRows();
 
     private Border BuildRow(AppEntry app, int index, int total)
     {

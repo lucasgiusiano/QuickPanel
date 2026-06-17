@@ -2,7 +2,9 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using QuickPanel.Core;
+using QuickPanel.Services;
 
 namespace QuickPanel.Overlay;
 
@@ -16,6 +18,9 @@ public partial class FloatingButtonWindow : Window
     private Point _dragStartMouse;
     private Point _dragStartWindow;
 
+    private readonly DispatcherTimer _autoHideTimer;
+    private bool _faded;
+
     public FloatingButtonWindow(OverlayManager manager)
     {
         _manager = manager;
@@ -25,6 +30,48 @@ public partial class FloatingButtonWindow : Window
             MakeToolWindow();
             ApplyEdgeOwner();
         };
+
+        _autoHideTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        _autoHideTimer.Tick += (_, _) => UpdateAutoHide();
+        _autoHideTimer.Start();
+        Closed += (_, _) => _autoHideTimer.Stop();
+    }
+
+    /// <summary>
+    /// Atenúa el botón cuando el cursor está lejos (radio configurable) y lo
+    /// restaura al acercarse. Solo activo si AutoHide está habilitado (Pro).
+    /// </summary>
+    private void UpdateAutoHide()
+    {
+        if (!SettingsService.Current.AutoHide || _moveMode || _dragging)
+        {
+            if (_faded) FadeTo(1.0);
+            _faded = false;
+            return;
+        }
+
+        if (!Win32.GetCursorPos(out var p)) return;
+
+        var src = PresentationSource.FromVisual(this);
+        double scale = src?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+        double cx = p.X / scale, cy = p.Y / scale;
+
+        double bx = Left + ActualWidth / 2;
+        double by = Top + ActualHeight / 2;
+        double dist = Math.Sqrt((cx - bx) * (cx - bx) + (cy - by) * (cy - by));
+
+        const double showRadius = 90; // DIPs alrededor del botón
+        bool shouldShow = dist < showRadius;
+
+        if (shouldShow && _faded) { FadeTo(1.0); _faded = false; }
+        else if (!shouldShow && !_faded) { FadeTo(0.15); _faded = true; }
+    }
+
+    private void FadeTo(double target)
+    {
+        BeginAnimation(OpacityProperty,
+            new DoubleAnimation(target, TimeSpan.FromMilliseconds(250))
+            { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
     }
 
     public void SetEdgeOwner(IntPtr edgeHwnd)

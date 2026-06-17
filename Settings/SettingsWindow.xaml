@@ -73,6 +73,12 @@
                 <TextBlock Text="Sistema" Style="{StaticResource SettingLabel}"/>
                 <CheckBox x:Name="ChkStartup" Content="Iniciar con Windows"
                           Foreground="{DynamicResource Md3OnSurface}" Click="Startup_Click"/>
+                <CheckBox x:Name="ChkAutoHide" Content="Auto-ocultar el botón flotante"
+                          Foreground="{DynamicResource Md3OnSurface}" Click="AutoHide_Click" Margin="0,10,0,0"/>
+
+                <TextBlock Text="Abrir al iniciar" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>
+                <ComboBox x:Name="StartAppCombo" SelectionChanged="StartApp_Changed"
+                          Foreground="{DynamicResource Md3OnSurface}"/>
 
                 <!-- Plan -->
                 <TextBlock Text="Plan" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>

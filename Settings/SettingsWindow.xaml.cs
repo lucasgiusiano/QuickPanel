@@ -259,6 +259,8 @@ public partial class SettingsWindow : Window
         })!.IsChecked = true;
 
         ChkStartup.IsChecked = s.RunAtStartup;
+        ChkAutoHide.IsChecked = s.AutoHide;
+        PopulateStartAppCombo();
         PlanText.Text = $"Plan actual: {LicenseService.Name(LicenseService.CurrentTier)}";
 
         (s.ThemeMode switch
@@ -332,6 +334,52 @@ public partial class SettingsWindow : Window
         SettingsService.Current.RunAtStartup = on;
         SettingsService.Save();
         StartupService.SetRunAtStartup(on);
+    }
+
+    private void AutoHide_Click(object sender, RoutedEventArgs e)
+    {
+        if (ChkAutoHide.IsChecked == true && !LicenseService.HasFeature(Feature.AutoHide))
+        {
+            new UpgradeWindow("Auto-ocultar el botón es parte del plan Pro.").ShowDialog();
+            ChkAutoHide.IsChecked = false;
+            return;
+        }
+        SettingsService.Current.AutoHide = ChkAutoHide.IsChecked == true;
+        SettingsService.Save();
+    }
+
+    private bool _populatingCombo;
+
+    private void PopulateStartAppCombo()
+    {
+        _populatingCombo = true;
+        StartAppCombo.Items.Clear();
+        StartAppCombo.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Ninguna", Tag = "" });
+        foreach (var app in SettingsService.Current.Apps)
+            StartAppCombo.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = app.Name, Tag = app.Id });
+
+        var current = SettingsService.Current.StartAppId;
+        StartAppCombo.SelectedIndex = 0;
+        for (int i = 1; i < StartAppCombo.Items.Count; i++)
+            if (((System.Windows.Controls.ComboBoxItem)StartAppCombo.Items[i]).Tag as string == current)
+                StartAppCombo.SelectedIndex = i;
+        _populatingCombo = false;
+    }
+
+    private void StartApp_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_populatingCombo) return;
+        if (!LicenseService.HasFeature(Feature.StartApp))
+        {
+            new UpgradeWindow("Abrir una app al iniciar es parte del plan Pro.").ShowDialog();
+            _populatingCombo = true;
+            StartAppCombo.SelectedIndex = 0;
+            _populatingCombo = false;
+            return;
+        }
+        var tag = (StartAppCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string ?? "";
+        SettingsService.Current.StartAppId = tag;
+        SettingsService.Save();
     }
 
     private void Theme_Click(object sender, RoutedEventArgs e)

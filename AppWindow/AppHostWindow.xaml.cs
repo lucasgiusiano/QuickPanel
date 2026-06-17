@@ -148,6 +148,13 @@ public partial class AppHostWindow : Window
                 if (!string.IsNullOrWhiteSpace(t)) TitleText.Text = t;
             };
 
+            // Historial (Pro): registrar cada navegación de nivel superior.
+            Web.CoreWebView2.SourceChanged += (_, _) =>
+            {
+                if (!LicenseService.HasFeature(Feature.History)) return;
+                RecordHistory(Web.CoreWebView2.Source);
+            };
+
             // WhatsApp Web invalida la sesión si el almacenamiento no es "persistente".
             // Pedimos persistencia explícita en cada documento que carga.
             await Web.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
@@ -245,6 +252,55 @@ public partial class AppHostWindow : Window
 
     private void BtnReload_Click(object sender, RoutedEventArgs e) => Web.CoreWebView2?.Reload();
     private void BtnClose_Click(object sender, RoutedEventArgs e)  => HidePanel();
+
+    private void RecordHistory(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return;
+        var h = _app.History;
+        h.RemoveAll(u => string.Equals(u, url, StringComparison.OrdinalIgnoreCase));
+        h.Insert(0, url);
+        if (h.Count > 20) h.RemoveRange(20, h.Count - 20);
+        SettingsService.Save();
+    }
+
+    private void BtnHistory_Click(object sender, RoutedEventArgs e)
+    {
+        if (!LicenseService.HasFeature(Feature.History))
+        {
+            new Settings.UpgradeWindow("El historial de navegación es parte del plan Pro.").ShowDialog();
+            return;
+        }
+
+        var menu = new System.Windows.Controls.ContextMenu();
+        if (_app.History.Count == 0)
+        {
+            menu.Items.Add(new System.Windows.Controls.MenuItem
+            { Header = "Sin historial todavía", IsEnabled = false });
+        }
+        else
+        {
+            foreach (var url in _app.History)
+            {
+                var item = new System.Windows.Controls.MenuItem { Header = Shorten(url) };
+                var target = url;
+                item.Click += (_, _) => Web.CoreWebView2?.Navigate(target);
+                menu.Items.Add(item);
+            }
+        }
+        menu.PlacementTarget = BtnHistory;
+        menu.IsOpen = true;
+    }
+
+    private static string Shorten(string url)
+    {
+        try
+        {
+            var u = new Uri(url);
+            var s = u.Host + u.PathAndQuery;
+            return s.Length > 60 ? s[..57] + "…" : s;
+        }
+        catch { return url.Length > 60 ? url[..57] + "…" : url; }
+    }
 
     protected override void OnDeactivated(EventArgs e)
     {

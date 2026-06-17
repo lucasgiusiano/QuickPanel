@@ -64,6 +64,8 @@
                                    TextTrimming="CharacterEllipsis"/>
 
                         <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <Button x:Name="BtnHistory" Content="🕘" Click="BtnHistory_Click"
+                                    Style="{StaticResource TitleBtn}" ToolTip="Historial"/>
                             <Button x:Name="BtnReload" Content="⟳" Click="BtnReload_Click"
                                     Style="{StaticResource TitleBtn}" ToolTip="Recargar"/>
                             <Button x:Name="BtnClose" Content="✕" Click="BtnClose_Click"
