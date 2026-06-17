@@ -35,9 +35,25 @@
                 <Button Content="Mover botón (arrastralo)" Click="Move_Click"
                         Style="{StaticResource Md3FilledButton}" HorizontalAlignment="Left" Margin="0,0,0,20"/>
 
+                <!-- Apps -->
+                <TextBlock Text="Apps" Style="{StaticResource SettingLabel}"/>
+                <Button Content="Administrar apps" Click="Manage_Click"
+                        Style="{StaticResource Md3FilledButton}" HorizontalAlignment="Left" Margin="0,0,0,20"/>
+
                 <!-- Color -->
                 <TextBlock Text="Color de la interfaz" Style="{StaticResource SettingLabel}"/>
                 <WrapPanel x:Name="Swatches" Margin="0,0,0,20"/>
+
+                <!-- Tema -->
+                <TextBlock Text="Tema" Style="{StaticResource SettingLabel}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                    <RadioButton x:Name="ThemeDark" Content="Oscuro" GroupName="theme" Margin="0,0,12,0"
+                                 Foreground="{DynamicResource Md3OnSurface}" Click="Theme_Click" Tag="Dark"/>
+                    <RadioButton x:Name="ThemeLight" Content="Claro" GroupName="theme" Margin="0,0,12,0"
+                                 Foreground="{DynamicResource Md3OnSurface}" Click="Theme_Click" Tag="Light"/>
+                    <RadioButton x:Name="ThemeSystem" Content="Sistema" GroupName="theme" Margin="0,0,12,0"
+                                 Foreground="{DynamicResource Md3OnSurface}" Click="Theme_Click" Tag="System"/>
+                </StackPanel>
 
                 <!-- Tamaño panel -->
                 <TextBlock Text="Tamaño del panel" Style="{StaticResource SettingLabel}"/>

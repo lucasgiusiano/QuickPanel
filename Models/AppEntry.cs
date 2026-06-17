@@ -7,6 +7,16 @@ public class AppEntry
     public string Url { get; set; } = "";
     public string Favicon { get; set; } = "";
 
+    /// <summary>Ruta a un ícono local personalizado (Pro). Si está vacío, se usa el favicon.</summary>
+    public string IconPath { get; set; } = "";
+
+    /// <summary>Color de acento del círculo en hex (Complete). Vacío = color por defecto.</summary>
+    public string Color { get; set; } = "";
+
+    /// <summary>True si tiene un ícono custom válido en disco.</summary>
+    public bool HasCustomIcon =>
+        !string.IsNullOrEmpty(IconPath) && System.IO.File.Exists(IconPath);
+
     public static string FaviconFor(string url)
     {
         try

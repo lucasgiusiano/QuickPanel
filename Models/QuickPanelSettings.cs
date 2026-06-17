@@ -10,6 +10,9 @@ public class QuickPanelSettings
     /// <summary>Color semilla del esquema MD3 (hex).</summary>
     public string SeedColor { get; set; } = "#6366F1";
 
+    /// <summary>Modo de tema: oscuro (default), claro o según el sistema.</summary>
+    public ThemeMode ThemeMode { get; set; } = ThemeMode.Dark;
+
     /// <summary>Tamaño de las ventanas de app (DIPs).</summary>
     public double PanelWidth { get; set; } = 440;
     public double PanelHeight { get; set; } = 760;

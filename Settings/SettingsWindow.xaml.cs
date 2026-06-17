@@ -29,11 +29,16 @@ public partial class SettingsWindow : Window
         VersionText.Text = $"QuickPanel v{v?.Major}.{v?.Minor}.{v?.Build}";
     }
 
+    private const int FreePaletteCount = 4;
+
     private void BuildSwatches()
     {
-        foreach (var hex in SeedPalette)
+        for (int i = 0; i < SeedPalette.Length; i++)
         {
-            var c   = (Color)ColorConverter.ConvertFromString(hex);
+            var hex      = SeedPalette[i];
+            bool premium = i >= FreePaletteCount;
+            var c        = (Color)ColorConverter.ConvertFromString(hex);
+
             var dot = new Ellipse
             {
                 Width           = 34,
@@ -42,7 +47,9 @@ public partial class SettingsWindow : Window
                 Fill            = new SolidColorBrush(c),
                 Cursor          = Cursors.Hand,
                 Stroke          = Brushes.Transparent,
-                StrokeThickness = 3
+                StrokeThickness = 3,
+                // Las premium se ven atenuadas hasta desbloquear el plan.
+                Opacity         = premium && !LicenseService.HasFeature(Feature.PremiumPalettes) ? 0.4 : 1.0
             };
 
             if (string.Equals(hex, SettingsService.Current.SeedColor, StringComparison.OrdinalIgnoreCase))
@@ -50,9 +57,15 @@ public partial class SettingsWindow : Window
 
             dot.MouseLeftButtonUp += (_, _) =>
             {
+                if (premium && !LicenseService.HasFeature(Feature.PremiumPalettes))
+                {
+                    new UpgradeWindow("Las paletas premium son parte del plan Pro.").ShowDialog();
+                    return;
+                }
+
                 SettingsService.Current.SeedColor = hex;
                 SettingsService.Save();
-                ThemeService.Apply(hex);
+                ThemeService.Apply(hex, SettingsService.Current.ThemeMode);
                 foreach (var child in Swatches.Children.OfType<Ellipse>())
                     child.Stroke = Brushes.Transparent;
                 dot.Stroke = (Brush)FindResource("Md3OnSurface");
@@ -74,6 +87,13 @@ public partial class SettingsWindow : Window
 
         ChkStartup.IsChecked = s.RunAtStartup;
         PlanText.Text = $"Plan actual: {LicenseService.Name(LicenseService.CurrentTier)}";
+
+        (s.ThemeMode switch
+        {
+            ThemeMode.Light  => ThemeLight,
+            ThemeMode.System => ThemeSystem,
+            _                => ThemeDark
+        }).IsChecked = true;
     }
 
     private void Move_Click(object sender, RoutedEventArgs e)
@@ -110,6 +130,27 @@ public partial class SettingsWindow : Window
         SettingsService.Save();
         StartupService.SetRunAtStartup(on);
     }
+
+    private void Theme_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton rb || rb.Tag is not string tag) return;
+        var mode = Enum.Parse<ThemeMode>(tag);
+
+        // Cualquier modo distinto de Oscuro es Pro.
+        if (mode != ThemeMode.Dark && !LicenseService.HasFeature(Feature.LightTheme))
+        {
+            new UpgradeWindow("Los temas claro y sistema son parte del plan Pro.").ShowDialog();
+            ThemeDark.IsChecked = true; // revertir a oscuro (gratis)
+            return;
+        }
+
+        SettingsService.Current.ThemeMode = mode;
+        SettingsService.Save();
+        ThemeService.Apply(SettingsService.Current.SeedColor, mode);
+    }
+
+    private void Manage_Click(object sender, RoutedEventArgs e)
+        => new ManageAppsWindow(_manager).ShowDialog();
 
     private void Header_Drag(object sender, MouseButtonEventArgs e)
     {
@@ -168,7 +209,7 @@ public partial class SettingsWindow : Window
         {
             if (SettingsService.Import(dlg.FileName))
             {
-                ThemeService.Apply(SettingsService.Current.SeedColor);
+                ThemeService.Apply(SettingsService.Current.SeedColor, SettingsService.Current.ThemeMode);
                 App.ReanchorAllPanels();
                 MessageBox.Show("Configuración importada.", "QuickPanel",
                     MessageBoxButton.OK, MessageBoxImage.Information);

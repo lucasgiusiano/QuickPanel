@@ -3,9 +3,17 @@ using System.Windows.Media;
 
 namespace QuickPanel.Services;
 
+public enum ThemeMode
+{
+    Dark,
+    Light,
+    System
+}
+
 public static class ThemeService
 {
-    public static void Apply(string seedHex)
+    /// <summary>Aplica el esquema MD3 a partir del color semilla y el modo de tema.</summary>
+    public static void Apply(string seedHex, ThemeMode mode = ThemeMode.Dark)
     {
         Color seed;
         try { seed = (Color)ColorConverter.ConvertFromString(seedHex); }
@@ -13,6 +21,19 @@ public static class ThemeService
 
         var (h, s, _) = ToHsl(seed);
 
+        bool light = mode switch
+        {
+            ThemeMode.Light  => true,
+            ThemeMode.System => SystemUsesLight(),
+            _                => false
+        };
+
+        if (light) ApplyLight(h, s);
+        else        ApplyDark(h, s);
+    }
+
+    private static void ApplyDark(double h, double s)
+    {
         Set("Md3Primary",              FromHsl(h, s * 0.90, 0.72));
         Set("Md3OnPrimary",            FromHsl(h, s * 0.70, 0.14));
         Set("Md3PrimaryContainer",     FromHsl(h, s * 0.65, 0.30));
@@ -24,6 +45,32 @@ public static class ThemeService
         Set("Md3OnSurfaceVariant",     FromHsl(h, s * 0.08, 0.68));
         Set("Md3Outline",              FromHsl(h, s * 0.08, 0.42));
         Set("Md3Error",                (Color)ColorConverter.ConvertFromString("#F2B8B5"));
+    }
+
+    private static void ApplyLight(double h, double s)
+    {
+        Set("Md3Primary",              FromHsl(h, s * 0.85, 0.45));
+        Set("Md3OnPrimary",            FromHsl(h, s * 0.30, 0.98));
+        Set("Md3PrimaryContainer",     FromHsl(h, s * 0.55, 0.88));
+        Set("Md3OnPrimaryContainer",   FromHsl(h, s * 0.70, 0.20));
+        Set("Md3Surface",              FromHsl(h, s * 0.10, 0.98));
+        Set("Md3SurfaceContainer",     FromHsl(h, s * 0.12, 0.94));
+        Set("Md3SurfaceContainerHigh", FromHsl(h, s * 0.12, 0.90));
+        Set("Md3OnSurface",            FromHsl(h, s * 0.20, 0.12));
+        Set("Md3OnSurfaceVariant",     FromHsl(h, s * 0.15, 0.35));
+        Set("Md3Outline",              FromHsl(h, s * 0.10, 0.65));
+        Set("Md3Error",                (Color)ColorConverter.ConvertFromString("#B3261E"));
+    }
+
+    private static bool SystemUsesLight()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            return key?.GetValue("AppsUseLightTheme") is int i && i != 0;
+        }
+        catch { return false; }
     }
 
     private static void Set(string key, Color c)

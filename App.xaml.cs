@@ -25,7 +25,7 @@ public partial class App : Application
         if (!Services.WebView2Check.EnsureAvailable()) { Shutdown(); return; }
 
         SettingsService.Load();
-        ThemeService.Apply(SettingsService.Current.SeedColor);
+        ThemeService.Apply(SettingsService.Current.SeedColor, SettingsService.Current.ThemeMode);
         // Sincroniza solo si difiere: no re-escribe la clave en cada arranque
         // (evita pisar cambios externos / duplicar la entrada del instalador).
         StartupService.SyncFromPreference(SettingsService.Current.RunAtStartup);

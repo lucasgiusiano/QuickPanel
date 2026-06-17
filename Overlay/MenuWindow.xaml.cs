@@ -192,25 +192,32 @@ public partial class MenuWindow : Window
         BitmapImage? img = null;
         try
         {
-            // Recalcular siempre desde la URL (la normalización arregla subdominios
-            // como web.whatsapp.com que daban favicon vacío).
-            var url = AppEntry.FaviconFor(app.Url);
-            if (!string.IsNullOrEmpty(url))
+            // Ícono personalizado (Pro) si existe; si no, favicon desde la URL.
+            var src = app.HasCustomIcon ? app.IconPath : AppEntry.FaviconFor(app.Url);
+            if (!string.IsNullOrEmpty(src))
             {
                 img = new BitmapImage();
                 img.BeginInit();
-                img.UriSource   = new Uri(url);
+                img.UriSource   = new Uri(src);
                 img.CacheOption = BitmapCacheOption.OnLoad;
                 img.EndInit();
             }
         }
         catch { img = null; }
 
+        // Color de acento por app (Complete) si está definido.
+        Brush bg = (Brush)FindResource("Md3SurfaceContainer");
+        if (!string.IsNullOrEmpty(app.Color))
+        {
+            try { bg = new SolidColorBrush((Color)ColorConverter.ConvertFromString(app.Color)); }
+            catch { /* color inválido: usar default */ }
+        }
+
         var grid = MakeCircle(
             img == null ? (app.Name.Length > 0 ? app.Name[..1].ToUpper() : "?") : "",
             img,
             () => _manager.OpenApp(app, originRelY),
-            (Brush)FindResource("Md3SurfaceContainer"),
+            bg,
             (Brush)FindResource("Md3OnSurface"));
 
         grid.MouseRightButtonUp += (_, _) =>
