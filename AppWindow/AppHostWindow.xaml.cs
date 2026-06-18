@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
@@ -150,8 +151,22 @@ public partial class AppHostWindow : Window
 
             Web.CoreWebView2.NewWindowRequested += (_, ev) =>
             {
+                // Links que la app intenta abrir en ventana nueva (target=_blank, popups)
+                // → al navegador, no dentro del panel.
                 ev.Handled = true;
-                Web.CoreWebView2.Navigate(ev.Uri);
+                OpenInBrowser(ev.Uri);
+            };
+
+            // Navegación de nivel superior a OTRO dominio → al navegador.
+            // La navegación interna de la propia app se mantiene en el panel.
+            Web.CoreWebView2.NavigationStarting += (_, ev) =>
+            {
+                if (ev.IsRedirected) return;          // no interceptar redirects internos
+                if (!IsTopLevel(ev)) return;          // solo navegación principal
+                if (IsSameApp(ev.Uri)) return;        // mismo dominio: queda en el panel
+
+                ev.Cancel = true;
+                OpenInBrowser(ev.Uri);
             };
 
             Web.CoreWebView2.DocumentTitleChanged += (_, _) =>
@@ -281,6 +296,73 @@ public partial class AppHostWindow : Window
         if (count == Unread) return;
         Unread = count;
         UnreadChanged?.Invoke(this);
+    }
+
+    private static readonly string[] AuthHosts =
+    {
+        "accounts.google.com", "login.microsoftonline.com", "login.live.com",
+        "appleid.apple.com", "facebook.com", "auth0.com", "okta.com", "duosecurity.com"
+    };
+
+    /// <summary>True si la URL pertenece al mismo dominio raíz que la app (queda en el panel).</summary>
+    private bool IsSameApp(string url)
+    {
+        try
+        {
+            var host = new Uri(url).Host;
+            // Flujos de login federado (Google, Microsoft, etc.) deben quedar en el panel.
+            if (AuthHosts.Any(a => host.EndsWith(a, StringComparison.OrdinalIgnoreCase)))
+                return true;
+
+            var target  = RootDomain(host);
+            var appHost = RootDomain(new Uri(_app.Url).Host);
+            return string.Equals(target, appHost, StringComparison.OrdinalIgnoreCase);
+        }
+        catch { return true; } // ante la duda, no sacar del panel
+    }
+
+    /// <summary>Solo navegaciones http/https se consideran para externalizar.</summary>
+    private static bool IsTopLevel(Microsoft.Web.WebView2.Core.CoreWebView2NavigationStartingEventArgs ev)
+    {
+        if (string.IsNullOrEmpty(ev.Uri)) return false;
+        return ev.Uri.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            || ev.Uri.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Dominio raíz (últimas dos etiquetas) para comparar ignorando subdominios.</summary>
+    private static string RootDomain(string host)
+    {
+        var parts = host.Split('.');
+        return parts.Length <= 2 ? host : string.Join('.', parts[^2], parts[^1]);
+    }
+
+    /// <summary>
+    /// Abre la URL en el navegador atachado (Edge). Usa msedge.exe para forzar Edge;
+    /// si falla, cae al navegador por defecto del sistema.
+    /// </summary>
+    private void OpenInBrowser(string url)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName        = "msedge.exe",
+                Arguments       = $"\"{url}\"",
+                UseShellExecute = true
+            });
+        }
+        catch
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName        = url,
+                    UseShellExecute = true
+                });
+            }
+            catch { /* sin navegador disponible */ }
+        }
     }
 
     private void RecordHistory(string url)

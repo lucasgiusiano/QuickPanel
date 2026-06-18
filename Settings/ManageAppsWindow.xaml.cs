@@ -89,8 +89,7 @@ public partial class ManageAppsWindow : Window
             Padding      = new Thickness(10),
             Background   = (Brush)FindResource("Md3SurfaceContainer"),
             Tag          = app,                 // usado por el drag&drop para identificar la fila
-            AllowDrop    = true,
-            Cursor       = Cursors.SizeAll
+            AllowDrop    = true
         };
 
         var grid = new Grid();
@@ -111,6 +110,7 @@ public partial class ManageAppsWindow : Window
         };
         Grid.SetColumn(handle, 0);
         grid.Children.Add(handle);
+        WireDragHandle(handle, card);
 
         // ── Ícono ──
         var icon = new Border
@@ -161,7 +161,7 @@ public partial class ManageAppsWindow : Window
         grid.Children.Add(actions);
 
         card.Child = grid;
-        WireDragDrop(card);
+        WireDropTarget(card);
         return card;
     }
 
@@ -169,17 +169,20 @@ public partial class ManageAppsWindow : Window
 
     private Border? _dragSource;
 
-    private void WireDragDrop(Border row)
+    /// <summary>El arrastre se inicia SOLO desde el handle (⠿), no desde toda la fila,
+    /// para no interferir con los botones de acción de la derecha.</summary>
+    private void WireDragHandle(UIElement handle, Border row)
     {
-        row.PreviewMouseLeftButtonDown += (_, e) =>
+        handle.PreviewMouseLeftButtonDown += (_, e) =>
         {
-            // Si el clic empezó en un control interactivo (texto, botón), no iniciar drag.
-            if (e.OriginalSource is TextBox or Button or TextBlock { Text.Length: > 1 }) return;
-
             _dragSource = row;
             DragDrop.DoDragDrop(row, row, DragDropEffects.Move);
+            e.Handled = true;
         };
+    }
 
+    private void WireDropTarget(Border row)
+    {
         row.DragOver += (_, e) =>
         {
             e.Effects = e.Data.GetDataPresent(typeof(Border)) ? DragDropEffects.Move : DragDropEffects.None;
