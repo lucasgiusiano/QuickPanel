@@ -202,10 +202,43 @@ public partial class ManageAppsWindow : Window
 
             apps.RemoveAt(iFrom);
             apps.Insert(iTo, from);
+            ReassignPositionalHotkeys();
             SettingsService.Save();
+            App.ReloadHotkeys();
             BuildRows();
         };
     }
+
+    /// <summary>
+    /// Reasigna Ctrl+Alt+[1..0] a las primeras 10 apps según su nueva posición,
+    /// pero solo a las que ya tenían un atajo posicional (Ctrl+Alt+dígito).
+    /// Los atajos personalizados por el usuario se respetan y no se tocan.
+    /// </summary>
+    private static void ReassignPositionalHotkeys()
+    {
+        var apps = SettingsService.Current.Apps;
+
+        // Detectar qué apps usan un atajo "posicional" (Ctrl+Alt+ y un dígito).
+        bool IsPositional(Hotkey h) =>
+            h.IsSet && h.Ctrl && h.Alt && !h.Shift && !h.Win && IsDigit(h.Key);
+
+        // Liberar los atajos posicionales actuales para reasignarlos por orden.
+        foreach (var a in apps)
+            if (IsPositional(a.Hotkey)) a.Hotkey = new Hotkey();
+
+        for (int i = 0; i < apps.Count && i < 10; i++)
+        {
+            // Solo asignar si esa posición no quedó con un atajo custom ya puesto.
+            if (apps[i].Hotkey.IsSet) continue;
+            var key = i < 9 ? Key.D1 + i : Key.D0;
+            var hk  = new Hotkey { Ctrl = true, Alt = true, Key = key };
+            if (!apps.Any(a => a.Hotkey.IsSet && a.Hotkey.ToString() == hk.ToString()))
+                apps[i].Hotkey = hk;
+        }
+    }
+
+    private static bool IsDigit(Key k) =>
+        (k >= Key.D0 && k <= Key.D9) || (k >= Key.NumPad0 && k <= Key.NumPad9);
 
     // ── Acciones ──
 
@@ -220,7 +253,15 @@ public partial class ManageAppsWindow : Window
             return;
         }
 
-        var dlg = new HotkeyCaptureDialog(app.Name) { Owner = this };
+        HotkeyCaptureDialog dlg;
+        try
+        {
+            dlg = new HotkeyCaptureDialog(app.Name) { Owner = this };
+        }
+        catch
+        {
+            dlg = new HotkeyCaptureDialog(app.Name); // sin owner si algo falla
+        }
         if (dlg.ShowDialog() != true || dlg.Result == null) return;
 
         var hk = dlg.Result;

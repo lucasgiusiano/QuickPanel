@@ -369,6 +369,7 @@ public partial class SettingsWindow : Window
         (HotkeyAction.HideActivePanel, "Ocultar panel activo"),
         (HotkeyAction.NextApp,         "App siguiente"),
         (HotkeyAction.PrevApp,         "App anterior"),
+        (HotkeyAction.ToggleAutoHide,  "Activar/desactivar auto-ocultar"),
     };
 
     private void BuildActionHotkeys()

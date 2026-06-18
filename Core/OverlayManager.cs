@@ -255,6 +255,13 @@ public sealed class OverlayManager : IDisposable
         w?.HideFromHotkey();
     }
 
+    /// <summary>Activa/desactiva el auto-ocultar del botón flotante (usado por hotkey).</summary>
+    public void ToggleAutoHide()
+    {
+        SettingsService.Current.AutoHide = !SettingsService.Current.AutoHide;
+        SettingsService.Save();
+    }
+
     /// <summary>Cicla a la app siguiente (+1) o anterior (-1) en la lista (usado por hotkey).</summary>
     public void CycleApp(int dir)
     {

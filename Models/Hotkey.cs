@@ -8,7 +8,8 @@ public enum HotkeyAction
     ToggleMenu,
     HideActivePanel,
     NextApp,
-    PrevApp
+    PrevApp,
+    ToggleAutoHide
 }
 
 /// <summary>

@@ -73,6 +73,7 @@ public sealed class HotkeyService : IDisposable
             case HotkeyAction.HideActivePanel: mgr.HideActivePanel();  break;
             case HotkeyAction.NextApp:         mgr.CycleApp(+1);       break;
             case HotkeyAction.PrevApp:         mgr.CycleApp(-1);       break;
+            case HotkeyAction.ToggleAutoHide:  mgr.ToggleAutoHide();   break;
         }
     }
 
