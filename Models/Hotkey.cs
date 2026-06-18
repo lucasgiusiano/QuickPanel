@@ -9,7 +9,8 @@ public enum HotkeyAction
     HideActivePanel,
     NextApp,
     PrevApp,
-    ToggleAutoHide
+    ToggleAutoHide,
+    MoveButton
 }
 
 /// <summary>

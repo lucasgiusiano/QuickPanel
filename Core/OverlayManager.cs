@@ -138,6 +138,12 @@ public sealed class OverlayManager : IDisposable
     {
         CloseMenu();
 
+        // Un solo panel visible a la vez: ocultar los demás (sin destruirlos,
+        // así conservan su caché/sesión de WebView2).
+        foreach (var kv in _appWindows)
+            if (kv.Key != app.Id && kv.Value.IsVisible)
+                kv.Value.HideFromHotkey();
+
         if (_appWindows.TryGetValue(app.Id, out var existing))
         {
             existing.ShowAndFocus();
@@ -229,11 +235,23 @@ public sealed class OverlayManager : IDisposable
         CloseMenu();
     }
 
+    private SettingsWindow? _settingsWin;
+
     public void OpenSettings()
     {
         CloseMenu();
-        var win = new SettingsWindow(this);
-        win.Show();
+
+        // Si ya hay una ventana de Configuración abierta, traerla al frente
+        // en vez de abrir otra.
+        if (_settingsWin != null)
+        {
+            _settingsWin.Activate();
+            return;
+        }
+
+        _settingsWin = new SettingsWindow(this);
+        _settingsWin.Closed += (_, _) => _settingsWin = null;
+        _settingsWin.Show();
     }
 
     public void EnterMoveMode() => _button.EnterMoveMode();

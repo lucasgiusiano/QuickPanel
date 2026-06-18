@@ -32,6 +32,30 @@ public partial class SettingsWindow : Window
 
         var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
         VersionText.Text = $"QuickPanel v{v?.Major}.{v?.Minor}.{v?.Build}";
+
+        Deactivated += OnDeactivated;
+    }
+
+    /// <summary>
+    /// Cierra la ventana al hacer clic afuera, salvo que el foco se haya ido a un
+    /// modal hijo (Administrar apps, capturador de hotkey, selector de archivo, etc.).
+    /// </summary>
+    private void OnDeactivated(object? sender, EventArgs e)
+    {
+        // Si otra ventana de la propia app quedó activa, es un modal hijo: no cerrar.
+        foreach (Window w in Application.Current.Windows)
+            if (w != this && w.IsActive)
+                return;
+
+        // Diferir: si en el próximo ciclo seguimos sin foco y sin modal, cerrar.
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (IsActive) return; // recuperó el foco
+            foreach (Window w in Application.Current.Windows)
+                if (w != this && w.IsActive)
+                    return;       // un modal hijo tomó el foco
+            Close();
+        }), System.Windows.Threading.DispatcherPriority.Background);
     }
 
     private const int FreePaletteCount = 4;
@@ -125,9 +149,9 @@ public partial class SettingsWindow : Window
     private void BuildPanelSizeRow()
     {
         PanelSizeRow.Children.Clear();
-        _sizeS = SizeOption(PanelSizeRow, "S", "360,600", WindowGlyph(0.55), Size_Click, null);
-        _sizeM = SizeOption(PanelSizeRow, "M", "440,760", WindowGlyph(0.75), Size_Click, null);
-        _sizeL = SizeOption(PanelSizeRow, "L", "520,900", WindowGlyph(1.00), Size_Click, null);
+        _sizeS = SizeOption(PanelSizeRow, "S", "520,900",  WindowGlyph(0.55), Size_Click, null);
+        _sizeM = SizeOption(PanelSizeRow, "M", "1040,1400", WindowGlyph(0.78), Size_Click, null);
+        _sizeL = SizeOption(PanelSizeRow, "L", "1560,2000", WindowGlyph(1.00), Size_Click, null);
     }
 
     // ── Selector de tamaño del menú flotante (ícono: columna de círculos) ──
@@ -195,28 +219,32 @@ public partial class SettingsWindow : Window
     /// <summary>Ícono de "ventana": representa el panel donde se abren las apps.</summary>
     private FrameworkElement WindowGlyph(double scale)
     {
-        double w = 22 * scale, h = 26 * scale;
+        // Ventana estilizada: marco con barra de título integrada arriba.
+        double w = Math.Round(20 * scale), h = Math.Round(24 * scale);
+
+        var bar = new Border
+        {
+            Height       = Math.Max(3, Math.Round(h * 0.22)),
+            Background    = (Brush)FindResource("Md3OnSurfaceVariant"),
+            VerticalAlignment = VerticalAlignment.Top
+        };
+
+        var inner = new Grid();
+        inner.Children.Add(bar);
+
         var border = new Border
         {
             Width           = w,
             Height          = h,
-            CornerRadius    = new CornerRadius(3),
+            CornerRadius    = new CornerRadius(4),
             Background      = (Brush)FindResource("Md3SurfaceContainerHigh"),
             BorderBrush     = (Brush)FindResource("Md3OnSurfaceVariant"),
-            BorderThickness = new Thickness(1.2),
+            BorderThickness = new Thickness(1.4),
+            ClipToBounds    = true,
             VerticalAlignment   = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Center
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Child           = inner
         };
-        var bar = new Border
-        {
-            Height              = Math.Max(3, h * 0.18),
-            Background          = (Brush)FindResource("Md3OnSurfaceVariant"),
-            VerticalAlignment   = VerticalAlignment.Top,
-            CornerRadius        = new CornerRadius(3, 3, 0, 0)
-        };
-        var grid = new Grid();
-        grid.Children.Add(bar);
-        border.Child = grid;
         return border;
     }
 
@@ -247,9 +275,9 @@ public partial class SettingsWindow : Window
         var s = SettingsService.Current;
         (s.PanelWidth switch
         {
-            <= 360 => _sizeS,
-            >= 520 => _sizeL,
-            _      => _sizeM
+            <= 520  => _sizeS,
+            >= 1560 => _sizeL,
+            _       => _sizeM
         })!.IsChecked = true;
 
         (s.MenuItemSize switch
@@ -370,6 +398,7 @@ public partial class SettingsWindow : Window
         (HotkeyAction.NextApp,         "App siguiente"),
         (HotkeyAction.PrevApp,         "App anterior"),
         (HotkeyAction.ToggleAutoHide,  "Activar/desactivar auto-ocultar"),
+        (HotkeyAction.MoveButton,      "Mover el botón flotante"),
     };
 
     private void BuildActionHotkeys()

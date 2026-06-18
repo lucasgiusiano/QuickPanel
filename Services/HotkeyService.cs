@@ -74,6 +74,7 @@ public sealed class HotkeyService : IDisposable
             case HotkeyAction.NextApp:         mgr.CycleApp(+1);       break;
             case HotkeyAction.PrevApp:         mgr.CycleApp(-1);       break;
             case HotkeyAction.ToggleAutoHide:  mgr.ToggleAutoHide();   break;
+            case HotkeyAction.MoveButton:      mgr.EnterMoveMode();    break;
         }
     }
 
