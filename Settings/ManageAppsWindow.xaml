@@ -36,8 +36,12 @@
             </ScrollViewer>
 
             <Grid Grid.Row="3" Margin="0,16,0,0">
-                <Button Content="＋ Agregar app" Click="Add_Click"
-                        Style="{StaticResource Md3TextButton}" HorizontalAlignment="Left"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <Button Content="＋ Agregar app" Click="Add_Click"
+                            Style="{StaticResource Md3TextButton}"/>
+                    <Button Content="📁 Carpetas" Click="Groups_Click"
+                            Style="{StaticResource Md3TextButton}" Margin="8,0,0,0"/>
+                </StackPanel>
                 <Button Content="Listo" Click="Close_Click"
                         Style="{StaticResource Md3FilledButton}" HorizontalAlignment="Right"/>
             </Grid>

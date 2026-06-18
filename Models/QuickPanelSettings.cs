@@ -39,4 +39,7 @@ public class QuickPanelSettings
     public Dictionary<string, Hotkey> ActionHotkeys { get; set; } = new();
 
     public List<AppEntry> Apps { get; set; } = new();
+
+    /// <summary>Carpetas para agrupar apps en el menú (Complete).</summary>
+    public List<AppGroup> Groups { get; set; } = new();
 }

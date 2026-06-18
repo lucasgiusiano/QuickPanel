@@ -19,6 +19,12 @@ public class AppEntry
     /// <summary>Atajo de teclado global para abrir esta app (Complete).</summary>
     public Hotkey Hotkey { get; set; } = new();
 
+    /// <summary>Factor de zoom recordado para esta app (1.0 = 100%).</summary>
+    public double ZoomFactor { get; set; } = 1.0;
+
+    /// <summary>Id del grupo/carpeta al que pertenece (Complete). Vacío = suelta en el menú.</summary>
+    public string GroupId { get; set; } = "";
+
     /// <summary>True si tiene un ícono custom válido en disco.</summary>
     public bool HasCustomIcon =>
         !string.IsNullOrEmpty(IconPath) && System.IO.File.Exists(IconPath);

@@ -153,6 +153,7 @@ public partial class ManageAppsWindow : Window
             VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
 
         actions.Children.Add(IconButton("⌨", HotkeyTip(app), PlanBadge(Feature.GlobalHotkeys), () => AssignHotkey(app)));
+        actions.Children.Add(IconButton("📁", GroupTip(app), PlanBadge(Feature.Folders), b => PickGroup(app, b)));
         actions.Children.Add(IconButton("🖼", "Ícono personalizado", PlanBadge(Feature.CustomIcons), () => PickIcon(app)));
         actions.Children.Add(IconButton("🎨", "Color de la app", PlanBadge(Feature.PerAppColor), b => PickColor(app, b)));
         actions.Children.Add(IconButton("✕", "Quitar", (FrameworkElement?)null, () => Remove(app)));
@@ -289,6 +290,200 @@ public partial class ManageAppsWindow : Window
         if (SettingsService.Current.Apps.Any(a => a.Id != except.Id && a.Hotkey.IsSet && a.Hotkey.ToString() == s))
             return true;
         return SettingsService.Current.ActionHotkeys.Values.Any(h => h != null && h.IsSet && h.ToString() == s);
+    }
+
+    private void Groups_Click(object sender, RoutedEventArgs e) => ManageGroups();
+
+    private static string GroupTip(AppEntry app)
+    {
+        var g = SettingsService.Current.Groups.FirstOrDefault(x => x.Id == app.GroupId);
+        return g != null ? $"Carpeta: {g.Name}" : "Asignar a una carpeta";
+    }
+
+    private void PickGroup(AppEntry app, UIElement anchor)
+    {
+        if (!LicenseService.HasFeature(Feature.Folders))
+        {
+            new UpgradeWindow("Las carpetas son parte del plan Complete.").ShowDialog();
+            return;
+        }
+
+        var popup = new Popup
+        {
+            PlacementTarget = anchor,
+            Placement       = PlacementMode.Bottom,
+            StaysOpen       = false,
+            AllowsTransparency = true
+        };
+
+        var panel = new StackPanel { Width = 200 };
+        var box = new Border
+        {
+            CornerRadius = new CornerRadius(12),
+            Padding      = new Thickness(6),
+            Background   = (Brush)FindResource("Md3SurfaceContainerHigh"),
+            BorderBrush  = (Brush)FindResource("Md3Outline"),
+            BorderThickness = new Thickness(1),
+            Child        = panel
+        };
+
+        Button Row(string text, Action onClick, bool selected = false)
+        {
+            var b = new Button
+            {
+                Content = selected ? "• " + text : text,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Style = (Style)FindResource("Md3TextButton"),
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+            b.Click += (_, _) => { popup.IsOpen = false; onClick(); };
+            return b;
+        }
+
+        panel.Children.Add(Row("Sin carpeta", () => { app.GroupId = ""; SettingsService.Save(); BuildRows(); },
+            string.IsNullOrEmpty(app.GroupId)));
+
+        foreach (var g in SettingsService.Current.Groups)
+        {
+            var gid = g.Id;
+            panel.Children.Add(Row(g.Name, () => { app.GroupId = gid; SettingsService.Save(); BuildRows(); },
+                app.GroupId == gid));
+        }
+
+        var sep = new Border { Height = 1, Margin = new Thickness(4, 4, 4, 4),
+            Background = (Brush)FindResource("Md3Outline") };
+        panel.Children.Add(sep);
+        panel.Children.Add(Row("＋ Nueva carpeta…", () => CreateGroupAndAssign(app)));
+
+        popup.Child = box;
+        popup.IsOpen = true;
+    }
+
+    private void CreateGroupAndAssign(AppEntry app)
+    {
+        var name = PromptText("Nombre de la carpeta", "Carpeta");
+        if (string.IsNullOrWhiteSpace(name)) return;
+
+        var group = new AppGroup { Name = name.Trim() };
+        SettingsService.Current.Groups.Add(group);
+        app.GroupId = group.Id;
+        SettingsService.Save();
+        BuildRows();
+    }
+
+    /// <summary>Mini-diálogo de texto reutilizable (sin dependencias externas).</summary>
+    private string? PromptText(string title, string initial)
+    {
+        var win = new Window
+        {
+            Title = title, Width = 320, Height = 160,
+            WindowStyle = WindowStyle.None, AllowsTransparency = true, Background = null,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = this,
+            ResizeMode = ResizeMode.NoResize
+        };
+        var tb = new TextBox { Text = initial, Style = (Style)FindResource("Md3TextBox"), Margin = new Thickness(0,0,0,12) };
+        var ok = new Button { Content = "Aceptar", Style = (Style)FindResource("Md3FilledButton"), HorizontalAlignment = HorizontalAlignment.Right };
+        string? result = null;
+        ok.Click += (_, _) => { result = tb.Text; win.DialogResult = true; };
+
+        var stack = new StackPanel();
+        stack.Children.Add(new TextBlock { Text = title, FontSize = 15, FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)FindResource("Md3OnSurface"), Margin = new Thickness(0,0,0,12) });
+        stack.Children.Add(tb);
+        stack.Children.Add(ok);
+
+        win.Content = new Border
+        {
+            CornerRadius = new CornerRadius(18), Padding = new Thickness(20),
+            Background = (Brush)FindResource("Md3Surface"),
+            BorderBrush = (Brush)FindResource("Md3Outline"), BorderThickness = new Thickness(1),
+            Child = stack
+        };
+        tb.Loaded += (_, _) => { tb.SelectAll(); tb.Focus(); };
+        return win.ShowDialog() == true ? result : null;
+    }
+
+    private void ManageGroups()
+    {
+        if (!LicenseService.HasFeature(Feature.Folders))
+        {
+            new UpgradeWindow("Las carpetas son parte del plan Complete.").ShowDialog();
+            return;
+        }
+
+        var groups = SettingsService.Current.Groups;
+        if (groups.Count == 0)
+        {
+            CreateGroupOnly();
+            return;
+        }
+
+        // Popup simple para renombrar/eliminar cada carpeta + crear nueva.
+        var popup = new Popup
+        {
+            Placement = PlacementMode.Center, StaysOpen = false, AllowsTransparency = true,
+            PlacementTarget = this
+        };
+        var panel = new StackPanel { Width = 260 };
+        var box = new Border
+        {
+            CornerRadius = new CornerRadius(14), Padding = new Thickness(10),
+            Background = (Brush)FindResource("Md3SurfaceContainerHigh"),
+            BorderBrush = (Brush)FindResource("Md3Outline"), BorderThickness = new Thickness(1),
+            Child = panel
+        };
+
+        panel.Children.Add(new TextBlock { Text = "Carpetas", FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)FindResource("Md3OnSurface"), Margin = new Thickness(2,2,2,8) });
+
+        foreach (var g in groups.ToList())
+        {
+            var row = new Grid { Margin = new Thickness(0,0,0,4) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.Children.Add(new TextBlock { Text = g.Name, VerticalAlignment = VerticalAlignment.Center,
+                Foreground = (Brush)FindResource("Md3OnSurface") });
+
+            var ren = new Button { Content = "✎", Style = (Style)FindResource("TitleBtn"), ToolTip = "Renombrar" };
+            Grid.SetColumn(ren, 1);
+            ren.Click += (_, _) =>
+            {
+                var nm = PromptText("Renombrar carpeta", g.Name);
+                if (!string.IsNullOrWhiteSpace(nm)) { g.Name = nm.Trim(); SettingsService.Save(); }
+                popup.IsOpen = false; BuildRows();
+            };
+            row.Children.Add(ren);
+
+            var del = new Button { Content = "✕", Style = (Style)FindResource("TitleBtn"), ToolTip = "Eliminar" };
+            Grid.SetColumn(del, 2);
+            del.Click += (_, _) =>
+            {
+                foreach (var a in SettingsService.Current.Apps.Where(a => a.GroupId == g.Id)) a.GroupId = "";
+                SettingsService.Current.Groups.Remove(g);
+                SettingsService.Save();
+                popup.IsOpen = false; BuildRows();
+            };
+            row.Children.Add(del);
+            panel.Children.Add(row);
+        }
+
+        var newBtn = new Button { Content = "＋ Nueva carpeta", Style = (Style)FindResource("Md3TextButton"),
+            HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0,6,0,0) };
+        newBtn.Click += (_, _) => { popup.IsOpen = false; CreateGroupOnly(); };
+        panel.Children.Add(newBtn);
+
+        popup.Child = box;
+        popup.IsOpen = true;
+    }
+
+    private void CreateGroupOnly()
+    {
+        var name = PromptText("Nombre de la carpeta", "Carpeta");
+        if (string.IsNullOrWhiteSpace(name)) return;
+        SettingsService.Current.Groups.Add(new AppGroup { Name = name.Trim() });
+        SettingsService.Save();
+        BuildRows();
     }
 
     private void PickIcon(AppEntry app)

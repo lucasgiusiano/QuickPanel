@@ -188,6 +188,14 @@ public partial class AppHostWindow : Window
             await Web.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
                 "if (navigator.storage && navigator.storage.persist) { navigator.storage.persist(); }");
 
+            // Zoom persistente por app: aplicar el guardado y recordar cambios del usuario.
+            Web.ZoomFactor = _app.ZoomFactor <= 0 ? 1.0 : _app.ZoomFactor;
+            Web.ZoomFactorChanged += (_, _) =>
+            {
+                _app.ZoomFactor = Web.ZoomFactor;
+                SettingsService.Save();
+            };
+
             Web.CoreWebView2.Navigate(_app.Url);
         }
         catch (Exception ex)

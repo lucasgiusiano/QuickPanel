@@ -110,52 +110,224 @@ public partial class MenuWindow : Window
         var apps = SettingsService.Current.Apps;
         if (apps.Count == 0) return;
 
-        // El layout dibuja desde la posición más cercana al botón hacia afuera.
-        // Cuando despliega hacia arriba, eso es visualmente "de abajo hacia arriba",
-        // así que se invierte el orden de la lista para que la app #1 del listado
-        // de Administrar apps quede arriba también en el menú (orden visual = orden lógico).
-        var ordered = upward ? Enumerable.Reverse(apps).ToList() : apps;
+        BuildAppItems(bx, by, startYFor: upward, edgeTop, edgeBottom, edgeHeight);
+    }
 
-        double startY = upward
-            ? by - (Item / 2 + Gap + Item + Gap + Item / 2)
-            : by + (Item / 2 + Gap + Item / 2);
+    // ── Carpetas / grupos ──
 
+    // Ids de carpetas actualmente expandidas en esta apertura del menú.
+    private readonly HashSet<string> _expanded = new();
+
+    private const double ChildScale = 0.85; // apps dentro de carpeta: 85% del tamaño normal
+
+    /// <summary>Unidad visual del menú: una app suelta, una carpeta, o una app hija de carpeta.</summary>
+    private sealed class MenuUnit
+    {
+        public required FrameworkElement Element;
+        public required double Size;
+        public string? GroupId;       // no nulo si es hija de carpeta (para la pill de fondo)
+        public bool IsFolderHeader;   // true si es el círculo de la carpeta
+    }
+
+    private void BuildAppItems(double bx, double by, bool startYFor, double edgeTop, double edgeBottom, double edgeHeight)
+    {
+        bool upward = startYFor;
+        var s = SettingsService.Current;
+        bool groupsOn = LicenseService.HasFeature(Feature.Folders) && s.Groups.Count > 0;
+
+        // Construir la secuencia lógica de unidades (orden = orden de Administrar apps,
+        // con las carpetas insertadas en la posición de su primera app).
+        var units = new List<MenuUnit>();
+
+        if (!groupsOn)
+        {
+            foreach (var app in s.Apps)
+                units.Add(new MenuUnit { Element = MakeAppCircle(app, 0.5, Item), Size = Item });
+        }
+        else
+        {
+            var seenGroups = new HashSet<string>();
+            foreach (var app in s.Apps)
+            {
+                if (string.IsNullOrEmpty(app.GroupId) || s.Groups.All(g => g.Id != app.GroupId))
+                {
+                    units.Add(new MenuUnit { Element = MakeAppCircle(app, 0.5, Item), Size = Item });
+                    continue;
+                }
+
+                // App agrupada: en la posición de la PRIMERA app del grupo, insertar la carpeta.
+                if (seenGroups.Add(app.GroupId))
+                {
+                    var group = s.Groups.First(g => g.Id == app.GroupId);
+                    units.Add(new MenuUnit
+                    {
+                        Element = MakeFolderCircle(group),
+                        Size = Item,
+                        IsFolderHeader = true
+                    });
+
+                    // Si está expandida, agregar sus apps (más chicas) justo después.
+                    if (_expanded.Contains(group.Id))
+                    {
+                        double cs = Item * ChildScale;
+                        foreach (var child in s.Apps.Where(a => a.GroupId == group.Id))
+                            units.Add(new MenuUnit
+                            {
+                                Element = MakeAppCircle(child, 0.5, cs),
+                                Size = cs,
+                                GroupId = group.Id
+                            });
+                    }
+                }
+            }
+        }
+
+        if (upward) units.Reverse();
+
+        // Colocar las unidades en columna desde el botón hacia afuera, con overflow.
         double colX   = bx;
-        double curY   = startY;
+        double cursor = upward
+            ? by - (Item / 2 + Gap + Item + Gap)   // arranca arriba del + 
+            : by + (Item / 2 + Gap + Item / 2);
         double margin = 16;
         int delay = 2;
 
-        foreach (var app in ordered)
-        {
-            // Overflow contra el rect de EDGE (no la pantalla)
-            bool overflow = upward
-                ? (curY - Item / 2 < edgeTop + margin)
-                : (curY + Item / 2 > edgeBottom - margin);
+        // Para dibujar las pills de fondo: acumular rangos (x, yTop, yBottom) por grupo.
+        var pillRuns = new Dictionary<string, (double x, double top, double bottom)>();
 
+        foreach (var u in units)
+        {
+            double half = u.Size / 2;
+
+            // Posición del centro según dirección. En 'upward' cursor marca el borde inferior.
+            double centerY = upward ? cursor - half : cursor + half;
+
+            bool overflow = upward
+                ? (centerY - half < edgeTop + margin)
+                : (centerY + half > edgeBottom - margin);
             if (overflow)
             {
-                colX -= (Item + ColGap);
-                curY  = startY;
+                colX  -= (Item + ColGap);
+                cursor = upward
+                    ? by - (Item / 2 + Gap + Item + Gap)
+                    : by + (Item / 2 + Gap + Item / 2);
+                centerY = upward ? cursor - half : cursor + half;
             }
 
-            double originRelY = Math.Clamp((curY - edgeTop) / edgeHeight, 0.05, 0.95);
-            var btn = MakeAppCircle(app, originRelY);
-            Place(btn, colX, curY);
-            Animate(btn, delay++);
+            // Registrar rango de pill para apps hijas de carpeta.
+            if (u.GroupId != null)
+            {
+                if (pillRuns.TryGetValue(u.GroupId, out var r))
+                    pillRuns[u.GroupId] = (colX, Math.Min(r.top, centerY - half), Math.Max(r.bottom, centerY + half));
+                else
+                    pillRuns[u.GroupId] = (colX, centerY - half, centerY + half);
+            }
 
-            curY += upward ? -(Item + Gap) : (Item + Gap);
+            PlaceSized(u.Element, colX, centerY, u.Size);
+            Animate(u.Element, delay++);
+
+            cursor += upward ? -(u.Size + Gap) : (u.Size + Gap);
         }
+
+        // Dibujar las pills de fondo DETRÁS de los íconos hijos.
+        foreach (var (x, top, bottom) in pillRuns.Values)
+            DrawGroupPill(x, top, bottom);
+    }
+
+    /// <summary>Fondo tipo "pill" (extremos semicirculares) con el color primario translúcido.</summary>
+    private void DrawGroupPill(double centerX, double top, double bottom)
+    {
+        double pad = Item * 0.12;
+        double w = Item * ChildScale + pad * 2;
+        double h = (bottom - top) + pad * 2;
+
+        var primary = ((SolidColorBrush)FindResource("Md3Primary")).Color;
+        var fill = new SolidColorBrush(Color.FromArgb(0x33, primary.R, primary.G, primary.B));
+
+        var pill = new Border
+        {
+            Width        = w,
+            Height       = h,
+            CornerRadius = new CornerRadius(w / 2), // extremos redondos = pill
+            Background   = fill,
+            IsHitTestVisible = false
+        };
+        Canvas.SetLeft(pill, centerX - w / 2);
+        Canvas.SetTop(pill, top - pad);
+        Root.Children.Insert(0, pill); // detrás de todo
+    }
+
+    private Grid MakeFolderCircle(AppGroup group)
+    {
+        var grid = MakeCircle("📁", null,
+            () => ToggleFolder(group.Id),
+            (Brush)FindResource("Md3SurfaceContainerHigh"),
+            (Brush)FindResource("Md3OnSurface"));
+
+        grid.ToolTip = group.Name;
+
+        // Badge de cantidad de apps en la carpeta.
+        int count = SettingsService.Current.Apps.Count(a => a.GroupId == group.Id);
+        if (count > 0)
+        {
+            double bs = Item * 0.42;
+            grid.Children.Add(new Border
+            {
+                Width = bs, Height = bs,
+                CornerRadius = new CornerRadius(bs / 2),
+                Background = (Brush)FindResource("Md3Primary"),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment   = VerticalAlignment.Top,
+                IsHitTestVisible    = false,
+                Child = new TextBlock
+                {
+                    Text = count.ToString(),
+                    FontSize = bs * 0.5, FontWeight = FontWeights.Bold,
+                    Foreground = (Brush)FindResource("Md3OnPrimary"),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment   = VerticalAlignment.Center
+                }
+            });
+        }
+        return grid;
+    }
+
+    private void ToggleFolder(string groupId)
+    {
+        if (!_expanded.Add(groupId)) _expanded.Remove(groupId);
+        // Recalcular el layout con el nuevo estado de expansión.
+        Root.Children.Clear();
+        var bx = _button.Left - Left + 32;
+        var by = _button.Top  - Top  + 32;
+        double edgeTopLocal, edgeBottomLocal;
+        if (Win32.IsWindow(_manager.EdgeHwnd))
+        {
+            Win32.GetWindowRect(_manager.EdgeHwnd, out var er);
+            double escale = Win32.DpiScaleOf(_manager.EdgeHwnd);
+            edgeTopLocal    = er.Top    / escale - Top;
+            edgeBottomLocal = er.Bottom / escale - Top;
+        }
+        else { edgeTopLocal = 0; edgeBottomLocal = Height; }
+        BuildLayout(edgeTopLocal, edgeBottomLocal);
+    }
+
+    private void PlaceSized(FrameworkElement el, double centerX, double centerY, double size)
+    {
+        Canvas.SetLeft(el, centerX - size / 2);
+        Canvas.SetTop(el,  centerY - size / 2);
+        Root.Children.Add(el);
     }
 
     // ── Helpers ──
 
-    private Grid MakeCircle(string glyph, BitmapImage? img, Action onClick, Brush bg, Brush fg)
+    private Grid MakeCircle(string glyph, BitmapImage? img, Action onClick, Brush bg, Brush fg, double? sizeOverride = null)
     {
+        double sz = sizeOverride ?? Item;
         var border = new Border
         {
-            Width        = Item,
-            Height       = Item,
-            CornerRadius = new CornerRadius(Item / 2),
+            Width        = sz,
+            Height       = sz,
+            CornerRadius = new CornerRadius(sz / 2),
             Background   = bg,
             Cursor       = Cursors.Hand,
             Effect       = new DropShadowEffect { BlurRadius = 10, ShadowDepth = 2, Opacity = 0.4, Color = Colors.Black }
@@ -163,7 +335,7 @@ public partial class MenuWindow : Window
 
         if (img != null)
         {
-            double imgSize = Item * 0.5;
+            double imgSize = sz * 0.5;
             border.Child = new System.Windows.Controls.Image
             {
                 Source              = img,
@@ -178,7 +350,7 @@ public partial class MenuWindow : Window
             border.Child = new TextBlock
             {
                 Text                = glyph,
-                FontSize            = Item * 0.46,
+                FontSize            = sz * 0.46,
                 Foreground          = fg,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment   = VerticalAlignment.Center
@@ -187,8 +359,8 @@ public partial class MenuWindow : Window
 
         var grid = new Grid
         {
-            Width               = Item,
-            Height              = Item,
+            Width               = sz,
+            Height              = sz,
             RenderTransformOrigin = new Point(0.5, 0.5)
         };
         grid.RenderTransform = new ScaleTransform(0, 0);
@@ -197,12 +369,11 @@ public partial class MenuWindow : Window
         return grid;
     }
 
-    private Grid MakeAppCircle(AppEntry app, double originRelY)
+    private Grid MakeAppCircle(AppEntry app, double originRelY, double size)
     {
         BitmapImage? img = null;
         try
         {
-            // Ícono personalizado (Pro) si existe; si no, favicon desde la URL.
             var src = app.HasCustomIcon ? app.IconPath : AppEntry.FaviconFor(app.Url);
             if (!string.IsNullOrEmpty(src))
             {
@@ -215,7 +386,6 @@ public partial class MenuWindow : Window
         }
         catch { img = null; }
 
-        // Color de acento por app (Complete) si está definido.
         Brush bg = (Brush)FindResource("Md3SurfaceContainer");
         if (!string.IsNullOrEmpty(app.Color))
         {
@@ -228,7 +398,8 @@ public partial class MenuWindow : Window
             img,
             () => _manager.OpenApp(app, originRelY),
             bg,
-            (Brush)FindResource("Md3OnSurface"));
+            (Brush)FindResource("Md3OnSurface"),
+            size);
 
         grid.MouseRightButtonUp += (_, _) =>
         {
@@ -239,12 +410,11 @@ public partial class MenuWindow : Window
 
         grid.ToolTip = app.Name;
 
-        // Badge de no leídos por app (si está habilitado y la app tiene panel abierto).
         bool showBadges = SettingsService.Current.ShowBadges
                           && LicenseService.HasFeature(Feature.Notifications);
         if (showBadges && _manager.Unread.TryGetValue(app.Id, out var n) && n > 0)
         {
-            double bs = Item * 0.42;
+            double bs = size * 0.42;
             var badge = new Border
             {
                 Width  = bs,
