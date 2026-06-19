@@ -146,24 +146,26 @@ public sealed class OverlayManager : IDisposable
 
         if (_appWindows.TryGetValue(app.Id, out var existing))
         {
+            // Recalcular el lado por si el botón se movió desde la última apertura.
+            existing.UpdateSide(PanelGeometry.SideFor(SettingsService.Current.ButtonRelX));
             existing.ShowAndFocus();
             return;
         }
 
-        var side = PanelGeometry.SideFor(SettingsService.Current.ButtonRelX);
-
-        // Callbacks: capturan el rect ACTUAL del botón en cada llamada,
-        // así el panel se re-ancla bien aunque Edge/el botón se muevan.
+        // Callbacks: capturan el rect ACTUAL del botón y el lado ACTUAL en cada
+        // llamada, así el panel se re-ancla bien aunque Edge/el botón se muevan.
         PanelGeometry.Rect ButtonRect()
         {
             const double winSize = 64; // ventana del botón (FAB 56 + halo)
             return new PanelGeometry.Rect(_button.Left, _button.Top, winSize, winSize);
         }
 
+        PanelSide CurrentSide() => PanelGeometry.SideFor(SettingsService.Current.ButtonRelX);
+
         var win = new AppHostWindow(
-            app, EdgeHwnd, side, originRelY,
-            computeBounds: w => PanelGeometry.Compute(EdgeHwnd, side, w, ButtonRect()),
-            maxWidth: () => PanelGeometry.MaxWidth(EdgeHwnd, side, ButtonRect()));
+            app, EdgeHwnd, CurrentSide(), originRelY,
+            computeBounds: w => PanelGeometry.Compute(EdgeHwnd, CurrentSide(), w, ButtonRect()),
+            maxWidth: () => PanelGeometry.MaxWidth(EdgeHwnd, CurrentSide(), ButtonRect()));
 
         win.Closed += (_, _) =>
         {

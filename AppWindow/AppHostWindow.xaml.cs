@@ -16,7 +16,7 @@ public partial class AppHostWindow : Window
 {
     private readonly AppEntry _app;
     private readonly IntPtr   _edgeHwnd;
-    private readonly PanelSide _side;
+    private PanelSide _side;
     private readonly double   _originRelY;
     private readonly Func<double, PanelGeometry.Rect> _computeBounds; // width -> geometría
     private readonly Func<double> _maxWidth;
@@ -227,6 +227,22 @@ public partial class AppHostWindow : Window
 
     private bool _hidden;
 
+    /// <summary>
+    /// Actualiza el lado de anclaje (ej. tras mover el botón) y reconfigura el
+    /// grip de resize. El reposicionamiento real lo hace AnchorToEdge en ShowAndFocus.
+    /// </summary>
+    public void UpdateSide(PanelSide side)
+    {
+        if (_side == side) return;
+        _side = side;
+        // Limpiar grips previos y reconfigurar para el nuevo lado.
+        GripLeftCol.Width  = new GridLength(0);
+        GripRightCol.Width = new GridLength(0);
+        GripLeft.Opacity   = 0;
+        GripRight.Opacity  = 0;
+        ConfigureGripSide();
+    }
+
     public void ShowAndFocus()
     {
         _hidden = false;
@@ -436,8 +452,41 @@ public partial class AppHostWindow : Window
                 .FirstOrDefault(w => w.IsActive);
 
             bool focusOnOwnWindow = active != null && active != this;
-            if (!focusOnOwnWindow) HidePanel();
+            if (focusOnOwnWindow) return;
+
+            // Si el foco se fue a un diálogo del sistema lanzado por la app o por
+            // WebView2 (ej. el selector de archivos al adjuntar en WhatsApp/Gmail),
+            // NO ocultar: ocultar el panel cancela ese diálogo.
+            if (ForegroundIsAppOrWebViewDialog()) return;
+
+            HidePanel();
         });
+    }
+
+    /// <summary>
+    /// True si la ventana en foreground es un diálogo del sistema (abrir/guardar
+    /// archivo) o pertenece al proceso de QuickPanel. Evita ocultar el panel cuando
+    /// WebView2 abre el selector de archivos al adjuntar.
+    /// </summary>
+    private static bool ForegroundIsAppOrWebViewDialog()
+    {
+        try
+        {
+            var fg = Win32.GetForegroundWindow();
+            if (fg == IntPtr.Zero) return false;
+
+            var cls = Win32.GetClassNameOf(fg);
+            // Diálogos comunes (abrir archivo, guardar, imprimir) usan la clase
+            // estándar de diálogo Win32 "#32770". Ese es el caso a proteger.
+            if (cls == "#32770") return true;
+
+            Win32.GetWindowThreadProcessId(fg, out uint pid);
+            if (pid == 0) return false;
+
+            // Diálogos del propio proceso de QuickPanel.
+            return (int)pid == Environment.ProcessId;
+        }
+        catch { return false; }
     }
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
