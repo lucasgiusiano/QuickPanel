@@ -68,8 +68,10 @@
                                     Style="{StaticResource TitleBtn}" ToolTip="Historial"/>
                             <Button x:Name="BtnReload" Content="⟳" Click="BtnReload_Click"
                                     Style="{StaticResource TitleBtn}" ToolTip="Recargar"/>
+                            <Button x:Name="BtnMinimize" Content="−" Click="BtnMinimize_Click"
+                                    Style="{StaticResource TitleBtn}" ToolTip="Minimizar (mantener en segundo plano)"/>
                             <Button x:Name="BtnClose" Content="✕" Click="BtnClose_Click"
-                                    Style="{StaticResource TitleBtnClose}" ToolTip="Cerrar"/>
+                                    Style="{StaticResource TitleBtnClose}" ToolTip="Cerrar (liberar memoria)"/>
                         </StackPanel>
                     </Grid>
                 </Border>

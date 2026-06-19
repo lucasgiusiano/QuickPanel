@@ -287,7 +287,8 @@ public partial class AppHostWindow : Window
     }
 
     private void BtnReload_Click(object sender, RoutedEventArgs e) => Web.CoreWebView2?.Reload();
-    private void BtnClose_Click(object sender, RoutedEventArgs e)  => HidePanel();
+    private void BtnMinimize_Click(object sender, RoutedEventArgs e) => HidePanel();
+    private void BtnClose_Click(object sender, RoutedEventArgs e)  => ForceClose();
 
     /// <summary>
     /// Extrae el conteo de no leídos del título de la web app. La mayoría usa

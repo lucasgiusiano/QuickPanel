@@ -91,6 +91,11 @@ public partial class MenuWindow : Window
         double edgeHeight = Math.Max(1, edgeBottom - edgeTop);
         bool upward = (by > edgeMid); // mitad inferior DE EDGE → desplegar hacia arriba
 
+        // Dirección horizontal: si el botón está en la mitad izquierda de Edge, el menú
+        // (gear y columnas de overflow) se despliega hacia la DERECHA para no salirse.
+        _rightward = SettingsService.Current.ButtonRelX < 0.5;
+        double hstep = (Item / 2 + Gap + Item / 2);
+
         // Botón + (siempre arriba del FAB)
         var addBtn = MakeCircle("＋", null,
             () => _manager.OpenAddAppDialog(),
@@ -99,12 +104,12 @@ public partial class MenuWindow : Window
         Place(addBtn, bx, by - (Item / 2 + Gap + Item / 2));
         Animate(addBtn, 0);
 
-        // Botón ⚙ (a la izquierda del FAB)
+        // Botón ⚙ (al lado del FAB, en la dirección de despliegue)
         var gearBtn = MakeCircle("⚙", null,
             () => _manager.OpenSettings(),
             (Brush)FindResource("Md3SurfaceContainerHigh"),
             (Brush)FindResource("Md3OnSurface"));
-        Place(gearBtn, bx - (Item / 2 + Gap + Item / 2), by);
+        Place(gearBtn, bx + (_rightward ? hstep : -hstep), by);
         Animate(gearBtn, 1);
 
         var apps = SettingsService.Current.Apps;
@@ -119,6 +124,9 @@ public partial class MenuWindow : Window
     private readonly HashSet<string> _expanded = new();
 
     private const double ChildScale = 0.85; // apps dentro de carpeta: 85% del tamaño normal
+
+    // Dirección horizontal del despliegue (columnas de overflow y gear).
+    private bool _rightward;
 
     /// <summary>Unidad visual del menú: una app suelta, una carpeta, o una app hija de carpeta.</summary>
     private sealed class MenuUnit
@@ -207,7 +215,7 @@ public partial class MenuWindow : Window
                 : (centerY + half > edgeBottom - margin);
             if (overflow)
             {
-                colX  -= (Item + ColGap);
+                colX  += _rightward ? (Item + ColGap) : -(Item + ColGap);
                 cursor = upward
                     ? by - (Item / 2 + Gap + Item + Gap)
                     : by + (Item / 2 + Gap + Item / 2);

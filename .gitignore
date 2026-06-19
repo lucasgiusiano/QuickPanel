@@ -1,8 +1,27 @@
+# Build
 bin/
 obj/
+publish/
+out/
+
+# Inno Setup output
+installer-output/
+
+# Visual Studio
 .vs/
 *.user
 *.suo
-*.pdb
-*.cache
-.DS_Store
+
+# Rider
+.idea/
+
+# MSIX / packaging
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+AppPackages/
+BundleArtifacts/
+
+# Misc
+*.log
