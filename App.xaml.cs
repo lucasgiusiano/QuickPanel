@@ -37,6 +37,15 @@ public partial class App : Application
 
         _monitor = new EdgeWindowMonitor();
         _hotkeys = new HotkeyService(_monitor);
+
+        if (!_monitor.HasCompatibleBrowser)
+        {
+            System.Windows.MessageBox.Show(
+                "Tu navegador predeterminado no es compatible. QuickPanel funciona con navegadores " +
+                "basados en Chromium (Edge, Chrome, Brave, Opera, Vivaldi).\n\n" +
+                "Cambiá tu navegador predeterminado en Windows y reiniciá QuickPanel.",
+                "QuickPanel", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+        }
     }
 
     /// <summary>Re-registra los hotkeys tras cambios en Configuración / Administrar apps.</summary>

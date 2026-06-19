@@ -12,11 +12,17 @@ namespace QuickPanel.Core;
 public sealed class EdgeWindowMonitor : IDisposable, IHotkeyTarget
 {
     private readonly Dictionary<IntPtr, OverlayManager> _overlays = new();
-    private readonly DispatcherTimer _scanTimer;
+    private readonly DispatcherTimer? _scanTimer;
     private readonly Win32.WinEventDelegate _locationDelegate; // referencia viva: evita GC del delegate
     private IntPtr _locationHook;
     private IntPtr _lastActiveEdge;
     private readonly Dispatcher _dispatcher;
+
+    /// <summary>Proceso del navegador a monitorear (default de Windows). Null = ninguno compatible.</summary>
+    private readonly string? _targetProcess;
+
+    /// <summary>True si el navegador default es compatible (Chromium-like).</summary>
+    public bool HasCompatibleBrowser => _targetProcess != null;
 
     /// <summary>Overlay de la Edge en foco; si no es Edge, la última activa; si no, la primera.</summary>
     public OverlayManager? ActiveOverlay
@@ -35,6 +41,9 @@ public sealed class EdgeWindowMonitor : IDisposable, IHotkeyTarget
     {
         _dispatcher = Dispatcher.CurrentDispatcher;
         _locationDelegate = OnLocationChanged;
+
+        _targetProcess = BrowserService.DefaultChromiumProcess();
+        if (_targetProcess == null) return; // navegador default no compatible: monitor inactivo
 
         _locationHook = Win32.SetWinEventHook(
             Win32.EVENT_OBJECT_LOCATIONCHANGE, Win32.EVENT_OBJECT_LOCATIONCHANGE,
@@ -74,7 +83,7 @@ public sealed class EdgeWindowMonitor : IDisposable, IHotkeyTarget
         }
     }
 
-    private static bool IsEdgeTopLevel(IntPtr hwnd)
+    private bool IsEdgeTopLevel(IntPtr hwnd)
     {
         if (!Win32.IsWindowVisible(hwnd)) return false;
         if (Win32.GetWindow(hwnd, Win32.GW_OWNER) != IntPtr.Zero) return false;
@@ -85,7 +94,7 @@ public sealed class EdgeWindowMonitor : IDisposable, IHotkeyTarget
         try
         {
             using var p = Process.GetProcessById((int)pid);
-            return p.ProcessName.Equals("msedge", StringComparison.OrdinalIgnoreCase);
+            return p.ProcessName.Equals(_targetProcess, StringComparison.OrdinalIgnoreCase);
         }
         catch { return false; }
     }
@@ -116,7 +125,7 @@ public sealed class EdgeWindowMonitor : IDisposable, IHotkeyTarget
 
     public void Dispose()
     {
-        _scanTimer.Stop();
+        _scanTimer?.Stop();
         if (_locationHook != IntPtr.Zero)
         {
             Win32.UnhookWinEvent(_locationHook);
