@@ -116,18 +116,25 @@ public sealed class OverlayManager : IDisposable
 
     public void ToggleMenu()
     {
-        if (_menu is { IsVisible: true }) { CloseMenu(); return; }
+        if (IsMenuOpen) { CloseMenu(); return; }
 
         CloseMenu();
         _menu = new MenuWindow(this, _button);
+        _menuOpen = true;
+        // El menú puede cerrarse solo (perder foco, Escape) sin pasar por CloseMenu;
+        // el evento Closed garantiza que el flag se resetee en cualquier caso.
+        _menu.Closed += (_, _) => _menuOpen = false;
         _menu.Show();
     }
 
+    private bool _menuOpen;
+
     /// <summary>True si el menú de apps está desplegado.</summary>
-    public bool IsMenuOpen => _menu is { IsVisible: true };
+    public bool IsMenuOpen => _menuOpen;
 
     public void CloseMenu()
     {
+        _menuOpen = false;
         if (_menu != null)
         {
             try { _menu.Close(); } catch { }
