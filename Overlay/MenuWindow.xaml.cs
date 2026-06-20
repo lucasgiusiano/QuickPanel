@@ -120,8 +120,8 @@ public partial class MenuWindow : Window
 
     // ── Carpetas / grupos ──
 
-    // Ids de carpetas actualmente expandidas en esta apertura del menú.
-    private readonly HashSet<string> _expanded = new();
+    // El estado de carpeta expandida vive en el OverlayManager (persiste entre
+    // aperturas del menú mientras Edge esté abierto). Solo una carpeta a la vez.
 
     private const double ChildScale = 0.85; // apps dentro de carpeta: 85% del tamaño normal
 
@@ -175,7 +175,7 @@ public partial class MenuWindow : Window
                     });
 
                     // Si está expandida, agregar sus apps (más chicas) justo después.
-                    if (_expanded.Contains(group.Id))
+                    if (_manager.ExpandedGroupId == group.Id)
                     {
                         double cs = Item * ChildScale;
                         foreach (var child in s.Apps.Where(a => a.GroupId == group.Id))
@@ -302,7 +302,11 @@ public partial class MenuWindow : Window
 
     private void ToggleFolder(string groupId)
     {
-        if (!_expanded.Add(groupId)) _expanded.Remove(groupId);
+        // Una sola carpeta abierta a la vez: si ya estaba esta, se cierra; si no,
+        // se abre esta (cerrando cualquier otra). El estado vive en el manager.
+        _manager.ExpandedGroupId =
+            _manager.ExpandedGroupId == groupId ? null : groupId;
+
         // Recalcular el layout con el nuevo estado de expansión.
         Root.Children.Clear();
         var bx = _button.Left - Left + 32;
@@ -379,20 +383,8 @@ public partial class MenuWindow : Window
 
     private Grid MakeAppCircle(AppEntry app, double originRelY, double size)
     {
-        BitmapImage? img = null;
-        try
-        {
-            var src = app.HasCustomIcon ? app.IconPath : AppEntry.FaviconFor(app.Url);
-            if (!string.IsNullOrEmpty(src))
-            {
-                img = new BitmapImage();
-                img.BeginInit();
-                img.UriSource   = new Uri(src);
-                img.CacheOption = BitmapCacheOption.OnLoad;
-                img.EndInit();
-            }
-        }
-        catch { img = null; }
+        // Ícono desde caché: la primera vez descarga y guarda; luego es instantáneo.
+        BitmapImage? img = IconCache.Get(IconCache.KeyFor(app));
 
         Brush bg = (Brush)FindResource("Md3SurfaceContainer");
         if (!string.IsNullOrEmpty(app.Color))

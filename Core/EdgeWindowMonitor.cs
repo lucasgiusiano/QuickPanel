@@ -69,7 +69,12 @@ public sealed class EdgeWindowMonitor : IDisposable, IHotkeyTarget
         foreach (var hwnd in found)
         {
             if (!_overlays.ContainsKey(hwnd))
+            {
                 _overlays[hwnd] = new OverlayManager(hwnd);
+                // Hay navegador compatible visible: precargar íconos en background
+                // (una sola vez) para que el primer despliegue del menú sea instantáneo.
+                IconCache.Preload();
+            }
         }
 
         // Ventanas cerradas

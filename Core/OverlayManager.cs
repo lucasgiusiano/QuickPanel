@@ -20,6 +20,11 @@ public sealed class OverlayManager : IDisposable
     private readonly Dictionary<string, AppHostWindow> _appWindows = new();
     private bool _disposed;
 
+    /// <summary>Id de la carpeta actualmente expandida en el menú (una sola a la vez).
+    /// Vive mientras esta ventana de Edge esté abierta, así el menú la recuerda entre
+    /// aperturas. Null = ninguna expandida.</summary>
+    public string? ExpandedGroupId { get; set; }
+
     private const double ButtonSizeDip = 56;
 
     private static bool _startAppLaunched;
