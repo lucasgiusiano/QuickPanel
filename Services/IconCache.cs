@@ -1,3 +1,5 @@
+using System.IO;
+using System.Net.Http;
 using System.Windows.Media.Imaging;
 using QuickPanel.Models;
 
@@ -43,16 +45,35 @@ public static class IconCache
         return img;
     }
 
+    private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(10) };
+
     private static BitmapImage? Load(string key)
     {
         try
         {
+            byte[] bytes;
+
+            // Para URIs remotos (favicons), descargar los bytes de forma síncrona en
+            // este hilo. Crear un BitmapImage con UriSource remoto descarga ASÍNCRONO
+            // y la imagen no está lista al retornar (ni se puede Freeze), por eso antes
+            // se cacheaban imágenes vacías. Cargando los bytes a un stream, la imagen
+            // queda completa y congelable.
+            if (key.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                key.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                bytes = _http.GetByteArrayAsync(key).GetAwaiter().GetResult();
+            }
+            else
+            {
+                // Ruta de archivo local (ícono custom).
+                bytes = File.ReadAllBytes(key);
+            }
+
             var img = new BitmapImage();
             img.BeginInit();
-            img.UriSource   = new Uri(key);
-            img.CacheOption = BitmapCacheOption.OnLoad; // descarga completa al cargar
+            img.StreamSource = new MemoryStream(bytes);
+            img.CacheOption  = BitmapCacheOption.OnLoad; // copia el stream al decodificar
             img.EndInit();
-            // Congelar permite usarlo desde cualquier hilo y evita recargas.
             if (img.CanFreeze) img.Freeze();
             return img;
         }
