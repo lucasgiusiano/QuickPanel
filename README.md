@@ -2,10 +2,10 @@
 
 # QuickPanel
 
-**La barra lateral de Microsoft Edge, de vuelta — y mejor.**
+**Microsoft Edge's sidebar, back from the dead — and better.**
 
-Panel flotante que se ancla a tu navegador y abre tus apps web favoritas
-(WhatsApp, Gmail, Claude, Notion…) en ventanas nativas, sin perder lo que estás haciendo.
+A floating panel that anchors to your browser and opens your favorite web apps
+(WhatsApp, Gmail, Claude, Notion…) in native windows, without breaking your flow.
 
 [![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](https://www.microsoft.com/windows)
@@ -15,86 +15,103 @@ Panel flotante que se ancla a tu navegador y abre tus apps web favoritas
 
 ---
 
-## ¿Qué es?
+## What is this?
 
-Microsoft eliminó la barra lateral de apps de Edge. QuickPanel la recrea como app nativa de Windows:
-un botón flotante anclado a tu navegador que despliega tus apps web favoritas en paneles
-nativos con sesión persistente.
+Microsoft removed Edge's app sidebar. QuickPanel brings it back as a native Windows app: a
+floating button anchored to your browser that opens your favorite web apps in native panels
+with persistent sessions.
 
-A diferencia de las extensiones (que usan iframes y fallan con Gmail, WhatsApp, etc.), QuickPanel usa
-**WebView2** — el mismo motor del navegador — así que **cualquier sitio carga sin bloqueos**.
+Unlike browser extensions (which rely on iframes and break on Gmail, WhatsApp, etc.), QuickPanel
+uses **WebView2** — the same engine as the browser itself — so **any site loads without
+restrictions**.
 
-## Características
+## Features
 
-**Núcleo**
-- **Se ancla a tu navegador** — detecta tu navegador predeterminado de Windows (Edge, Chrome, Brave,
-  Opera o Vivaldi) y se ancla a él; un botón por ventana abierta.
-- **Apps nativas vía WebView2** — Gmail, WhatsApp y cualquier web cargan sin los bloqueos de iframe.
-- **Sesión y zoom persistentes** — cada app mantiene su login y su nivel de zoom entre aperturas.
-- **No interrumpe** — minimizar un panel lo oculta sin perder estado; cerrar libera la memoria;
-  click afuera de la configuración la minimiza sola.
-- **Links externos al navegador** — un link que abre en otro dominio (ej. un adjunto en un mail) se
-  abre en tu navegador, no dentro del panel. Los flujos de login federado quedan exceptuados.
-- **Despliegue inteligente** — el menú y los paneles se posicionan según el lado del botón y el
-  espacio disponible, sin salirse de la ventana.
+**Core**
+- **Anchors to your browser** — detects your default Windows browser (Edge, Chrome, Brave, Opera,
+  or Vivaldi) once at startup and anchors to it; one button per open window. If your default
+  browser isn't Chromium-based (e.g. Firefox), the app warns you on launch and won't anchor.
+- **Native apps via WebView2** — Gmail, WhatsApp, and any website load without iframe restrictions.
+- **Persistent sessions and zoom** — each app keeps its login and zoom level between launches.
+- **Non-disruptive by design** — minimizing a panel hides it without losing state; closing it frees
+  memory; clicking outside the Settings window dismisses it on its own (unless a child dialog,
+  like Manage Apps or a hotkey capture, is open).
+- **External links open in your browser** — a link that points to another domain (e.g. an
+  attachment in an email) opens in your actual browser instead of inside the panel. Federated
+  login flows (Google, Microsoft, etc.) are excluded so sign-in isn't broken.
+- **Smart layout** — the menu and panels position themselves based on which side the button is on
+  and how much space is available, without overflowing the window.
+- **File picker safe** — attaching a file in WhatsApp or Gmail no longer closes the panel; the
+  native file dialog is recognized and the panel stays open behind it.
 
-**Personalización**
-- Temas oscuro, claro o según el sistema, con paletas de color.
-- Reordenar apps por drag & drop, íconos y nombres personalizados, color por app.
-- Tamaños de panel y de menú (S/M/L).
-- Grupos/carpetas para organizar apps en el menú.
+**Customization**
+- Dark, light, or system theme, with color palettes.
+- Drag-and-drop reordering, custom icons and names, per-app accent color.
+- Panel and menu sizes (S/M/L).
+- Groups/folders to organize apps in the menu — collapsed folders show a count badge and the
+  folder name on hover; expanded apps render slightly smaller inside a pill-shaped, tinted
+  background using your theme's primary color.
 
-**Productividad**
-- Atajos de teclado globales: `Ctrl+Alt+1‑0` se autoasignan a las primeras 10 apps; el resto y las
-  acciones (abrir menú, ocultar panel, app siguiente/anterior, auto‑ocultar, mover botón) son
-  configurables.
-- Historial de navegación y búsqueda rápida por app.
-- Auto‑ocultar el botón flotante y abrir una app automáticamente al iniciar.
-- Contador de notificaciones no leídas por app y total.
+**Productivity**
+- Global keyboard shortcuts: `Ctrl+Alt+1‑0` auto-assign to your first 10 apps (and reassign
+  automatically if you reorder them); everything past that, plus global actions (toggle menu, hide
+  active panel, next/previous app, toggle auto-hide, move the button), are configurable from
+  Settings or Manage Apps.
+- Per-app navigation history and quick search in Manage Apps.
+- Auto-hide the floating button when the cursor is away (it stays fully visible while the menu is
+  open, even if the cursor moves elsewhere).
+- Launch a specific app automatically on startup.
+- Unread notification badges per app and a total on the floating button, parsed from each app's
+  page title.
 
-**Rendimiento**
-- Entorno de WebView2 compartido entre todos los paneles (reduce procesos duplicados de Chromium).
-- **Modo Lite**, pensado para equipos con poca RAM: suspende los paneles ocultos a los 20s, baja
-  su uso de memoria, y mantiene como máximo 3 paneles activos en simultáneo (los demás se cierran
-  solos, sin perder configuración). Cualquier panel puede marcarse como **"Mantener activo"** para
-  quedar exento — útil para música o llamadas en curso.
+**Performance**
+- Shared WebView2 environment across all panels with per-app named profiles — base Chromium
+  processes (GPU, network, storage, audio) are shared instead of duplicated per app, while session
+  isolation between apps is preserved.
+- **Lite Mode**, built for low-RAM machines: hidden panels suspend after 20 seconds (lowering their
+  memory footprint immediately and freeing most of it once suspended), and at most 3 panels stay
+  active at once — the oldest one is closed automatically when a new one is opened, without losing
+  its configuration. Any panel can be marked **"Keep alive"** to opt out of suspension and the
+  3-panel limit entirely (handy for background music or an ongoing call); pinned panels don't
+  count against the limit.
 
-## Planes
+## Plans
 
 | | Free | Pro (USD 4.99) | Complete (USD 9.99) |
 |---|---|---|---|
-| Apps | Hasta 3 | Ilimitadas | Ilimitadas |
-| Reordenar, hotkeys, notificaciones, búsqueda | | ✅ | ✅ |
-| Temas claro/sistema, paletas premium | | ✅ | ✅ |
-| Historial, inicio en app, auto-ocultar | | ✅ | ✅ |
-| Grupos/carpetas, múltiples cuentas/perfiles, color por app | | | ✅ |
-| Picture-in-picture, importar/exportar config | | | ✅ |
+| Apps | Up to 3 | Unlimited | Unlimited |
+| Reordering, hotkeys, notifications, quick search | | ✅ | ✅ |
+| Light/system theme, premium palettes | | ✅ | ✅ |
+| History, launch on startup, auto-hide | | ✅ | ✅ |
+| Folders, multiple accounts/profiles, per-app color | | | ✅ |
+| Picture-in-picture, import/export settings | | | ✅ |
 
-## Instalación
+## Installation
 
-1. Descargá el último `QuickPanel.zip` desde [Releases](../../releases), o el instalador
-   `QuickPanelSetup.exe` si está publicado.
-2. Si usás el ZIP: descomprimí en una carpeta (ej. `C:\Tools\QuickPanel`) y ejecutá `QuickPanel.exe`.
-3. Si usás el instalador: seguilo, te va a preguntar por acceso directo e inicio con Windows.
-4. (Opcional) Activá "Iniciar con Windows" desde Configuración si no lo hiciste al instalar.
+1. Download the latest `QuickPanel.zip` from [Releases](../../releases), or the
+   `QuickPanelSetup.exe` installer if one is published.
+2. If using the ZIP: extract it to a folder (e.g. `C:\Tools\QuickPanel`) and run `QuickPanel.exe`.
+3. If using the installer: follow the prompts — it'll ask about a desktop shortcut and starting
+   with Windows.
+4. (Optional) Enable "Start with Windows" from Settings if you didn't during install.
 
-> **Requisito**: [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)
-> (preinstalado en Windows 11; en Windows 10 se instala automáticamente con Edge actualizado).
+> **Requirement**: [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)
+> (preinstalled on Windows 11; installed automatically with an up-to-date Edge on Windows 10).
 >
-> **Navegador**: QuickPanel se ancla a tu navegador predeterminado de Windows. Funciona con
-> cualquiera basado en Chromium (Edge, Chrome, Brave, Opera, Vivaldi). Si tu predeterminado es
-> otro (ej. Firefox), la app te avisa al iniciar y no podrá anclarse.
+> **Browser**: QuickPanel anchors to your default Windows browser. Works with any Chromium-based
+> browser (Edge, Chrome, Brave, Opera, Vivaldi). If your default is something else (e.g. Firefox),
+> the app will let you know on startup and won't be able to anchor.
 
-## Uso
+## Usage
 
-- Abrí tu navegador → aparece el botón flotante.
-- Click en el botón → se despliega el menú con `+` (agregar app) y `⚙` (configuración).
-- Agregá apps desde presets o pegando una URL.
-- Click en una app → se abre el panel anclado, redimensionable desde el borde libre.
-- Click derecho en una app del menú → quitar.
-- Mantené presionado el handle (`⠿`) de una fila en Administrar apps para reordenar arrastrando.
+- Open your browser → the floating button appears.
+- Click the button → the menu expands with `+` (add app) and `⚙` (settings).
+- Add apps from presets or by pasting a URL.
+- Click an app → its panel opens anchored to the browser window, resizable from its free edge.
+- Right-click an app in the menu → remove it.
+- Drag from the handle (`⠿`) of a row in Manage Apps to reorder.
 
-## Compilar desde el código
+## Building from source
 
 ```powershell
 git clone https://github.com/lucasgiusiano/QuickPanel.git
@@ -102,27 +119,27 @@ cd QuickPanel
 dotnet publish QuickPanel.csproj -c Release -r win-x64 --self-contained true -o publish
 ```
 
-El resultado queda en `publish\QuickPanel.exe`.
+The output lands in `publish\QuickPanel.exe`.
 
-Para generar un instalador, instalá [Inno Setup](https://jrsoftware.org/isinfo.php) y compilá
-`installer.iss` con `ISCC.exe installer.iss` — el resultado queda en `installer-output\`.
+To build an installer, install [Inno Setup](https://jrsoftware.org/isinfo.php) and compile
+`installer.iss` with `ISCC.exe installer.iss` — the result lands in `installer-output\`.
 
-## Stack técnico
+## Tech stack
 
-WPF (.NET 8) · WebView2 (entorno compartido entre paneles) · Win32 interop (`SetWinEventHook`,
+WPF (.NET 8) · WebView2 (shared environment across panels) · Win32 interop (`SetWinEventHook`,
 `GWLP_HWNDPARENT`, `RegisterHotKey`) · Material Design 3
 
-El seguimiento del navegador usa hooks de eventos de Windows; cada panel se ancla cross-process al
-rect de su ventana. El navegador objetivo se detecta una vez al iniciar la app, leyendo el
-predeterminado configurado en Windows. Detalles en el código (`Core/`, `Services/`).
+Browser window tracking uses Windows event hooks; each panel anchors cross-process to its
+window's rect. The target browser is detected once at startup by reading Windows' default browser
+setting. See `Core/` and `Services/` for implementation details.
 
-## Licencia
+## License
 
-[PolyForm Noncommercial 1.0.0](LICENSE) — el código es visible y podés compilarlo para uso
-personal, pero el uso comercial y la reventa están reservados al autor.
+[PolyForm Noncommercial 1.0.0](LICENSE) — the source is visible and you're free to build it for
+personal use, but commercial use and resale are reserved to the author.
 
 ---
 
 <div align="center">
-Hecho por <a href="https://lucasgiusiano.uy">Lucas Giusiano</a>
+Made by <a href="https://lucasgiusiano.uy">Lucas Giusiano</a>
 </div>
