@@ -43,7 +43,7 @@ public partial class FloatingButtonWindow : Window
     /// </summary>
     private void UpdateAutoHide()
     {
-        if (!SettingsService.Current.AutoHide || _moveMode || _dragging)
+        if (!SettingsService.Current.AutoHide || _moveMode || _dragging || _manager.IsMenuOpen)
         {
             if (_faded) FadeTo(1.0);
             _faded = false;

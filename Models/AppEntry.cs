@@ -22,6 +22,9 @@ public class AppEntry
     /// <summary>Factor de zoom recordado para esta app (1.0 = 100%).</summary>
     public double ZoomFactor { get; set; } = 1.0;
 
+    /// <summary>Mantener el panel vivo aunque el Modo Lite esté activo (ej. música de fondo).</summary>
+    public bool KeepAlive { get; set; } = false;
+
     /// <summary>Id del grupo/carpeta al que pertenece (Complete). Vacío = suelta en el menú.</summary>
     public string GroupId { get; set; } = "";
 

@@ -64,6 +64,10 @@
                                    TextTrimming="CharacterEllipsis"/>
 
                         <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <ToggleButton x:Name="TglKeepAlive" Style="{StaticResource KeepAliveToggle}"
+                                          Visibility="Collapsed" VerticalAlignment="Center"
+                                          Click="TglKeepAlive_Click"
+                                          ToolTip="Este panel no se suspenderá ni se cerrará automáticamente con el Modo Lite. Útil para música o llamadas en curso."/>
                             <Button x:Name="BtnHistory" Content="🕘" Click="BtnHistory_Click"
                                     Style="{StaticResource TitleBtn}" ToolTip="Historial"/>
                             <Button x:Name="BtnReload" Content="⟳" Click="BtnReload_Click"

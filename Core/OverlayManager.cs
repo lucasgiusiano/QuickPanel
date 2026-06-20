@@ -123,6 +123,9 @@ public sealed class OverlayManager : IDisposable
         _menu.Show();
     }
 
+    /// <summary>True si el menú de apps está desplegado.</summary>
+    public bool IsMenuOpen => _menu is { IsVisible: true };
+
     public void CloseMenu()
     {
         if (_menu != null)

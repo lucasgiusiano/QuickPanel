@@ -53,10 +53,32 @@ public partial class AppHostWindow : Window
         SourceInitialized += OnSourceInitialized;
         Loaded += async (_, _) =>
         {
+            InitKeepAliveToggle();
             AnchorToEdge();
             await InitWebViewAsync();
             ForceWebViewRepaint();
         };
+    }
+
+    /// <summary>El toggle "Mantener activo" solo se muestra con el Modo Lite activo;
+    /// refleja el estado guardado de la app.</summary>
+    private void InitKeepAliveToggle()
+    {
+        TglKeepAlive.Visibility = SettingsService.Current.LiteMode
+            ? Visibility.Visible : Visibility.Collapsed;
+        TglKeepAlive.IsChecked = _app.KeepAlive;
+    }
+
+    private void TglKeepAlive_Click(object sender, RoutedEventArgs e)
+    {
+        _app.KeepAlive = TglKeepAlive.IsChecked == true;
+        SettingsService.Save();
+        // Si se acaba de activar, cancelar cualquier suspensión pendiente.
+        if (_app.KeepAlive)
+        {
+            _suspendTimer?.Stop();
+            ResumeIfSuspended();
+        }
     }
 
     private void ConfigureGripSide()
@@ -280,7 +302,8 @@ public partial class AppHostWindow : Window
 
         // Modo Lite: bajar memoria de inmediato y suspender tras unos segundos
         // (si el panel sigue oculto). Conserva sesión; reabrir lo reactiva.
-        if (SettingsService.Current.LiteMode && Web.CoreWebView2 != null)
+        // Las apps marcadas "Mantener activo" quedan exentas (ej. música de fondo).
+        if (SettingsService.Current.LiteMode && !_app.KeepAlive && Web.CoreWebView2 != null)
         {
             try { Web.CoreWebView2.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Low; }
             catch { }
