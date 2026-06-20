@@ -290,6 +290,7 @@ public partial class SettingsWindow : Window
         ChkStartup.IsChecked = s.RunAtStartup;
         ChkAutoHide.IsChecked = s.AutoHide;
         ChkBadges.IsChecked = s.ShowBadges;
+        ChkLite.IsChecked = s.LiteMode;
         PopulateStartAppCombo();
         BuildActionHotkeys();
         PlanText.Text = $"Plan actual: {LicenseService.Name(LicenseService.CurrentTier)}";
@@ -389,6 +390,14 @@ public partial class SettingsWindow : Window
         }
         SettingsService.Current.ShowBadges = ChkBadges.IsChecked == true;
         SettingsService.Save();
+    }
+
+    private void Lite_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsService.Current.LiteMode = ChkLite.IsChecked == true;
+        SettingsService.Save();
+        // Algunos efectos (autofill, environment) aplican a paneles nuevos; otros
+        // (suspensión, memoria, límite) aplican en caliente al ocultar/abrir.
     }
 
     private static readonly (HotkeyAction action, string label)[] ActionList =

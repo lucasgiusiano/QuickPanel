@@ -85,6 +85,14 @@
                 <CheckBox x:Name="ChkBadges" Content="Mostrar contador de no leídos"
                           Foreground="{DynamicResource Md3OnSurface}" Click="Badges_Click"/>
 
+                <!-- Rendimiento -->
+                <TextBlock Text="Rendimiento" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>
+                <CheckBox x:Name="ChkLite" Content="Modo Lite (menor uso de RAM)"
+                          Foreground="{DynamicResource Md3OnSurface}" Click="Lite_Click"/>
+                <TextBlock Text="Suspende los paneles ocultos, baja el uso de memoria y mantiene como máximo 3 paneles activos. Ideal para equipos con poca RAM."
+                           FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
+                           Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+
                 <!-- Atajos de acciones -->
                 <TextBlock Text="Atajos de teclado" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>
                 <TextBlock Text="Atajos globales para acciones (los atajos por app se configuran en Administrar apps)"

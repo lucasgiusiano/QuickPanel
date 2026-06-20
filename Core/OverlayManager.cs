@@ -149,8 +149,13 @@ public sealed class OverlayManager : IDisposable
             // Recalcular el lado por si el botón se movió desde la última apertura.
             existing.UpdateSide(PanelGeometry.SideFor(SettingsService.Current.ButtonRelX));
             existing.ShowAndFocus();
+            TouchLru(app.Id);
             return;
         }
+
+        // Modo Lite: tope de paneles vivos. Antes de crear uno nuevo, si ya se
+        // alcanzó el máximo, matar (ForceClose) el menos usado recientemente.
+        EnforceLiveLimit();
 
         // Callbacks: capturan el rect ACTUAL del botón y el lado ACTUAL en cada
         // llamada, así el panel se re-ancla bien aunque Edge/el botón se muevan.
@@ -170,6 +175,7 @@ public sealed class OverlayManager : IDisposable
         win.Closed += (_, _) =>
         {
             _appWindows.Remove(app.Id);
+            _lru.Remove(app.Id);
             _unread.Remove(app.Id);
             NotifyUnread();
         };
@@ -179,7 +185,34 @@ public sealed class OverlayManager : IDisposable
             NotifyUnread();
         };
         _appWindows[app.Id] = win;
+        TouchLru(app.Id);
         win.Show();
+    }
+
+    // ── Modo Lite: límite de paneles vivos (LRU) ──
+
+    private const int LiteLiveLimit = 3;
+    private readonly List<string> _lru = new(); // más reciente al final
+
+    private void TouchLru(string id)
+    {
+        _lru.Remove(id);
+        _lru.Add(id);
+    }
+
+    private void EnforceLiveLimit()
+    {
+        if (!SettingsService.Current.LiteMode) return;
+        // Dejar lugar para el que está por abrirse: mantener (limit - 1) vivos.
+        while (_appWindows.Count >= LiteLiveLimit && _lru.Count > 0)
+        {
+            var oldest = _lru[0];
+            _lru.RemoveAt(0);
+            if (_appWindows.TryGetValue(oldest, out var w))
+            {
+                try { w.ForceClose(); } catch { }
+            }
+        }
     }
 
     // ── Notificaciones (contador de no leídos) ──

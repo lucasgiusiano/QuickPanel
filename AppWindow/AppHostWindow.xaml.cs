@@ -136,18 +136,25 @@ public partial class AppHostWindow : Window
     {
         try
         {
-            var profileDir = Path.Combine(SettingsService.ProfilesDir, Sanitize(_app.Id));
-            Directory.CreateDirectory(profileDir);
+            // Environment COMPARTIDO entre todos los paneles: los procesos base de
+            // Chromium (GPU, red, storage…) se comparten en vez de duplicarse por app.
+            // El aislamiento de sesión se logra con un perfil nombrado por app.
+            var env = await WebViewEnvironment.GetAsync();
 
-            var env = await CoreWebView2Environment.CreateAsync(null, profileDir);
-            await Web.EnsureCoreWebView2Async(env);
+            var controllerOptions = env.CreateCoreWebView2ControllerOptions();
+            controllerOptions.ProfileName = WebViewEnvironment.ProfileNameFor(_app.Id);
+            controllerOptions.IsInPrivateModeEnabled = false;
+
+            await Web.EnsureCoreWebView2Async(env, controllerOptions);
 
             var s = Web.CoreWebView2.Settings;
             s.AreDefaultContextMenusEnabled    = true;
             s.IsStatusBarEnabled               = false;
             s.AreBrowserAcceleratorKeysEnabled = true;
-            s.IsGeneralAutofillEnabled         = true;
-            s.IsPasswordAutosaveEnabled        = true;
+            // En modo Lite se apaga autofill/autosave: corren servicios en background.
+            bool lite = SettingsService.Current.LiteMode;
+            s.IsGeneralAutofillEnabled         = !lite;
+            s.IsPasswordAutosaveEnabled        = !lite;
 
             Web.CoreWebView2.NewWindowRequested += (_, ev) =>
             {
@@ -246,6 +253,8 @@ public partial class AppHostWindow : Window
     public void ShowAndFocus()
     {
         _hidden = false;
+        _suspendTimer?.Stop();
+        ResumeIfSuspended();
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         Opacity = 1;
 
@@ -268,6 +277,47 @@ public partial class AppHostWindow : Window
     {
         _hidden = true;
         Hide();
+
+        // Modo Lite: bajar memoria de inmediato y suspender tras unos segundos
+        // (si el panel sigue oculto). Conserva sesión; reabrir lo reactiva.
+        if (SettingsService.Current.LiteMode && Web.CoreWebView2 != null)
+        {
+            try { Web.CoreWebView2.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Low; }
+            catch { }
+
+            _suspendTimer ??= new System.Windows.Threading.DispatcherTimer
+            { Interval = TimeSpan.FromSeconds(20) };
+            _suspendTimer.Tick -= OnSuspendTick;
+            _suspendTimer.Tick += OnSuspendTick;
+            _suspendTimer.Start();
+        }
+    }
+
+    private System.Windows.Threading.DispatcherTimer? _suspendTimer;
+    private bool _suspended;
+
+    private async void OnSuspendTick(object? sender, EventArgs e)
+    {
+        _suspendTimer?.Stop();
+        if (!_hidden || _suspended || Web.CoreWebView2 == null) return;
+        try
+        {
+            bool ok = await Web.CoreWebView2.TrySuspendAsync();
+            _suspended = ok;
+        }
+        catch { }
+    }
+
+    private void ResumeIfSuspended()
+    {
+        if (Web.CoreWebView2 == null) return;
+        try
+        {
+            if (_suspended) { Web.CoreWebView2.Resume(); _suspended = false; }
+            // Restaurar memoria a nivel normal al volver a usar el panel.
+            Web.CoreWebView2.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Normal;
+        }
+        catch { }
     }
 
     /// <summary>
@@ -497,6 +547,7 @@ public partial class AppHostWindow : Window
             HidePanel();
             return;
         }
+        try { _suspendTimer?.Stop(); } catch { }
         try { Web.Dispose(); } catch { }
         base.OnClosing(e);
     }

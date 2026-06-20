@@ -35,6 +35,10 @@ public class QuickPanelSettings
     /// <summary>Mostrar contadores de no leídos (Pro). Desactivable.</summary>
     public bool ShowBadges { get; set; } = true;
 
+    /// <summary>Modo Lite: optimiza RAM (suspende paneles ocultos, baja memoria,
+    /// tope de paneles vivos, apaga autofill). Para equipos con poca memoria.</summary>
+    public bool LiteMode { get; set; } = false;
+
     /// <summary>Atajos globales de acciones (Complete). Clave = nombre de HotkeyAction.</summary>
     public Dictionary<string, Hotkey> ActionHotkeys { get; set; } = new();
 
