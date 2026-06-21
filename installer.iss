@@ -3,7 +3,7 @@
 ; Compilar con: ISCC.exe installer.iss
 
 #define MyAppName "SidePanel for Edge"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.7"
 #define MyAppPublisher "Lucas Giusiano"
 #define MyAppExeName "QuickPanel.exe"
 ; Carpeta generada por: dotnet publish -c Release -r win-x64 --self-contained true -o publish

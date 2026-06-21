@@ -254,9 +254,6 @@ public partial class AppHostWindow : Window
         catch { }
     }
 
-    private static string Sanitize(string s) =>
-        string.Concat(s.Where(c => char.IsLetterOrDigit(c) || c is '-' or '_'));
-
     private bool _hidden;
 
     /// <summary>
