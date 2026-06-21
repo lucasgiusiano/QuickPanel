@@ -218,14 +218,24 @@ public sealed class OverlayManager : IDisposable
     private void EnforceLiveLimit()
     {
         if (!SettingsService.Current.LiteMode) return;
-        // Dejar lugar para el que está por abrirse: mantener (limit - 1) vivos.
-        while (_appWindows.Count >= LiteLiveLimit && _lru.Count > 0)
+
+        // Los paneles fijados (KeepAlive) quedan SIEMPRE vivos: ni cuentan para el
+        // cupo ni pueden ser cerrados. Solo los no-fijados compiten por el límite.
+        int Closeable() => _appWindows.Values.Count(w => !w.KeepAlive);
+
+        // Dejar lugar para el que está por abrirse: mantener (limit - 1) no-fijados.
+        while (Closeable() >= LiteLiveLimit)
         {
-            var oldest = _lru[0];
-            _lru.RemoveAt(0);
-            if (_appWindows.TryGetValue(oldest, out var w))
+            // El no-fijado menos usado recientemente (primero en el LRU que no esté fijado).
+            var victim = _lru.FirstOrDefault(id =>
+                _appWindows.TryGetValue(id, out var w) && !w.KeepAlive);
+
+            if (victim == null) break; // no quedan no-fijados para cerrar
+
+            _lru.Remove(victim);
+            if (_appWindows.TryGetValue(victim, out var vw))
             {
-                try { w.ForceClose(); } catch { }
+                try { vw.ForceClose(); } catch { }
             }
         }
     }

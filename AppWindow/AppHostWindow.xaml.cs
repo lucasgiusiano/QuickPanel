@@ -25,6 +25,9 @@ public partial class AppHostWindow : Window
     /// <summary>Id de la app que hostea esta ventana.</summary>
     public string AppId => _app.Id;
 
+    /// <summary>Si la app está fijada (Modo Lite no la suspende ni la cierra por el límite LRU).</summary>
+    public bool KeepAlive => _app.KeepAlive;
+
     /// <summary>Cantidad de no leídos detectada en el título (0 si no hay).</summary>
     public int Unread { get; private set; }
 

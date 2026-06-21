@@ -101,16 +101,18 @@ public partial class MenuWindow : Window
             () => _manager.OpenAddAppDialog(),
             (Brush)FindResource("Md3Primary"),
             (Brush)FindResource("Md3OnPrimary"));
+        addBtn.Tag = "fixed:add";
         Place(addBtn, bx, by - (Item / 2 + Gap + Item / 2));
-        if (_animateOnlyGroupId == null) Animate(addBtn, 0); else ResetScale(addBtn);
+        AnimateEntry(addBtn, "fixed:add", null, 0);
 
         // Botón ⚙ (al lado del FAB, en la dirección de despliegue)
         var gearBtn = MakeCircle("⚙", null,
             () => _manager.OpenSettings(),
             (Brush)FindResource("Md3SurfaceContainerHigh"),
             (Brush)FindResource("Md3OnSurface"));
+        gearBtn.Tag = "fixed:gear";
         Place(gearBtn, bx + (_rightward ? hstep : -hstep), by);
-        if (_animateOnlyGroupId == null) Animate(gearBtn, 1); else ResetScale(gearBtn);
+        AnimateEntry(gearBtn, "fixed:gear", null, 1);
 
         var apps = SettingsService.Current.Apps;
         if (apps.Count == 0) return;
@@ -125,9 +127,13 @@ public partial class MenuWindow : Window
 
     private const double ChildScale = 0.85; // apps dentro de carpeta: 85% del tamaño normal
 
-    // Si no es null, solo se animan las apps hijas de este grupo (al expandir una
-    // carpeta); el resto del menú se coloca sin animación para no parpadear todo.
-    private string? _animateOnlyGroupId;
+    // FLIP (First-Last-Invert-Play): al expandir/colapsar una carpeta reconstruimos
+    // el árbol igual que siempre, pero los elementos que YA existían arrancan
+    // visualmente en su posición vieja y se deslizan a la nueva (en vez de saltar).
+    // _prevPositions guarda el (left, top) por Key antes de limpiar; _slideExisting
+    // activa el deslizamiento en el próximo BuildLayout.
+    private readonly Dictionary<string, (double left, double top)> _prevPositions = new();
+    private bool _slideExisting;
 
     // Dirección horizontal del despliegue (columnas de overflow y gear).
     private bool _rightward;
@@ -139,6 +145,7 @@ public partial class MenuWindow : Window
         public required double Size;
         public string? GroupId;       // no nulo si es hija de carpeta (para la pill de fondo)
         public bool IsFolderHeader;   // true si es el círculo de la carpeta
+        public string? Key;           // clave estable para diff de posición (FLIP): app:Id o group:Id
     }
 
     private void BuildAppItems(double bx, double by, bool startYFor, double edgeTop, double edgeBottom, double edgeHeight)
@@ -154,7 +161,7 @@ public partial class MenuWindow : Window
         if (!groupsOn)
         {
             foreach (var app in s.Apps)
-                units.Add(new MenuUnit { Element = MakeAppCircle(app, 0.5, Item), Size = Item });
+                units.Add(new MenuUnit { Element = MakeAppCircle(app, 0.5, Item), Size = Item, Key = "app:" + app.Id });
         }
         else
         {
@@ -163,7 +170,7 @@ public partial class MenuWindow : Window
             {
                 if (string.IsNullOrEmpty(app.GroupId) || s.Groups.All(g => g.Id != app.GroupId))
                 {
-                    units.Add(new MenuUnit { Element = MakeAppCircle(app, 0.5, Item), Size = Item });
+                    units.Add(new MenuUnit { Element = MakeAppCircle(app, 0.5, Item), Size = Item, Key = "app:" + app.Id });
                     continue;
                 }
 
@@ -175,7 +182,8 @@ public partial class MenuWindow : Window
                     {
                         Element = MakeFolderCircle(group),
                         Size = Item,
-                        IsFolderHeader = true
+                        IsFolderHeader = true,
+                        Key = "group:" + group.Id
                     });
 
                     // Si está expandida, agregar sus apps (más chicas) justo después.
@@ -187,7 +195,8 @@ public partial class MenuWindow : Window
                             {
                                 Element = MakeAppCircle(child, 0.5, cs),
                                 Size = cs,
-                                GroupId = group.Id
+                                GroupId = group.Id,
+                                Key = "app:" + child.Id
                             });
                     }
                 }
@@ -235,15 +244,12 @@ public partial class MenuWindow : Window
                     pillRuns[u.GroupId] = (colX, centerY - half, centerY + half);
             }
 
+            double finalLeft = colX - u.Size / 2;
+            double finalTop  = centerY - u.Size / 2;
+            u.Element.Tag = u.Key; // para capturar su posición en el próximo rebuild (FLIP)
             PlaceSized(u.Element, colX, centerY, u.Size);
-            // Si estamos en modo "animar solo una carpeta", solo las hijas de ese
-            // grupo animan; el resto queda colocado en su lugar sin parpadear.
-            if (_animateOnlyGroupId == null)
-                Animate(u.Element, delay++);
-            else if (u.GroupId == _animateOnlyGroupId)
-                Animate(u.Element, delay++);
-            else
-                ResetScale(u.Element);
+            AnimateEntry(u.Element, u.Key, (finalLeft, finalTop), delay);
+            delay++;
 
             cursor += upward ? -(u.Size + Gap) : (u.Size + Gap);
         }
@@ -318,9 +324,15 @@ public partial class MenuWindow : Window
         bool opening = _manager.ExpandedGroupId != groupId;
         _manager.ExpandedGroupId = opening ? groupId : null;
 
-        // Al ABRIR, animar solo las apps reveladas de esta carpeta (el resto del menú
-        // se reposiciona sin parpadear). Al cerrar, no hay nada nuevo: sin animación.
-        _animateOnlyGroupId = opening ? groupId : "";
+        // FLIP: capturar la posición actual de cada elemento (por su Key) ANTES de
+        // limpiar, para luego deslizarlos desde ahí a su lugar nuevo.
+        _prevPositions.Clear();
+        foreach (var child in Root.Children.OfType<FrameworkElement>())
+        {
+            if (child.Tag is string key)
+                _prevPositions[key] = (Canvas.GetLeft(child), Canvas.GetTop(child));
+        }
+        _slideExisting = true;
 
         // Recalcular el layout con el nuevo estado de expansión.
         Root.Children.Clear();
@@ -338,7 +350,8 @@ public partial class MenuWindow : Window
         BuildLayout(edgeTopLocal, edgeBottomLocal);
 
         // Restaurar el modo normal: la próxima apertura del menú anima todo.
-        _animateOnlyGroupId = null;
+        _slideExisting = false;
+        _prevPositions.Clear();
     }
 
     private void PlaceSized(FrameworkElement el, double centerX, double centerY, double size)
@@ -465,9 +478,27 @@ public partial class MenuWindow : Window
         Root.Children.Add(el);
     }
 
+    /// <summary>Decide cómo entra un elemento al layout:
+    /// - apertura normal del menú → scale-in escalonado.
+    /// - expandir/colapsar carpeta → los que ya existían se DESLIZAN desde su posición
+    ///   anterior (FLIP); los nuevos hacen scale-in.</summary>
+    private void AnimateEntry(FrameworkElement el, string? key, (double left, double top)? finalPos, int index)
+    {
+        if (_slideExisting && key != null && finalPos is { } fp
+            && _prevPositions.TryGetValue(key, out var prev))
+        {
+            ResetScale(el); // ya estaba a escala 1: no parpadear
+            SlideFrom(el, prev.left - fp.left, prev.top - fp.top);
+        }
+        else
+        {
+            Animate(el, index);
+        }
+    }
+
     private void Animate(FrameworkElement el, int index)
     {
-        var st   = (ScaleTransform)el.RenderTransform;
+        var st   = ScaleOf(el);
         var ease = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.5 };
         var anim = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220))
         {
@@ -482,11 +513,59 @@ public partial class MenuWindow : Window
     /// ya estaban presentes cuando se expande una carpeta, así no parpadean.</summary>
     private static void ResetScale(FrameworkElement el)
     {
-        var st = (ScaleTransform)el.RenderTransform;
+        var st = ScaleOf(el);
         st.BeginAnimation(ScaleTransform.ScaleXProperty, null);
         st.BeginAnimation(ScaleTransform.ScaleYProperty, null);
         st.ScaleX = 1;
         st.ScaleY = 1;
+    }
+
+    /// <summary>FLIP: el elemento ya está colocado en su posición FINAL; lo desplazamos
+    /// visualmente al offset (dx, dy) de su posición vieja y animamos el offset a 0,
+    /// de modo que se "desliza" del lugar anterior al nuevo.</summary>
+    private static void SlideFrom(FrameworkElement el, double dx, double dy)
+    {
+        if (Math.Abs(dx) < 0.5 && Math.Abs(dy) < 0.5) return; // no se movió: nada que animar
+
+        var tt = TranslateOf(el);
+        tt.X = dx;
+        tt.Y = dy;
+
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var dur  = TimeSpan.FromMilliseconds(240);
+        tt.BeginAnimation(TranslateTransform.XProperty,
+            new DoubleAnimation(0, dur) { EasingFunction = ease });
+        tt.BeginAnimation(TranslateTransform.YProperty,
+            new DoubleAnimation(0, dur) { EasingFunction = ease });
+    }
+
+    /// <summary>Devuelve el ScaleTransform del elemento, envolviéndolo en un TransformGroup
+    /// junto a un TranslateTransform si todavía no lo está (para poder combinar escala + traslación).</summary>
+    private static ScaleTransform ScaleOf(FrameworkElement el)
+    {
+        if (el.RenderTransform is ScaleTransform st) return st;
+        if (el.RenderTransform is TransformGroup g)
+            return g.Children.OfType<ScaleTransform>().First();
+        // Caso inesperado: rehacer con un ScaleTransform limpio.
+        var ns = new ScaleTransform(1, 1);
+        el.RenderTransform = ns;
+        return ns;
+    }
+
+    /// <summary>Devuelve el TranslateTransform del elemento, promoviendo el RenderTransform
+    /// a un TransformGroup (ScaleTransform + TranslateTransform) la primera vez.</summary>
+    private static TranslateTransform TranslateOf(FrameworkElement el)
+    {
+        if (el.RenderTransform is TransformGroup g)
+            return g.Children.OfType<TranslateTransform>().First();
+
+        var scale = el.RenderTransform as ScaleTransform ?? new ScaleTransform(1, 1);
+        var trans = new TranslateTransform(0, 0);
+        var group = new TransformGroup();
+        group.Children.Add(scale);
+        group.Children.Add(trans);
+        el.RenderTransform = group;
+        return trans;
     }
 
     private void Window_Deactivated(object sender, EventArgs e) => Close();
