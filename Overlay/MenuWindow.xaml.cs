@@ -102,7 +102,7 @@ public partial class MenuWindow : Window
             (Brush)FindResource("Md3Primary"),
             (Brush)FindResource("Md3OnPrimary"));
         Place(addBtn, bx, by - (Item / 2 + Gap + Item / 2));
-        Animate(addBtn, 0);
+        if (_animateOnlyGroupId == null) Animate(addBtn, 0); else ResetScale(addBtn);
 
         // Botón ⚙ (al lado del FAB, en la dirección de despliegue)
         var gearBtn = MakeCircle("⚙", null,
@@ -110,7 +110,7 @@ public partial class MenuWindow : Window
             (Brush)FindResource("Md3SurfaceContainerHigh"),
             (Brush)FindResource("Md3OnSurface"));
         Place(gearBtn, bx + (_rightward ? hstep : -hstep), by);
-        Animate(gearBtn, 1);
+        if (_animateOnlyGroupId == null) Animate(gearBtn, 1); else ResetScale(gearBtn);
 
         var apps = SettingsService.Current.Apps;
         if (apps.Count == 0) return;
@@ -124,6 +124,10 @@ public partial class MenuWindow : Window
     // aperturas del menú mientras Edge esté abierto). Solo una carpeta a la vez.
 
     private const double ChildScale = 0.85; // apps dentro de carpeta: 85% del tamaño normal
+
+    // Si no es null, solo se animan las apps hijas de este grupo (al expandir una
+    // carpeta); el resto del menú se coloca sin animación para no parpadear todo.
+    private string? _animateOnlyGroupId;
 
     // Dirección horizontal del despliegue (columnas de overflow y gear).
     private bool _rightward;
@@ -232,7 +236,14 @@ public partial class MenuWindow : Window
             }
 
             PlaceSized(u.Element, colX, centerY, u.Size);
-            Animate(u.Element, delay++);
+            // Si estamos en modo "animar solo una carpeta", solo las hijas de ese
+            // grupo animan; el resto queda colocado en su lugar sin parpadear.
+            if (_animateOnlyGroupId == null)
+                Animate(u.Element, delay++);
+            else if (u.GroupId == _animateOnlyGroupId)
+                Animate(u.Element, delay++);
+            else
+                ResetScale(u.Element);
 
             cursor += upward ? -(u.Size + Gap) : (u.Size + Gap);
         }
@@ -304,8 +315,12 @@ public partial class MenuWindow : Window
     {
         // Una sola carpeta abierta a la vez: si ya estaba esta, se cierra; si no,
         // se abre esta (cerrando cualquier otra). El estado vive en el manager.
-        _manager.ExpandedGroupId =
-            _manager.ExpandedGroupId == groupId ? null : groupId;
+        bool opening = _manager.ExpandedGroupId != groupId;
+        _manager.ExpandedGroupId = opening ? groupId : null;
+
+        // Al ABRIR, animar solo las apps reveladas de esta carpeta (el resto del menú
+        // se reposiciona sin parpadear). Al cerrar, no hay nada nuevo: sin animación.
+        _animateOnlyGroupId = opening ? groupId : "";
 
         // Recalcular el layout con el nuevo estado de expansión.
         Root.Children.Clear();
@@ -321,6 +336,9 @@ public partial class MenuWindow : Window
         }
         else { edgeTopLocal = 0; edgeBottomLocal = Height; }
         BuildLayout(edgeTopLocal, edgeBottomLocal);
+
+        // Restaurar el modo normal: la próxima apertura del menú anima todo.
+        _animateOnlyGroupId = null;
     }
 
     private void PlaceSized(FrameworkElement el, double centerX, double centerY, double size)
@@ -458,6 +476,17 @@ public partial class MenuWindow : Window
         };
         st.BeginAnimation(ScaleTransform.ScaleXProperty, anim);
         st.BeginAnimation(ScaleTransform.ScaleYProperty, anim);
+    }
+
+    /// <summary>Deja el elemento en escala final (1) sin animación. Para elementos que
+    /// ya estaban presentes cuando se expande una carpeta, así no parpadean.</summary>
+    private static void ResetScale(FrameworkElement el)
+    {
+        var st = (ScaleTransform)el.RenderTransform;
+        st.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        st.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+        st.ScaleX = 1;
+        st.ScaleY = 1;
     }
 
     private void Window_Deactivated(object sender, EventArgs e) => Close();
