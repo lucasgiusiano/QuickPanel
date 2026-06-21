@@ -102,8 +102,9 @@ public partial class MenuWindow : Window
             (Brush)FindResource("Md3Primary"),
             (Brush)FindResource("Md3OnPrimary"));
         addBtn.Tag = "fixed:add";
-        Place(addBtn, bx, by - (Item / 2 + Gap + Item / 2));
-        AnimateEntry(addBtn, "fixed:add", null, 0);
+        double addCx = bx, addCy = by - (Item / 2 + Gap + Item / 2);
+        Place(addBtn, addCx, addCy);
+        AnimateEntry(addBtn, "fixed:add", (addCx - Item / 2, addCy - Item / 2), 0);
 
         // Botón ⚙ (al lado del FAB, en la dirección de despliegue)
         var gearBtn = MakeCircle("⚙", null,
@@ -111,8 +112,9 @@ public partial class MenuWindow : Window
             (Brush)FindResource("Md3SurfaceContainerHigh"),
             (Brush)FindResource("Md3OnSurface"));
         gearBtn.Tag = "fixed:gear";
-        Place(gearBtn, bx + (_rightward ? hstep : -hstep), by);
-        AnimateEntry(gearBtn, "fixed:gear", null, 1);
+        double gearCx = bx + (_rightward ? hstep : -hstep), gearCy = by;
+        Place(gearBtn, gearCx, gearCy);
+        AnimateEntry(gearBtn, "fixed:gear", (gearCx - Item / 2, gearCy - Item / 2), 1);
 
         var apps = SettingsService.Current.Apps;
         if (apps.Count == 0) return;
