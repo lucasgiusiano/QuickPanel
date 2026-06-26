@@ -28,29 +28,6 @@ public partial class ManageAppsWindow : Window
         BuildRows();
     }
 
-    /// <summary>
-    /// Badge pequeño (corona Pro / diamante Complete) para marcar opciones de pago.
-    /// Tooltip explica el plan requerido al pasar el mouse.
-    /// </summary>
-    private FrameworkElement? PlanBadge(Feature feature)
-    {
-        if (LicenseService.HasFeature(feature)) return null; // ya desbloqueado: sin badge
-
-        var tier = LicenseService.MinTierFor(feature);
-        var (glyph, brushKey) = tier == LicenseTier.Complete ? ("◆", "Md3Error") : ("♛", "Md3Primary");
-
-        var badge = new TextBlock
-        {
-            Text       = glyph,
-            FontSize   = 10,
-            Margin     = new Thickness(2, -8, -2, 0),
-            Foreground = (Brush)FindResource(brushKey),
-            ToolTip    = $"Requiere plan {LicenseService.Name(tier)}",
-            VerticalAlignment = VerticalAlignment.Top
-        };
-        return badge;
-    }
-
     private void BuildRows()
     {
         Rows.Children.Clear();
@@ -152,11 +129,11 @@ public partial class ManageAppsWindow : Window
         var actions = new StackPanel { Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
 
-        actions.Children.Add(IconButton("⌨", HotkeyTip(app), PlanBadge(Feature.GlobalHotkeys), () => AssignHotkey(app)));
-        actions.Children.Add(IconButton("📁", GroupTip(app), PlanBadge(Feature.Folders), b => PickGroup(app, b)));
-        actions.Children.Add(IconButton("🖼", "Ícono personalizado", PlanBadge(Feature.CustomIcons), () => PickIcon(app)));
-        actions.Children.Add(IconButton("🎨", "Color de la app", PlanBadge(Feature.PerAppColor), b => PickColor(app, b)));
-        actions.Children.Add(IconButton("✕", "Quitar", (FrameworkElement?)null, () => Remove(app)));
+        actions.Children.Add(IconButton("⌨", HotkeyTip(app), () => AssignHotkey(app)));
+        actions.Children.Add(IconButton("📁", GroupTip(app), b => PickGroup(app, b)));
+        actions.Children.Add(IconButton("🖼", "Ícono personalizado", () => PickIcon(app)));
+        actions.Children.Add(IconButton("🎨", "Color de la app", b => PickColor(app, b)));
+        actions.Children.Add(IconButton("✕", "Quitar", () => Remove(app)));
 
         Grid.SetColumn(actions, 3);
         grid.Children.Add(actions);
@@ -251,12 +228,6 @@ public partial class ManageAppsWindow : Window
 
     private void AssignHotkey(AppEntry app)
     {
-        if (!LicenseService.HasFeature(Feature.GlobalHotkeys))
-        {
-            new UpgradeWindow("Los atajos de teclado globales son parte del plan Complete.").ShowDialog();
-            return;
-        }
-
         HotkeyCaptureDialog dlg;
         try
         {
@@ -302,12 +273,6 @@ public partial class ManageAppsWindow : Window
 
     private void PickGroup(AppEntry app, UIElement anchor)
     {
-        if (!LicenseService.HasFeature(Feature.Folders))
-        {
-            new UpgradeWindow("Las carpetas son parte del plan Complete.").ShowDialog();
-            return;
-        }
-
         var popup = new Popup
         {
             PlacementTarget = anchor,
@@ -405,12 +370,6 @@ public partial class ManageAppsWindow : Window
 
     private void ManageGroups()
     {
-        if (!LicenseService.HasFeature(Feature.Folders))
-        {
-            new UpgradeWindow("Las carpetas son parte del plan Complete.").ShowDialog();
-            return;
-        }
-
         var groups = SettingsService.Current.Groups;
         if (groups.Count == 0)
         {
@@ -488,12 +447,6 @@ public partial class ManageAppsWindow : Window
 
     private void PickIcon(AppEntry app)
     {
-        if (!LicenseService.HasFeature(Feature.CustomIcons))
-        {
-            new UpgradeWindow("Los íconos personalizados son parte del plan Pro.").ShowDialog();
-            return;
-        }
-
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
             Filter = "Imágenes (*.png;*.jpg;*.jpeg;*.ico)|*.png;*.jpg;*.jpeg;*.ico"
@@ -508,12 +461,6 @@ public partial class ManageAppsWindow : Window
 
     private void PickColor(AppEntry app, UIElement anchor)
     {
-        if (!LicenseService.HasFeature(Feature.PerAppColor))
-        {
-            new UpgradeWindow("El color por app es parte del plan Complete.").ShowDialog();
-            return;
-        }
-
         var popup = new Popup
         {
             PlacementTarget = anchor,
@@ -586,13 +533,6 @@ public partial class ManageAppsWindow : Window
 
     private void Add_Click(object sender, RoutedEventArgs e)
     {
-        if (!LicenseService.CanAddApp(SettingsService.Current.Apps.Count))
-        {
-            new UpgradeWindow(
-                $"Llegaste al límite de {LicenseService.FreeAppLimit} apps del plan Free.").ShowDialog();
-            if (!LicenseService.CanAddApp(SettingsService.Current.Apps.Count)) return;
-        }
-
         var dlg = new AddAppDialog();
         if (dlg.ShowDialog() == true && dlg.Result != null)
         {
@@ -624,28 +564,22 @@ public partial class ManageAppsWindow : Window
 
     // ── Helpers ──
 
-    private Grid IconButton(string glyph, string tip, FrameworkElement? badge, Action onClick)
-        => IconButton(glyph, tip, badge, _ => onClick());
+    private Grid IconButton(string glyph, string tip, Action onClick)
+        => IconButton(glyph, tip, _ => onClick());
 
-    /// <summary>Botón de ícono con badge de plan superpuesto (esquina sup. derecha) si corresponde.</summary>
-    private Grid IconButton(string glyph, string tip, FrameworkElement? badge, Action<UIElement> onClick)
+    /// <summary>Botón de ícono.</summary>
+    private Grid IconButton(string glyph, string tip, Action<UIElement> onClick)
     {
         var btn = new Button
         {
             Content = glyph,
-            ToolTip = badge?.ToolTip ?? tip,
+            ToolTip = tip,
             Style   = (Style)FindResource("TitleBtn")
         };
         btn.Click += (s, _) => onClick((UIElement)s);
 
         var wrap = new Grid();
         wrap.Children.Add(btn);
-        if (badge != null)
-        {
-            badge.HorizontalAlignment = HorizontalAlignment.Right;
-            badge.IsHitTestVisible    = false; // el click pasa al botón de abajo
-            wrap.Children.Add(badge);
-        }
         return wrap;
     }
 

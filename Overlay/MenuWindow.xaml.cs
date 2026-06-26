@@ -154,7 +154,7 @@ public partial class MenuWindow : Window
     {
         bool upward = startYFor;
         var s = SettingsService.Current;
-        bool groupsOn = LicenseService.HasFeature(Feature.Folders) && s.Groups.Count > 0;
+        bool groupsOn = s.Groups.Count > 0;
 
         // Construir la secuencia lógica de unidades (orden = orden de Administrar apps,
         // con las carpetas insertadas en la posición de su primera app).
@@ -443,8 +443,7 @@ public partial class MenuWindow : Window
 
         grid.ToolTip = app.Name;
 
-        bool showBadges = SettingsService.Current.ShowBadges
-                          && LicenseService.HasFeature(Feature.Notifications);
+        bool showBadges = SettingsService.Current.ShowBadges;
         if (showBadges && _manager.Unread.TryGetValue(app.Id, out var n) && n > 0)
         {
             double bs = size * 0.42;

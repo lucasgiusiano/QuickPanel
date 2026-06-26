@@ -255,7 +255,7 @@ public sealed class OverlayManager : IDisposable
 
     private void NotifyUnread()
     {
-        bool show = SettingsService.Current.ShowBadges && LicenseService.HasFeature(Feature.Notifications);
+        bool show = SettingsService.Current.ShowBadges;
         _button.SetBadge(show ? UnreadTotal : 0);
         UnreadUpdated?.Invoke();
     }
@@ -263,17 +263,6 @@ public sealed class OverlayManager : IDisposable
     public void OpenAddAppDialog()
     {
         CloseMenu();
-
-        if (!LicenseService.CanAddApp(SettingsService.Current.Apps.Count))
-        {
-            new UpgradeWindow(
-                $"Llegaste al límite de {LicenseService.FreeAppLimit} apps del plan Free. " +
-                "Pasá a Pro para agregar apps ilimitadas.").ShowDialog();
-
-            // Si compró/cambió de plan, continuar con el alta.
-            if (!LicenseService.CanAddApp(SettingsService.Current.Apps.Count))
-                return;
-        }
 
         var dlg = new AddAppDialog();
         if (dlg.ShowDialog() == true && dlg.Result != null)

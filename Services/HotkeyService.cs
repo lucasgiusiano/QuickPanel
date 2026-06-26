@@ -44,9 +44,7 @@ public sealed class HotkeyService : IDisposable
     /// <summary>Re-registra todos los hotkeys desde la configuración actual.</summary>
     public void Reload()
     {
-        // Solo Complete tiene hotkeys habilitados.
         UnregisterAll();
-        if (!LicenseService.HasFeature(Feature.GlobalHotkeys)) return;
 
         var s = SettingsService.Current;
 

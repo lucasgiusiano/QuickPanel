@@ -208,10 +208,9 @@ public partial class AppHostWindow : Window
                 UpdateUnread(t);
             };
 
-            // Historial (Pro): registrar cada navegación de nivel superior.
+            // Historial: registrar cada navegación de nivel superior.
             Web.CoreWebView2.SourceChanged += (_, _) =>
             {
-                if (!LicenseService.HasFeature(Feature.History)) return;
                 RecordHistory(Web.CoreWebView2.Source);
             };
 
@@ -475,12 +474,6 @@ public partial class AppHostWindow : Window
 
     private void BtnHistory_Click(object sender, RoutedEventArgs e)
     {
-        if (!LicenseService.HasFeature(Feature.History))
-        {
-            new Settings.UpgradeWindow("El historial de navegación es parte del plan Pro.").ShowDialog();
-            return;
-        }
-
         var menu = new System.Windows.Controls.ContextMenu();
         if (_app.History.Count == 0)
         {

@@ -23,20 +23,6 @@ public static class SettingsService
                 Current = JsonSerializer.Deserialize<QuickPanelSettings>(File.ReadAllText(FilePath)) ?? new();
         }
         catch { Current = new(); }
-
-        // Asegura un CustomerId persistente desde el primer arranque.
-        if (EnsureCustomerId()) Save();
-    }
-
-    /// <summary>Genera el GUID de instalación si aún no existe. Devuelve true si lo creó.</summary>
-    private static bool EnsureCustomerId()
-    {
-        if (string.IsNullOrWhiteSpace(Current.CustomerId))
-        {
-            Current.CustomerId = Guid.NewGuid().ToString();
-            return true;
-        }
-        return false;
     }
 
     public static void Save()
@@ -64,7 +50,6 @@ public static class SettingsService
             var loaded = JsonSerializer.Deserialize<QuickPanelSettings>(File.ReadAllText(path));
             if (loaded == null) return false;
             Current = loaded;
-            EnsureCustomerId(); // si el JSON importado no traía CustomerId, generá uno
             Save();
             return true;
         }

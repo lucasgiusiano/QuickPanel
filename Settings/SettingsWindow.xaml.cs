@@ -3,7 +3,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using QuickPanel.Core;
 using QuickPanel.Models;
@@ -58,45 +57,21 @@ public partial class SettingsWindow : Window
         }), System.Windows.Threading.DispatcherPriority.Background);
     }
 
-    private const int FreePaletteCount = 4;
-
-    /// <summary>Badge pequeño (corona Pro / diamante Complete) para marcar opciones de pago.</summary>
-    private FrameworkElement? PlanBadge(Feature feature)
-    {
-        if (LicenseService.HasFeature(feature)) return null;
-
-        var tier = LicenseService.MinTierFor(feature);
-        var (glyph, brushKey) = tier == LicenseTier.Complete ? ("◆", "Md3Error") : ("♛", "Md3Primary");
-
-        return new TextBlock
-        {
-            Text       = glyph,
-            FontSize   = 10,
-            Margin     = new Thickness(0, -4, -4, 0),
-            Foreground = (Brush)FindResource(brushKey),
-            ToolTip    = $"Requiere plan {LicenseService.Name(tier)}"
-        };
-    }
-
     private void BuildSwatches()
     {
-        for (int i = 0; i < SeedPalette.Length; i++)
+        foreach (var hex in SeedPalette)
         {
-            var hex      = SeedPalette[i];
-            bool premium = i >= FreePaletteCount;
-            var c        = (Color)ColorConverter.ConvertFromString(hex);
+            var c = (Color)ColorConverter.ConvertFromString(hex);
 
             var dot = new Ellipse
             {
                 Width           = 34,
                 Height          = 34,
-                Margin          = new Thickness(4),
+                Margin          = new Thickness(0),
                 Fill            = new SolidColorBrush(c),
                 Cursor          = Cursors.Hand,
                 Stroke          = Brushes.Transparent,
-                StrokeThickness = 3,
-                // Las premium se ven atenuadas hasta desbloquear el plan.
-                Opacity         = premium && !LicenseService.HasFeature(Feature.PremiumPalettes) ? 0.4 : 1.0
+                StrokeThickness = 3
             };
 
             if (string.Equals(hex, SettingsService.Current.SeedColor, StringComparison.OrdinalIgnoreCase))
@@ -104,12 +79,6 @@ public partial class SettingsWindow : Window
 
             dot.MouseLeftButtonUp += (_, _) =>
             {
-                if (premium && !LicenseService.HasFeature(Feature.PremiumPalettes))
-                {
-                    new UpgradeWindow("Las paletas premium son parte del plan Pro.").ShowDialog();
-                    return;
-                }
-
                 SettingsService.Current.SeedColor = hex;
                 SettingsService.Save();
                 ThemeService.Apply(hex, SettingsService.Current.ThemeMode);
@@ -119,25 +88,7 @@ public partial class SettingsWindow : Window
             };
 
             var cell = new Grid { Margin = new Thickness(4) };
-            dot.Margin = new Thickness(0);
             cell.Children.Add(dot);
-
-            if (premium && !LicenseService.HasFeature(Feature.PremiumPalettes))
-            {
-                cell.ToolTip = "Requiere plan Pro";
-                cell.Children.Add(new TextBlock
-                {
-                    Text       = "♛",
-                    FontSize   = 11,
-                    IsHitTestVisible    = false,
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    VerticalAlignment   = VerticalAlignment.Top,
-                    Margin     = new Thickness(0, -2, -2, 0),
-                    Foreground = (Brush)FindResource("Md3Primary"),
-                    Effect     = new DropShadowEffect { BlurRadius = 3, ShadowDepth = 0, Opacity = 0.9, Color = Colors.Black }
-                });
-            }
-
             Swatches.Children.Add(cell);
         }
     }
@@ -149,9 +100,9 @@ public partial class SettingsWindow : Window
     private void BuildPanelSizeRow()
     {
         PanelSizeRow.Children.Clear();
-        _sizeS = SizeOption(PanelSizeRow, "S", "520,900",  WindowGlyph(0.55), Size_Click, null);
-        _sizeM = SizeOption(PanelSizeRow, "M", "1040,1400", WindowGlyph(0.78), Size_Click, null);
-        _sizeL = SizeOption(PanelSizeRow, "L", "1560,2000", WindowGlyph(1.00), Size_Click, null);
+        _sizeS = SizeOption(PanelSizeRow, "S", "520,900",  WindowGlyph(0.55), Size_Click);
+        _sizeM = SizeOption(PanelSizeRow, "M", "1040,1400", WindowGlyph(0.78), Size_Click);
+        _sizeL = SizeOption(PanelSizeRow, "L", "1560,2000", WindowGlyph(1.00), Size_Click);
     }
 
     // ── Selector de tamaño del menú flotante (ícono: columna de círculos) ──
@@ -161,9 +112,9 @@ public partial class SettingsWindow : Window
     private void BuildMenuSizeRow()
     {
         MenuSizeRow.Children.Clear();
-        _menuS = SizeOption(MenuSizeRow, "S", "40", DotsGlyph(0.7),  MenuSize_Click, PlanBadge(Feature.MenuButtonSize));
-        _menuM = SizeOption(MenuSizeRow, "M", "48", DotsGlyph(0.85), MenuSize_Click, PlanBadge(Feature.MenuButtonSize));
-        _menuL = SizeOption(MenuSizeRow, "L", "58", DotsGlyph(1.0),  MenuSize_Click, PlanBadge(Feature.MenuButtonSize));
+        _menuS = SizeOption(MenuSizeRow, "S", "40", DotsGlyph(0.7),  MenuSize_Click);
+        _menuM = SizeOption(MenuSizeRow, "M", "48", DotsGlyph(0.85), MenuSize_Click);
+        _menuL = SizeOption(MenuSizeRow, "L", "58", DotsGlyph(1.0),  MenuSize_Click);
     }
 
     /// <summary>
@@ -171,7 +122,7 @@ public partial class SettingsWindow : Window
     /// con badge de plan superpuesto si corresponde.
     /// </summary>
     private RadioButton SizeOption(Panel host, string label, string tag, FrameworkElement glyph,
-        RoutedEventHandler onClick, FrameworkElement? badge)
+        RoutedEventHandler onClick)
     {
         var rb = new RadioButton
         {
@@ -195,21 +146,7 @@ public partial class SettingsWindow : Window
             Foreground          = (Brush)FindResource("Md3OnSurfaceVariant")
         });
 
-        if (badge != null)
-        {
-            var wrap = new Grid();
-            wrap.Children.Add(content);
-            badge.HorizontalAlignment = HorizontalAlignment.Right;
-            badge.VerticalAlignment   = VerticalAlignment.Top;
-            badge.IsHitTestVisible    = false;
-            wrap.Children.Add(badge);
-            rb.Content = wrap;
-            rb.ToolTip = badge.ToolTip;
-        }
-        else
-        {
-            rb.Content = content;
-        }
+        rb.Content = content;
 
         rb.Click += onClick;
         host.Children.Add(rb);
@@ -293,7 +230,6 @@ public partial class SettingsWindow : Window
         ChkLite.IsChecked = s.LiteMode;
         PopulateStartAppCombo();
         BuildActionHotkeys();
-        PlanText.Text = $"Plan actual: {LicenseService.Name(LicenseService.CurrentTier)}";
 
         (s.ThemeMode switch
         {
@@ -301,15 +237,6 @@ public partial class SettingsWindow : Window
             ThemeMode.System => ThemeSystem,
             _                => ThemeDark
         }).IsChecked = true;
-
-        // Marcar con corona las opciones que requieren Pro.
-        if (!LicenseService.HasFeature(Feature.LightTheme))
-        {
-            ThemeLight.Content  = "Claro ♛";
-            ThemeLight.ToolTip  = "Requiere plan Pro";
-            ThemeSystem.Content = "Sistema ♛";
-            ThemeSystem.ToolTip = "Requiere plan Pro";
-        }
     }
 
     private void Move_Click(object sender, RoutedEventArgs e)
@@ -343,19 +270,6 @@ public partial class SettingsWindow : Window
     {
         if (sender is not RadioButton rb || rb.Tag is not string tag) return;
 
-        if (!LicenseService.HasFeature(Feature.MenuButtonSize))
-        {
-            new UpgradeWindow("Cambiar el tamaño del menú flotante es parte del plan Complete.").ShowDialog();
-            // Revertir a la selección previa (la M por defecto si no había ninguna).
-            (SettingsService.Current.MenuItemSize switch
-            {
-                <= 40 => _menuS,
-                >= 58 => _menuL,
-                _     => _menuM
-            })!.IsChecked = true;
-            return;
-        }
-
         SettingsService.Current.MenuItemSize = double.Parse(tag);
         SettingsService.Save();
     }
@@ -370,24 +284,12 @@ public partial class SettingsWindow : Window
 
     private void AutoHide_Click(object sender, RoutedEventArgs e)
     {
-        if (ChkAutoHide.IsChecked == true && !LicenseService.HasFeature(Feature.AutoHide))
-        {
-            new UpgradeWindow("Auto-ocultar el botón es parte del plan Pro.").ShowDialog();
-            ChkAutoHide.IsChecked = false;
-            return;
-        }
         SettingsService.Current.AutoHide = ChkAutoHide.IsChecked == true;
         SettingsService.Save();
     }
 
     private void Badges_Click(object sender, RoutedEventArgs e)
     {
-        if (ChkBadges.IsChecked == true && !LicenseService.HasFeature(Feature.Notifications))
-        {
-            new UpgradeWindow("El contador de no leídos es parte del plan Pro.").ShowDialog();
-            ChkBadges.IsChecked = false;
-            return;
-        }
         SettingsService.Current.ShowBadges = ChkBadges.IsChecked == true;
         SettingsService.Save();
     }
@@ -443,12 +345,6 @@ public partial class SettingsWindow : Window
 
     private void AssignActionHotkey(HotkeyAction action, string label)
     {
-        if (!LicenseService.HasFeature(Feature.GlobalHotkeys))
-        {
-            new UpgradeWindow("Los atajos de teclado globales son parte del plan Complete.").ShowDialog();
-            return;
-        }
-
         var dlg = new HotkeyCaptureDialog(label) { Owner = this };
         if (dlg.ShowDialog() != true || dlg.Result == null) return;
 
@@ -496,14 +392,6 @@ public partial class SettingsWindow : Window
     private void StartApp_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (_populatingCombo) return;
-        if (!LicenseService.HasFeature(Feature.StartApp))
-        {
-            new UpgradeWindow("Abrir una app al iniciar es parte del plan Pro.").ShowDialog();
-            _populatingCombo = true;
-            StartAppCombo.SelectedIndex = 0;
-            _populatingCombo = false;
-            return;
-        }
         var tag = (StartAppCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string ?? "";
         SettingsService.Current.StartAppId = tag;
         SettingsService.Save();
@@ -513,14 +401,6 @@ public partial class SettingsWindow : Window
     {
         if (sender is not RadioButton rb || rb.Tag is not string tag) return;
         var mode = Enum.Parse<ThemeMode>(tag);
-
-        // Cualquier modo distinto de Oscuro es Pro.
-        if (mode != ThemeMode.Dark && !LicenseService.HasFeature(Feature.LightTheme))
-        {
-            new UpgradeWindow("Los temas claro y sistema son parte del plan Pro.").ShowDialog();
-            ThemeDark.IsChecked = true; // revertir a oscuro (gratis)
-            return;
-        }
 
         SettingsService.Current.ThemeMode = mode;
         SettingsService.Save();
@@ -535,21 +415,8 @@ public partial class SettingsWindow : Window
         try { DragMove(); } catch { }
     }
 
-    private void Plans_Click(object sender, RoutedEventArgs e)
-    {
-        new UpgradeWindow().ShowDialog();
-        // Refrescar el texto por si cambió el plan
-        PlanText.Text = $"Plan actual: {LicenseService.Name(LicenseService.CurrentTier)}";
-    }
-
     private void Export_Click(object sender, RoutedEventArgs e)
     {
-        if (!LicenseService.HasFeature(Feature.ImportExport))
-        {
-            new UpgradeWindow("Exportar e importar la configuración es parte del plan Complete.").ShowDialog();
-            return;
-        }
-
         var dlg = new Microsoft.Win32.SaveFileDialog
         {
             Filter   = "QuickPanel config (*.json)|*.json",
@@ -573,12 +440,6 @@ public partial class SettingsWindow : Window
 
     private void Import_Click(object sender, RoutedEventArgs e)
     {
-        if (!LicenseService.HasFeature(Feature.ImportExport))
-        {
-            new UpgradeWindow("Exportar e importar la configuración es parte del plan Complete.").ShowDialog();
-            return;
-        }
-
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
             Filter = "QuickPanel config (*.json)|*.json"
