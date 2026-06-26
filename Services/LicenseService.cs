@@ -1,3 +1,8 @@
+using System.Diagnostics;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
+
 namespace QuickPanel.Services;
 
 /// <summary>Planes del modelo freemium.</summary>
@@ -125,4 +130,78 @@ public static class LicenseService
     /// los add-ons en Partner Center (requiere empaquetado MSIX).
     /// </summary>
     public static Task RefreshFromStoreAsync() => Task.CompletedTask;
+
+    // ── Backend de licencias (Paddle) ──────────────────────────────────────
+
+    /// <summary>Base del backend QuickLicense API.</summary>
+    private const string ApiBase = "https://quickpanelapi.lucasgiusiano.uy";
+
+    private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(15) };
+
+    private static readonly JsonSerializerOptions _json =
+        new() { PropertyNameCaseInsensitive = true };
+
+    private sealed record LicenseDto(string? CustomerId, string? Tier, DateTime? PurchasedAt);
+    private sealed record CheckoutRequest(string CustomerId, string Tier);
+    private sealed record CheckoutResponse(string? Url);
+
+    /// <summary>
+    /// Consulta <c>GET /license/{customerId}</c> y persiste el tier que devuelve el
+    /// backend (fuente de verdad: contempla reembolsos → Free). Si la llamada falla
+    /// (sin red, backend caído), NO toca el tier local para no degradar offline.
+    /// Devuelve true si pudo refrescar.
+    /// </summary>
+    public static async Task<bool> RefreshFromBackendAsync()
+    {
+        var cid = SettingsService.Current.CustomerId;
+        if (string.IsNullOrWhiteSpace(cid)) return false;
+
+        try
+        {
+            var dto = await _http.GetFromJsonAsync<LicenseDto>($"{ApiBase}/license/{cid}", _json);
+            if (dto?.Tier is null) return false;
+
+            if (Enum.TryParse<LicenseTier>(dto.Tier, ignoreCase: true, out var tier)
+                && tier != SettingsService.Current.Tier)
+            {
+                SettingsService.Current.Tier = tier;
+                SettingsService.Save();
+            }
+            return true;
+        }
+        catch
+        {
+            return false; // offline / backend no disponible → conservar tier local
+        }
+    }
+
+    /// <summary>
+    /// Pide al backend una URL de checkout para <paramref name="tier"/> y la abre en el
+    /// navegador del sistema. El backend crea la transacción Paddle con el price ID y el
+    /// <c>quickpanel_customer_id</c> en <c>custom_data</c> (server-side, no manipulable).
+    /// Devuelve true si abrió el navegador.
+    /// </summary>
+    public static async Task<bool> StartCheckoutAsync(LicenseTier tier)
+    {
+        var cid = SettingsService.Current.CustomerId;
+        if (string.IsNullOrWhiteSpace(cid)) return false;
+
+        try
+        {
+            var resp = await _http.PostAsJsonAsync(
+                $"{ApiBase}/checkout", new CheckoutRequest(cid, tier.ToString()), _json);
+
+            if (!resp.IsSuccessStatusCode) return false;
+
+            var body = await resp.Content.ReadFromJsonAsync<CheckoutResponse>(_json);
+            if (string.IsNullOrWhiteSpace(body?.Url)) return false;
+
+            Process.Start(new ProcessStartInfo(body.Url) { UseShellExecute = true });
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

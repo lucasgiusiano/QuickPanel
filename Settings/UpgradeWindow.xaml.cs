@@ -12,12 +12,23 @@ public partial class UpgradeWindow : Window
     private static readonly LicenseTier[] Order =
         { LicenseTier.Free, LicenseTier.Pro, LicenseTier.Complete };
 
+    private bool _checkoutStarted;
+
     /// <param name="reason">Texto opcional que explica por qué se abrió (ej. feature bloqueada).</param>
     public UpgradeWindow(string? reason = null)
     {
         InitializeComponent();
         SubtitleText.Text = reason ?? "Desbloqueá más apps y funcionalidades.";
         BuildCards();
+        Activated += UpgradeWindow_Activated;
+    }
+
+    // Al volver del navegador (tras iniciar un checkout), re-consulta el plan.
+    private async void UpgradeWindow_Activated(object? sender, System.EventArgs e)
+    {
+        if (!_checkoutStarted) return;
+        if (await LicenseService.RefreshFromBackendAsync())
+            BuildCards();
     }
 
     private void BuildCards()
@@ -129,19 +140,24 @@ public partial class UpgradeWindow : Window
     {
         if (sender is not Button { Tag: LicenseTier tier }) return;
 
-        // TODO (IAP): reemplazar por la compra real vía StoreContext.RequestPurchaseAsync(addOnStoreId)
-        // y, ante éxito, LicenseService.RefreshFromStoreAsync() para releer el plan.
 #if DEBUG
-        // En desarrollo: aplicar el plan localmente para poder testear el gating.
+        // Atajo de desarrollo: aplica el plan localmente para testear el gating sin comprar.
         SettingsService.Current.Tier = tier;
         SettingsService.Save();
-        await LicenseService.RefreshFromStoreAsync();
         BuildCards();
-#else
         await Task.CompletedTask;
-        MessageBox.Show(
-            "Las compras estarán disponibles próximamente.",
-            "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Information);
+#else
+        var ok = await LicenseService.StartCheckoutAsync(tier);
+        if (ok)
+        {
+            _checkoutStarted = true; // al volver del navegador, Activated re-consulta el plan
+        }
+        else
+        {
+            MessageBox.Show(
+                "No se pudo abrir el checkout. Verificá tu conexión e intentá de nuevo.",
+                "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
 #endif
     }
 

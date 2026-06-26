@@ -26,6 +26,8 @@ public partial class App : Application
         if (!Services.WebView2Check.EnsureAvailable()) { Shutdown(); return; }
 
         SettingsService.Load();
+        // Sincroniza el plan con el backend sin bloquear el arranque.
+        _ = LicenseService.RefreshFromBackendAsync();
         ThemeService.Apply(SettingsService.Current.SeedColor, SettingsService.Current.ThemeMode);
         // Sincroniza solo si difiere: no re-escribe la clave en cada arranque
         // (evita pisar cambios externos / duplicar la entrada del instalador).

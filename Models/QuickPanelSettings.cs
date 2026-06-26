@@ -4,7 +4,15 @@ namespace QuickPanel.Models;
 
 public class QuickPanelSettings
 {
-    /// <summary>Plan del usuario. Se actualiza desde la Store al verificar IAP.</summary>
+    /// <summary>
+    /// Identificador persistente y anónimo de esta instalación (GUID).
+    /// Se envía al backend de licencias y se pasa como <c>quickpanel_customer_id</c>
+    /// en el checkout de Paddle para vincular la compra. Se genera una sola vez
+    /// en <see cref="QuickPanel.Services.SettingsService.Load"/>.
+    /// </summary>
+    public string CustomerId { get; set; } = "";
+
+    /// <summary>Plan del usuario. Lo determina el backend de licencias (fuente de verdad).</summary>
     public LicenseTier Tier { get; set; } = LicenseTier.Free;
 
     /// <summary>Color semilla del esquema MD3 (hex).</summary>
