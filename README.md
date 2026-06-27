@@ -9,7 +9,7 @@ A floating panel that anchors to your browser and opens your favorite web apps
 
 [![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](https://www.microsoft.com/windows)
-[![.NET](https://img.shields.io/badgeE/.NET-8.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com)
+[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com)
 
 </div>
 
@@ -20,6 +20,9 @@ A floating panel that anchors to your browser and opens your favorite web apps
 Microsoft removed Edge's app sidebar. QuickPanel brings it back as a native Windows app: a
 floating button anchored to your browser that opens your favorite web apps in native panels
 with persistent sessions.
+
+Despite the name, it isn't limited to Edge: it works with whichever Chromium-based browser you
+have set as your Windows default — **Edge, Chrome, Brave, Opera, or Vivaldi**.
 
 Unlike browser extensions (which rely on iframes and break on Gmail, WhatsApp, etc.), QuickPanel
 uses **WebView2** — the same engine as the browser itself — so **any site loads without
