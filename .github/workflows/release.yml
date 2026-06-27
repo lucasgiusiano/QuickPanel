@@ -19,21 +19,39 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Publish
-        run: dotnet publish QuickPanel.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+      - name: Publish (portable, self-contained)
+        run: dotnet publish QuickPanel.csproj -c Release -r win-x64 --self-contained true -o publish /p:PublishSingleFile=true
 
       - name: Remove debug symbols
-        run: Remove-Item -Path "bin\Release\net8.0-windows\win-x64\publish\*.pdb" -Force -ErrorAction SilentlyContinue
+        run: Remove-Item -Path "publish\*.pdb" -Force -ErrorAction SilentlyContinue
         shell: pwsh
 
-      - name: Zip artifact
-        run: Compress-Archive -Path "bin\Release\net8.0-windows\win-x64\publish\*" -DestinationPath "QuickPanel-${{ github.ref_name }}.zip"
+      - name: Zip portable artifact
+        run: Compress-Archive -Path "publish\*" -DestinationPath "QuickPanel-${{ github.ref_name }}.zip"
         shell: pwsh
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+        shell: pwsh
+
+      - name: Sync installer.iss version with the tag
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $pattern = '#define MyAppVersion "[^"]*"'
+          $replacement = '#define MyAppVersion "' + $version + '"'
+          (Get-Content installer.iss) -replace $pattern, $replacement | Set-Content installer.iss
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss'
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: QuickPanel-${{ github.ref_name }}.zip
+          files: |
+            QuickPanel-${{ github.ref_name }}.zip
+            installer-output\QuickPanelSetup.exe
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
