@@ -9,7 +9,7 @@ A floating panel that anchors to your browser and opens your favorite web apps
 
 [![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](https://www.microsoft.com/windows)
-[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com)
+[![.NET](https://img.shields.io/badgeE/.NET-8.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com)
 
 </div>
 
@@ -24,6 +24,8 @@ with persistent sessions.
 Unlike browser extensions (which rely on iframes and break on Gmail, WhatsApp, etc.), QuickPanel
 uses **WebView2** — the same engine as the browser itself — so **any site loads without
 restrictions**.
+
+**Free, with every feature unlocked.** No tiers, no paywalls, no account.
 
 ## Features
 
@@ -41,8 +43,10 @@ restrictions**.
   login flows (Google, Microsoft, etc.) are excluded so sign-in isn't broken.
 - **Smart layout** — the menu and panels position themselves based on which side the button is on
   and how much space is available, without overflowing the window.
-- **File picker safe** — attaching a file in WhatsApp or Gmail no longer closes the panel; the
-  native file dialog is recognized and the panel stays open behind it.
+- **Native popups stay on top, not closed** — file pickers, date pickers, dropdowns, and modals
+  that a page renders as native popups (common in WhatsApp Web, Gmail, and Partner-style admin
+  panels) used to make the panel close as if you'd clicked outside it. The panel now recognizes
+  these and stays open behind them.
 
 **Customization**
 - Dark, light, or system theme, with color palettes.
@@ -51,6 +55,8 @@ restrictions**.
 - Groups/folders to organize apps in the menu — collapsed folders show a count badge and the
   folder name on hover; expanded apps render slightly smaller inside a pill-shaped, tinted
   background using your theme's primary color.
+- Export and import your whole setup (apps, groups, theme, hotkeys) as a single file — handy for
+  moving to another PC or keeping a backup.
 
 **Productivity**
 - Global keyboard shortcuts: `Ctrl+Alt+1‑0` auto-assign to your first 10 apps (and reassign
@@ -75,25 +81,28 @@ restrictions**.
   3-panel limit entirely (handy for background music or an ongoing call); pinned panels don't
   count against the limit.
 
-## Plans
+## Roadmap
 
-| | Free | Pro (USD 4.99) | Complete (USD 9.99) |
-|---|---|---|---|
-| Apps | Up to 3 | Unlimited | Unlimited |
-| Reordering, hotkeys, notifications, quick search | | ✅ | ✅ |
-| Light/system theme, premium palettes | | ✅ | ✅ |
-| History, launch on startup, auto-hide | | ✅ | ✅ |
-| Folders, multiple accounts/profiles, per-app color | | | ✅ |
-| Picture-in-picture, import/export settings | | | ✅ |
+Things planned but not built yet — not promises, just where this is headed:
+
+- Picture-in-picture for panels.
+- Multiple accounts and multiple profiles per app.
+- Native "Start with Windows" support for the Microsoft Store build (today this only works
+  reliably in the portable/installer build; the Store build needs a packaged startup task).
 
 ## Installation
 
-1. Download the latest `QuickPanel.zip` from [Releases](../../releases), or the
-   `QuickPanelSetup.exe` installer if one is published.
-2. If using the ZIP: extract it to a folder (e.g. `C:\Tools\QuickPanel`) and run `QuickPanel.exe`.
-3. If using the installer: follow the prompts — it'll ask about a desktop shortcut and starting
-   with Windows.
-4. (Optional) Enable "Start with Windows" from Settings if you didn't during install.
+Pick whichever fits you:
+
+- **Microsoft Store** — [SidePanel for Edge](https://apps.microsoft.com/detail/9N3Z0WKL8KPN).
+  Installs and updates itself like any Store app.
+- **Installer** — download `QuickPanelSetup.exe` from [Releases](../../releases) and run it. No
+  admin rights required. Adds a Start Menu shortcut and an uninstaller.
+- **Portable** — download `QuickPanel-<version>.zip` from [Releases](../../releases), extract it
+  anywhere (e.g. `C:\Tools\QuickPanel`), and run `QuickPanel.exe`. Nothing is installed.
+
+After installing (any method), enable "Start with Windows" from Settings if you want it and
+weren't asked during setup.
 
 > **Requirement**: [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)
 > (preinstalled on Windows 11; installed automatically with an up-to-date Edge on Windows 10).
