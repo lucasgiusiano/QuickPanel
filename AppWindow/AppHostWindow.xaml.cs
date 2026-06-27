@@ -531,8 +531,12 @@ public partial class AppHostWindow : Window
 
     /// <summary>
     /// True si la ventana en foreground es un diálogo del sistema (abrir/guardar
-    /// archivo) o pertenece al proceso de QuickPanel. Evita ocultar el panel cuando
-    /// WebView2 abre el selector de archivos al adjuntar.
+    /// archivo), pertenece al proceso de QuickPanel, o pertenece al proceso de
+    /// WebView2 (msedgewebview2.exe). Este último caso cubre los popups y diálogos
+    /// NATIVOS que el motor abre en su propio proceso —date pickers, dropdowns de
+    /// &lt;select&gt;, window.open, algunos overlays/modales— que son top-level
+    /// independientes y, al robar el foco, hacían que el panel se ocultara como si
+    /// el click hubiera sido afuera.
     /// </summary>
     private static bool ForegroundIsAppOrWebViewDialog()
     {
@@ -550,7 +554,19 @@ public partial class AppHostWindow : Window
             if (pid == 0) return false;
 
             // Diálogos del propio proceso de QuickPanel.
-            return (int)pid == Environment.ProcessId;
+            if ((int)pid == Environment.ProcessId) return true;
+
+            // Ventanas del proceso del motor WebView2: son del contenido del propio
+            // panel (un click sobre un modal de la página NO es un click afuera).
+            try
+            {
+                using var p = System.Diagnostics.Process.GetProcessById((int)pid);
+                if (string.Equals(p.ProcessName, "msedgewebview2", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            catch { /* el proceso pudo haber terminado entre el foreground y esta consulta */ }
+
+            return false;
         }
         catch { return false; }
     }
