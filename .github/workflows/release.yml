@@ -18,7 +18,7 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Publish
-        run: dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+        run: dotnet publish QuickPanel.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
 
       - name: Remove debug symbols
         run: Remove-Item -Path "bin\Release\net8.0-windows\win-x64\publish\*.pdb" -Force -ErrorAction SilentlyContinue
