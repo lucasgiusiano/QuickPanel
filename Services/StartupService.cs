@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32;
+using Windows.ApplicationModel;
 
 namespace QuickPanel.Services;
 
@@ -8,6 +9,15 @@ public static class StartupService
 {
     private const string RunKey  = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string AppName = "QuickPanel";
+
+    /// <summary>
+    /// Id de la tarea declarada en Package.appxmanifest (proyecto QuickPanel.Package,
+    /// fuera de este repo). DEBE coincidir exactamente con el atributo TaskId del
+    /// &lt;uap5:StartupTask&gt; — ver nota al final de este archivo con el XML exacto
+    /// a agregar al manifest. Sin esa declaración, StartupTask.GetAsync lanza una
+    /// excepción que queda absorbida por los catch de abajo (no-op silencioso).
+    /// </summary>
+    private const string StartupTaskId = "QuickPanelStartupTask";
 
     /// <summary>
     /// True si la app corre dentro de un paquete MSIX (instalada desde Store).
@@ -25,10 +35,23 @@ public static class StartupService
         }
     }
 
-    /// <summary>¿Está actualmente configurado el inicio automático? (solo no empaquetado)</summary>
-    public static bool IsEnabled()
+    /// <summary>¿Está actualmente configurado el inicio automático?</summary>
+    public static async Task<bool> IsEnabledAsync()
     {
-        if (IsPackaged) return false; // el estado real lo gestiona Windows vía StartupTask
+        if (IsPackaged)
+        {
+            try
+            {
+                var task = await StartupTask.GetAsync(StartupTaskId);
+                return task.State is StartupTaskState.Enabled or StartupTaskState.EnabledByPolicy;
+            }
+            catch
+            {
+                // Extensión no declarada todavía en el manifest, u otro fallo de WinRT.
+                return false;
+            }
+        }
+
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: false);
@@ -37,11 +60,34 @@ public static class StartupService
         catch { return false; }
     }
 
-    public static void SetRunAtStartup(bool enable)
+    public static async Task SetRunAtStartupAsync(bool enable)
     {
-        // En MSIX el toggle real necesita la API Windows.ApplicationModel.StartupTask
-        // (requiere WinRT). Acá no tocamos el registro porque sería un no-op virtualizado.
-        if (IsPackaged) return;
+        if (IsPackaged)
+        {
+            try
+            {
+                var task = await StartupTask.GetAsync(StartupTaskId);
+                if (enable)
+                {
+                    // Solo pedir habilitación si está en el estado neutro "Disabled".
+                    // Si el usuario o una política ya lo deshabilitaron explícitamente
+                    // (DisabledByUser / DisabledByPolicy), RequestEnableAsync no puede
+                    // saltarse esa decisión del sistema — Windows ignora el pedido.
+                    if (task.State == StartupTaskState.Disabled)
+                        await task.RequestEnableAsync();
+                }
+                else
+                {
+                    task.Disable();
+                }
+            }
+            catch
+            {
+                // Extensión no declarada en el manifest: no-op silencioso, igual que
+                // el comportamiento anterior (sin StartupTask implementado).
+            }
+            return;
+        }
 
         try
         {
@@ -63,17 +109,39 @@ public static class StartupService
     }
 
     /// <summary>
-    /// Sincroniza el estado del registro con la preferencia guardada SOLO si difieren.
-    /// Evita re-escribir la clave en cada arranque (lo que pisaba cambios externos
-    /// o duplicaba la entrada creada por el instalador Inno Setup).
+    /// Sincroniza el estado real con la preferencia guardada SOLO si difieren.
+    /// Evita re-escribir la clave/tarea en cada arranque.
     /// </summary>
-    public static void SyncFromPreference(bool desired)
+    public static async Task SyncFromPreferenceAsync(bool desired)
     {
-        if (IsPackaged) return;
-        if (IsEnabled() != desired)
-            SetRunAtStartup(desired);
+        if (await IsEnabledAsync() != desired)
+            await SetRunAtStartupAsync(desired);
     }
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, StringBuilder? packageFullName);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PENDIENTE FUERA DE ESTE REPO: declarar la extensión en Package.appxmanifest
+// (proyecto QuickPanel.Package / .wapproj). Sin esto, IsPackaged sigue
+// funcionando, pero StartupTask.GetAsync siempre falla (no-op silencioso).
+//
+// 1) En la raíz <Package>, agregar el namespace y declararlo ignorable:
+//      xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
+//      <IgnorableNamespaces>... uap5</IgnorableNamespaces>
+//
+// 2) Dentro de <Applications><Application Id="App" ...>, agregar:
+//      <Extensions>
+//        <uap5:Extension Category="windows.startupTask">
+//          <uap5:StartupTask
+//            TaskId="QuickPanelStartupTask"
+//            Enabled="false"
+//            DisplayName="SidePanel for Edge" />
+//        </uap5:Extension>
+//      </Extensions>
+//
+//    TaskId debe coincidir EXACTO con StartupTaskId de esta clase.
+//    Esto se edita en Visual Studio (doble clic en Package.appxmanifest → vista
+//    de diseñador, o "View Code" para editarlo a mano).
+// ─────────────────────────────────────────────────────────────────────────────

@@ -274,12 +274,12 @@ public partial class SettingsWindow : Window
         SettingsService.Save();
     }
 
-    private void Startup_Click(object sender, RoutedEventArgs e)
+    private async void Startup_Click(object sender, RoutedEventArgs e)
     {
         bool on = ChkStartup.IsChecked == true;
         SettingsService.Current.RunAtStartup = on;
         SettingsService.Save();
-        StartupService.SetRunAtStartup(on);
+        await StartupService.SetRunAtStartupAsync(on);
     }
 
     private void AutoHide_Click(object sender, RoutedEventArgs e)

@@ -27,9 +27,10 @@ public partial class App : Application
 
         SettingsService.Load();
         ThemeService.Apply(SettingsService.Current.SeedColor, SettingsService.Current.ThemeMode);
-        // Sincroniza solo si difiere: no re-escribe la clave en cada arranque
+        // Sincroniza solo si difiere: no re-escribe la clave/tarea en cada arranque
         // (evita pisar cambios externos / duplicar la entrada del instalador).
-        StartupService.SyncFromPreference(SettingsService.Current.RunAtStartup);
+        // Fire-and-forget: no bloquea el arranque esperando a WinRT/registro.
+        _ = StartupService.SyncFromPreferenceAsync(SettingsService.Current.RunAtStartup);
 
         SetupTray();
 

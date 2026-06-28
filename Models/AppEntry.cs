@@ -7,16 +7,16 @@ public class AppEntry
     public string Url { get; set; } = "";
     public string Favicon { get; set; } = "";
 
-    /// <summary>Ruta a un ícono local personalizado (Pro). Si está vacío, se usa el favicon.</summary>
+    /// <summary>Ruta a un ícono local personalizado. Si está vacío, se usa el favicon.</summary>
     public string IconPath { get; set; } = "";
 
-    /// <summary>Color de acento del círculo en hex (Complete). Vacío = color por defecto.</summary>
+    /// <summary>Color de acento del círculo en hex. Vacío = color por defecto.</summary>
     public string Color { get; set; } = "";
 
-    /// <summary>Últimas URLs visitadas en esta app (Pro). Más reciente primero, máx. 20.</summary>
+    /// <summary>Últimas URLs visitadas en esta app. Más reciente primero, máx. 20.</summary>
     public List<string> History { get; set; } = new();
 
-    /// <summary>Atajo de teclado global para abrir esta app (Complete).</summary>
+    /// <summary>Atajo de teclado global para abrir esta app.</summary>
     public Hotkey Hotkey { get; set; } = new();
 
     /// <summary>Factor de zoom recordado para esta app (1.0 = 100%).</summary>
@@ -25,7 +25,7 @@ public class AppEntry
     /// <summary>Mantener el panel vivo aunque el Modo Lite esté activo (ej. música de fondo).</summary>
     public bool KeepAlive { get; set; } = false;
 
-    /// <summary>Id del grupo/carpeta al que pertenece (Complete). Vacío = suelta en el menú.</summary>
+    /// <summary>Id del grupo/carpeta al que pertenece. Vacío = suelta en el menú.</summary>
     public string GroupId { get; set; } = "";
 
     /// <summary>True si tiene un ícono custom válido en disco.</summary>
