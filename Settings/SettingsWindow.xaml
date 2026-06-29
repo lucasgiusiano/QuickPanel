@@ -110,6 +110,18 @@
                            Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
                 <StackPanel x:Name="PanelSizeRow" Orientation="Horizontal" Margin="0,0,0,20"/>
 
+                <!-- Modo de menú -->
+                <TextBlock Text="Estilo del menú" Style="{StaticResource SettingLabel}"/>
+                <TextBlock Text="Botón flotante (Material) o barra lateral anclada al borde del navegador (Dock)"
+                           FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
+                           Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                    <RadioButton x:Name="ModeMaterial" Content="Material" GroupName="menumode" Margin="0,0,12,0"
+                                 Foreground="{DynamicResource Md3OnSurface}" Click="MenuMode_Click"/>
+                    <RadioButton x:Name="ModeDock" Content="Dock lateral" GroupName="menumode"
+                                 Foreground="{DynamicResource Md3OnSurface}" Click="MenuMode_Click"/>
+                </StackPanel>
+
                 <!-- Tamaño del menú flotante -->
                 <TextBlock Text="Tamaño del menú" Style="{StaticResource SettingLabel}"/>
                 <TextBlock Text="Controla el tamaño de los íconos del menú flotante (el que despliega tus apps)"

@@ -2,6 +2,15 @@ using QuickPanel.Services;
 
 namespace QuickPanel.Models;
 
+/// <summary>Estilo del menú de apps.</summary>
+public enum MenuMode
+{
+    /// <summary>Botón flotante redondo + menú radial (Material Design). Default.</summary>
+    Material,
+    /// <summary>Barra lateral auto-ocultable anclada al borde derecho del navegador.</summary>
+    Dock
+}
+
 public class QuickPanelSettings
 {
     /// <summary>Color semilla del esquema MD3 (hex).</summary>
@@ -16,6 +25,9 @@ public class QuickPanelSettings
 
     /// <summary>Diámetro de los círculos del menú flotante en DIPs.</summary>
     public double MenuItemSize { get; set; } = 48;
+
+    /// <summary>Estilo del menú: botón flotante Material (default) o barra Dock lateral.</summary>
+    public MenuMode MenuMode { get; set; } = MenuMode.Material;
 
     /// <summary>Posición del botón relativa al rect de la ventana de Edge (0..1).</summary>
     public double ButtonRelX { get; set; } = 0.97;

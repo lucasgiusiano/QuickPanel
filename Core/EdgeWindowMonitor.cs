@@ -128,6 +128,15 @@ public sealed class EdgeWindowMonitor : IDisposable, IHotkeyTarget
         foreach (var o in _overlays.Values) o.ReanchorOpenPanels();
     }
 
+    /// <summary>Destruye y recrea todos los overlays (ej. tras cambiar el modo de menú
+    /// Material ↔ Dock, que cambia qué tipo de ventana de control se usa).</summary>
+    public void RebuildOverlays()
+    {
+        foreach (var o in _overlays.Values) o.Dispose();
+        _overlays.Clear();
+        Scan(); // recrea los overlays para las ventanas de navegador actuales
+    }
+
     public void Dispose()
     {
         _scanTimer?.Stop();

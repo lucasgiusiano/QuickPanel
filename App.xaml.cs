@@ -58,6 +58,10 @@ public partial class App : Application
     public static void ReanchorAllPanels() =>
         (Current as App)?._monitor?.ReanchorAllPanels();
 
+    /// <summary>Recrea los overlays (ej. tras cambiar el modo de menú en Configuración).</summary>
+    public static void RebuildOverlays() =>
+        (Current as App)?._monitor?.RebuildOverlays();
+
     private void SetupTray()
     {
         System.Drawing.Icon icon;

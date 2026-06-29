@@ -15,7 +15,9 @@ public sealed class OverlayManager : IDisposable
 {
     public IntPtr EdgeHwnd { get; }
 
-    private readonly FloatingButtonWindow _button;
+    private readonly FloatingButtonWindow? _button;
+    private readonly DockBarWindow? _dock;
+    private readonly bool _dockMode;
     private MenuWindow? _menu;
     private readonly Dictionary<string, AppHostWindow> _appWindows = new();
     private bool _disposed;
@@ -32,11 +34,21 @@ public sealed class OverlayManager : IDisposable
     public OverlayManager(IntPtr edgeHwnd)
     {
         EdgeHwnd = edgeHwnd;
+        _dockMode = SettingsService.Current.MenuMode == MenuMode.Dock;
 
-        _button = new FloatingButtonWindow(this);
-        // El owner nativo (Edge) se asigna dentro del botón en SourceInitialized.
-        _button.SetEdgeOwner(edgeHwnd);
-        _button.Show();
+        if (_dockMode)
+        {
+            _dock = new DockBarWindow(this);
+            _dock.SetEdgeOwner(edgeHwnd);
+            _dock.Show();
+        }
+        else
+        {
+            _button = new FloatingButtonWindow(this);
+            // El owner nativo (Edge) se asigna dentro del botón en SourceInitialized.
+            _button.SetEdgeOwner(edgeHwnd);
+            _button.Show();
+        }
 
         Reposition();
         TryLaunchStartApp();
@@ -55,7 +67,8 @@ public sealed class OverlayManager : IDisposable
 
         _startAppLaunched = true;
         // Diferido: el botón/overlay recién se está montando.
-        _button.Dispatcher.BeginInvoke(new Action(() => OpenApp(app, 0.5)),
+        var disp = (System.Windows.Window?)_button ?? _dock;
+        disp?.Dispatcher.BeginInvoke(new Action(() => OpenApp(app, 0.5)),
             System.Windows.Threading.DispatcherPriority.Background);
     }
 
@@ -71,6 +84,16 @@ public sealed class OverlayManager : IDisposable
             return; // owned window: Windows ya la oculta junto al owner
         }
 
+        if (_dockMode)
+        {
+            _dock!.Reanchor(EdgeHwnd);
+            foreach (var w in _appWindows.Values)
+            {
+                try { w.Reanchor(); } catch { }
+            }
+            return;
+        }
+
         Win32.GetWindowRect(EdgeHwnd, out var r);
         double scale = Win32.DpiScaleOf(EdgeHwnd);
         var s = SettingsService.Current;
@@ -79,8 +102,8 @@ public sealed class OverlayManager : IDisposable
         double pxX = r.Left + s.ButtonRelX * (r.Width - btnPx);
         double pxY = r.Top + s.ButtonRelY * (r.Height - btnPx);
 
-        _button.Left = pxX / scale;
-        _button.Top = pxY / scale;
+        _button!.Left = pxX / scale;
+        _button!.Top = pxY / scale;
 
         // Re-anclar paneles abiertos al nuevo rect de Edge
         foreach (var w in _appWindows.Values)
@@ -104,6 +127,8 @@ public sealed class OverlayManager : IDisposable
     /// <summary>Guarda la posición actual del botón como fracción del rect de Edge.</summary>
     public void SaveButtonPositionFromCurrent()
     {
+        if (_dockMode || _button == null) return; // el dock no se arrastra
+
         Win32.GetWindowRect(EdgeHwnd, out var r);
         double scale = Win32.DpiScaleOf(EdgeHwnd);
         double btnPx = ButtonSizeDip * scale;
@@ -121,6 +146,8 @@ public sealed class OverlayManager : IDisposable
 
     public void ToggleMenu()
     {
+        if (_dockMode || _button == null) return; // el dock no usa menú radial
+
         if (IsMenuOpen) { CloseMenu(); return; }
 
         CloseMenu();
@@ -172,15 +199,19 @@ public sealed class OverlayManager : IDisposable
         // alcanzó el máximo, matar (ForceClose) el menos usado recientemente.
         EnforceLiveLimit();
 
-        // Callbacks: capturan el rect ACTUAL del botón y el lado ACTUAL en cada
+        // Callbacks: capturan el rect ACTUAL del botón/barra y el lado ACTUAL en cada
         // llamada, así el panel se re-ancla bien aunque Edge/el botón se muevan.
         PanelGeometry.Rect ButtonRect()
         {
+            if (_dockMode) return _dock!.BarRect();
             const double winSize = 64; // ventana del botón (FAB 56 + halo)
-            return new PanelGeometry.Rect(_button.Left, _button.Top, winSize, winSize);
+            return new PanelGeometry.Rect(_button!.Left, _button!.Top, winSize, winSize);
         }
 
-        PanelSide CurrentSide() => PanelGeometry.SideFor(SettingsService.Current.ButtonRelX);
+        // En modo dock el panel siempre va a la izquierda de la barra (lado derecho).
+        PanelSide CurrentSide() => _dockMode
+            ? PanelSide.Right
+            : PanelGeometry.SideFor(SettingsService.Current.ButtonRelX);
 
         var win = new AppHostWindow(
             app, EdgeHwnd, CurrentSide(), originRelY,
@@ -253,10 +284,15 @@ public sealed class OverlayManager : IDisposable
     /// <summary>Se dispara cuando cambia algún contador (lo escuchan botón y menú).</summary>
     public event Action? UnreadUpdated;
 
+    /// <summary>True si hay algún panel de app visible (la barra dock se mantiene
+    /// desplegada mientras esto sea true).</summary>
+    public bool IsAnyPanelOpen => _appWindows.Values.Any(w => w.IsVisible);
+
     private void NotifyUnread()
     {
         bool show = SettingsService.Current.ShowBadges;
-        _button.SetBadge(show ? UnreadTotal : 0);
+        _button?.SetBadge(show ? UnreadTotal : 0);
+        _dock?.RebuildApps(); // refresca badges por app en la barra
         UnreadUpdated?.Invoke();
     }
 
@@ -269,6 +305,7 @@ public sealed class OverlayManager : IDisposable
         {
             SettingsService.Current.Apps.Add(dlg.Result);
             SettingsService.Save();
+            _dock?.RebuildApps();
         }
     }
 
@@ -282,6 +319,7 @@ public sealed class OverlayManager : IDisposable
             _appWindows.Remove(app.Id);
         }
         CloseMenu();
+        _dock?.RebuildApps();
     }
 
     private SettingsWindow? _settingsWin;
@@ -303,7 +341,7 @@ public sealed class OverlayManager : IDisposable
         _settingsWin.Show();
     }
 
-    public void EnterMoveMode() => _button.EnterMoveMode();
+    public void EnterMoveMode() => _button?.EnterMoveMode();
 
     // ── Acciones para hotkeys ──
 
@@ -351,6 +389,7 @@ public sealed class OverlayManager : IDisposable
             try { w.ForceClose(); } catch { }
         }
         _appWindows.Clear();
-        try { _button.Close(); } catch { }
+        try { _button?.Close(); } catch { }
+        try { _dock?.Close(); } catch { }
     }
 }

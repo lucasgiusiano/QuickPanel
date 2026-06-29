@@ -228,6 +228,7 @@ public partial class SettingsWindow : Window
         ChkAutoHide.IsChecked = s.AutoHide;
         ChkBadges.IsChecked = s.ShowBadges;
         ChkLite.IsChecked = s.LiteMode;
+        (s.MenuMode == MenuMode.Dock ? ModeDock : ModeMaterial).IsChecked = true;
         PopulateStartAppCombo();
         BuildActionHotkeys();
 
@@ -280,6 +281,17 @@ public partial class SettingsWindow : Window
         SettingsService.Current.RunAtStartup = on;
         SettingsService.Save();
         await StartupService.SetRunAtStartupAsync(on);
+    }
+
+    private void MenuMode_Click(object sender, RoutedEventArgs e)
+    {
+        var mode = ModeDock.IsChecked == true ? MenuMode.Dock : MenuMode.Material;
+        if (SettingsService.Current.MenuMode == mode) return;
+
+        SettingsService.Current.MenuMode = mode;
+        SettingsService.Save();
+        // Cambia el tipo de ventana de control: hay que recrear los overlays.
+        App.RebuildOverlays();
     }
 
     private void AutoHide_Click(object sender, RoutedEventArgs e)
