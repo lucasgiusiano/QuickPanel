@@ -27,6 +27,7 @@ public partial class DockBarWindow : Window
     private readonly DispatcherTimer _proximityTimer;
     private bool _expanded;
     private bool _animating;
+    private int  _outsideTicks; // ticks consecutivos con el cursor fuera de la zona
 
     // Id de la carpeta expandida inline (una a la vez). El despliegue como cápsula
     // lateral con z-order sobre los paneles queda para la siguiente iteración.
@@ -111,15 +112,13 @@ public partial class DockBarWindow : Window
     }
 
     // ── Despliegue / colapso ──
+    // Nota: la decisión de expandir/colapsar la toma EXCLUSIVAMENTE el timer de
+    // proximidad (UpdateProximity), que es puramente geométrico. No usamos MouseEnter
+    // /MouseLeave sobre la barra: durante el deslizamiento, el cuerpo de la barra se
+    // mueve por debajo del cursor quieto y dispara MouseEnter→MouseLeave espurios,
+    // lo que provocaba un colapso+reexpansión (la animación corría dos veces).
 
-    private void Tab_MouseEnter(object sender, MouseEventArgs e) => Expand();
     private void Tab_Click(object sender, MouseButtonEventArgs e) => Expand();
-
-    private void Bar_MouseLeave(object sender, MouseEventArgs e)
-    {
-        // Solo colapsar si no hay panel abierto; si lo hay, la barra permanece.
-        if (!_manager.IsAnyPanelOpen) Collapse();
-    }
 
     /// <summary>Timer de proximidad: despliega al acercar el cursor al borde derecho;
     /// colapsa cuando el cursor se aleja y no hay panel abierto. Reusa el mismo enfoque
@@ -155,7 +154,17 @@ public partial class DockBarWindow : Window
                 cx >= bar.Left - 12 && cx <= rightEdge + 20 &&
                 cy >= Top - 8 && cy <= Top + Height + 8;
 
-            if (!insideKeepZone && !_manager.IsAnyPanelOpen) Collapse();
+            // Histéresis: colapsar recién tras 2 ticks consecutivos afuera, para que un
+            // único frame en el límite no dispare un colapso (y el consiguiente rebote).
+            if (insideKeepZone || _manager.IsAnyPanelOpen)
+            {
+                _outsideTicks = 0;
+            }
+            else if (++_outsideTicks >= 2)
+            {
+                _outsideTicks = 0;
+                Collapse();
+            }
         }
     }
 
@@ -164,6 +173,7 @@ public partial class DockBarWindow : Window
         if (_expanded) return;
         _expanded = true;
         _animating = true;
+        _outsideTicks = 0;
 
         Tab.Visibility = Visibility.Collapsed;
         Bar.Visibility = Visibility.Visible;

@@ -30,7 +30,6 @@
                 CornerRadius="8,0,0,8"
                 Background="{DynamicResource Md3PrimaryContainer}"
                 Cursor="Hand"
-                MouseEnter="Tab_MouseEnter"
                 MouseLeftButtonUp="Tab_Click">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="10"
@@ -54,8 +53,7 @@
                 Margin="0,16,14,16"
                 CornerRadius="32"
                 Background="{DynamicResource Md3SurfaceContainer}"
-                Visibility="Collapsed"
-                MouseLeave="Bar_MouseLeave">
+                Visibility="Collapsed">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="18"
                         ShadowDepth="0"
