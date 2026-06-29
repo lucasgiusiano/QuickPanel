@@ -85,7 +85,7 @@ public partial class DockBarWindow : Window
     private void MakeToolWindow()
     {
         var hwnd = new WindowInteropHelper(this).Handle;
-        var ex   = Win32.GetWindowLongPtr(hwnd, Win32.GWL_EXSTYLE).ToInt64();
+        var ex = Win32.GetWindowLongPtr(hwnd, Win32.GWL_EXSTYLE).ToInt64();
         Win32.SetWindowLongPtr(hwnd, Win32.GWL_EXSTYLE,
             new IntPtr(ex | Win32.WS_EX_TOOLWINDOW | Win32.WS_EX_NOACTIVATE));
     }
@@ -101,13 +101,13 @@ public partial class DockBarWindow : Window
         double scale = Win32.DpiScaleOf(edgeHwnd);
 
         double rightDip = r.Right / scale;
-        double topDip   = r.Top   / scale;
-        double hDip     = r.Height / scale;
+        double topDip = r.Top / scale;
+        double hDip = r.Height / scale;
 
-        Width  = 220;
-        Top    = topDip + TopInset;
+        Width = 220;
+        Top = topDip + TopInset;
         Height = Math.Max(120, hDip - TopInset - BottomInset);
-        Left   = rightDip - Width;
+        Left = rightDip - Width;
     }
 
     // ── Despliegue / colapso ──
@@ -152,7 +152,7 @@ public partial class DockBarWindow : Window
             // abrir/cerrar.
             var bar = BarRect();
             bool insideKeepZone =
-                cx >= bar.Left - 12 && cx <= rightEdge + 8 &&
+                cx >= bar.Left - 12 && cx <= rightEdge + 20 &&
                 cy >= Top - 8 && cy <= Top + Height + 8;
 
             if (!insideKeepZone && !_manager.IsAnyPanelOpen) Collapse();
@@ -257,7 +257,8 @@ public partial class DockBarWindow : Window
         var border = Circle(44, (Brush)FindResource("Md3SurfaceContainerHigh"));
         border.Child = new TextBlock
         {
-            Text = "📁", FontSize = 18,
+            Text = "📁",
+            FontSize = 18,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -293,7 +294,9 @@ public partial class DockBarWindow : Window
         {
             border.Child = new Image
             {
-                Source = img, Width = size * 0.5, Height = size * 0.5,
+                Source = img,
+                Width = size * 0.5,
+                Height = size * 0.5,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -338,7 +341,7 @@ public partial class DockBarWindow : Window
         var ease = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.5 };
         var anim = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220))
         {
-            BeginTime      = TimeSpan.FromMilliseconds(index * 35),
+            BeginTime = TimeSpan.FromMilliseconds(index * 35),
             EasingFunction = ease
         };
         st.BeginAnimation(ScaleTransform.ScaleXProperty, anim);
@@ -349,7 +352,8 @@ public partial class DockBarWindow : Window
 
     private static Border Circle(double size, Brush bg) => new()
     {
-        Width = size, Height = size,
+        Width = size,
+        Height = size,
         CornerRadius = new CornerRadius(size / 2),
         Background = bg,
         Cursor = Cursors.Hand
@@ -368,7 +372,8 @@ public partial class DockBarWindow : Window
         double bs = host.Width * 0.42;
         var badge = new Border
         {
-            Width = bs, Height = bs,
+            Width = bs,
+            Height = bs,
             CornerRadius = new CornerRadius(bs / 2),
             Background = bg,
             HorizontalAlignment = HorizontalAlignment.Right,
@@ -376,7 +381,9 @@ public partial class DockBarWindow : Window
             IsHitTestVisible = false,
             Child = new TextBlock
             {
-                Text = text, FontSize = bs * 0.5, FontWeight = FontWeights.Bold,
+                Text = text,
+                FontSize = bs * 0.5,
+                FontWeight = FontWeights.Bold,
                 Foreground = fg,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
