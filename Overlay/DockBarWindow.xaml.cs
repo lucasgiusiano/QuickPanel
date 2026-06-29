@@ -32,8 +32,13 @@ public partial class DockBarWindow : Window
     // lateral con z-order sobre los paneles queda para la siguiente iteración.
     private string? _expandedGroupId;
 
+    // True por un único RebuildApps: anima la entrada de las hijas al abrir la carpeta.
+    private bool _animateChildrenOnce;
+
     private const double BarWidth = 64;
-    private const double BarMarginRight = 8;
+    private const double BarMarginRight = 14;   // separación de la barra respecto al borde del navegador
+    private const double TopInset = 46;         // deja libre la franja de botones de la ventana (cerrar/min/max)
+    private const double BottomInset = 14;
 
     public DockBarWindow(OverlayManager manager)
     {
@@ -85,8 +90,9 @@ public partial class DockBarWindow : Window
             new IntPtr(ex | Win32.WS_EX_TOOLWINDOW | Win32.WS_EX_NOACTIVATE));
     }
 
-    /// <summary>Reposiciona la ventana sobre el borde derecho del navegador, cubriendo
-    /// su alto. La pestaña/barra quedan ancladas a la derecha vía el layout XAML.</summary>
+    /// <summary>Reposiciona la ventana sobre el borde derecho del navegador, dejando libre
+    /// la franja superior (botones de cerrar/min/max) y un margen inferior. Queda anclada
+    /// abajo-derecha. La pestaña/barra se alinean a la derecha vía el layout XAML.</summary>
     public void Reanchor(IntPtr edgeHwnd)
     {
         if (!Win32.IsWindow(edgeHwnd) || Win32.IsIconic(edgeHwnd)) return;
@@ -99,9 +105,9 @@ public partial class DockBarWindow : Window
         double hDip     = r.Height / scale;
 
         Width  = 220;
-        Height = Math.Max(120, hDip);
+        Top    = topDip + TopInset;
+        Height = Math.Max(120, hDip - TopInset - BottomInset);
         Left   = rightDip - Width;
-        Top    = topDip;
     }
 
     // ── Despliegue / colapso ──
@@ -138,13 +144,18 @@ public partial class DockBarWindow : Window
         }
         else
         {
-            // Colapsar si el cursor salió del cuerpo de la barra y no hay panel abierto.
+            // Mantener abierta mientras el cursor esté entre el panel (a la izquierda
+            // de la barra) y el borde derecho del navegador. La zona llega hasta
+            // 'rightEdge + 8' —NO solo hasta el cuerpo de la barra— para cubrir el hueco
+            // de separación (BarMarginRight): si terminara en el borde de la barra, al
+            // desplegarse el cursor quedaba en ese hueco y se generaba un parpadeo
+            // abrir/cerrar.
             var bar = BarRect();
-            bool insideBar =
-                cx >= bar.Left - 12 && cx <= bar.Right + 8 &&
-                cy >= Top && cy <= Top + Height;
+            bool insideKeepZone =
+                cx >= bar.Left - 12 && cx <= rightEdge + 8 &&
+                cy >= Top - 8 && cy <= Top + Height + 8;
 
-            if (!insideBar && !_manager.IsAnyPanelOpen) Collapse();
+            if (!insideKeepZone && !_manager.IsAnyPanelOpen) Collapse();
         }
     }
 
@@ -230,11 +241,15 @@ public partial class DockBarWindow : Window
 
                 if (_expandedGroupId == group.Id)
                 {
+                    int ci = 0;
                     foreach (var child in apps.Where(a => a.GroupId == group.Id))
-                        AppsList.Children.Add(MakeAppButton(child, 36)); // hijas más chicas
+                        AppsList.Children.Add(MakeAppButton(child, 36,
+                            _animateChildrenOnce ? ci++ : (int?)null)); // hijas más chicas
                 }
             }
         }
+
+        _animateChildrenOnce = false; // la animación es de un solo uso
     }
 
     private FrameworkElement MakeFolderButton(AppGroup group)
@@ -249,7 +264,9 @@ public partial class DockBarWindow : Window
         border.ToolTip = group.Name;
         border.MouseLeftButtonUp += (_, _) =>
         {
-            _expandedGroupId = _expandedGroupId == group.Id ? null : group.Id;
+            bool opening = _expandedGroupId != group.Id;
+            _expandedGroupId = opening ? group.Id : null;
+            _animateChildrenOnce = opening; // animar solo al abrir
             RebuildApps();
         };
 
@@ -260,7 +277,7 @@ public partial class DockBarWindow : Window
         return Wrap(border);
     }
 
-    private FrameworkElement MakeAppButton(AppEntry app, double size)
+    private FrameworkElement MakeAppButton(AppEntry app, double size, int? animateIndex = null)
     {
         BitmapImage? img = IconCache.Get(IconCache.KeyFor(app));
 
@@ -306,7 +323,26 @@ public partial class DockBarWindow : Window
             AddBadge(border, n > 99 ? "99+" : n.ToString(),
                 new SolidColorBrush(Color.FromRgb(0xE5, 0x48, 0x4D)), Brushes.White);
 
+        if (animateIndex is { } idx) AnimateScaleIn(border, idx);
+
         return Wrap(border);
+    }
+
+    /// <summary>Scale-in escalonado (estilo Material) para la entrada de un ícono.</summary>
+    private static void AnimateScaleIn(FrameworkElement el, int index)
+    {
+        el.RenderTransformOrigin = new Point(0.5, 0.5);
+        var st = new ScaleTransform(0, 0);
+        el.RenderTransform = st;
+
+        var ease = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.5 };
+        var anim = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220))
+        {
+            BeginTime      = TimeSpan.FromMilliseconds(index * 35),
+            EasingFunction = ease
+        };
+        st.BeginAnimation(ScaleTransform.ScaleXProperty, anim);
+        st.BeginAnimation(ScaleTransform.ScaleYProperty, anim);
     }
 
     // ── Helpers visuales ──
