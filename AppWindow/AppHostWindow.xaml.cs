@@ -525,8 +525,61 @@ public partial class AppHostWindow : Window
             // NO ocultar: ocultar el panel cancela ese diálogo.
             if (ForegroundIsAppOrWebViewDialog()) return;
 
+            // Red de seguridad universal: si la ventana nueva en foreground se
+            // solapa físicamente con este panel, es parte de la misma interacción
+            // visual (flyouts nativos del navegador como "Descargas", prompts de
+            // permisos, sugerencias de autocompletado, menús contextuales) sin
+            // importar de qué proceso venga. A diferencia del chequeo anterior
+            // (que depende de reconocer el proceso/clase exactos), esto cubre
+            // cualquier popup que aparezca visualmente sobre o pegado al panel.
+            if (ForegroundOverlapsThisPanel()) return;
+
             HidePanel();
         });
+    }
+
+    /// <summary>
+    /// True si la ventana en foreground es chica (del tamaño de un flyout/popup,
+    /// no de una ventana de aplicación real) Y se solapa con este panel —con un
+    /// margen de tolerancia, porque varios flyouts nativos se dibujan pegados al
+    /// borde sin solapar ni un píxel.
+    ///
+    /// El requisito de tamaño es deliberado: sin él, cualquier ventana grande que
+    /// simplemente ocupe la misma zona de pantalla (otra app maximizada, por
+    /// ejemplo) calificaría como "solapada" y el panel nunca se ocultaría aunque
+    /// el click sí haya sido realmente afuera — rompiendo el propósito del
+    /// auto-hide. Los popups reales (downloads, autocompletado, permisos, menús
+    /// contextuales) son chicos casi sin excepción.
+    /// </summary>
+    private bool ForegroundOverlapsThisPanel()
+    {
+        try
+        {
+            var fg = Win32.GetForegroundWindow();
+            if (fg == IntPtr.Zero) return false;
+
+            if (PresentationSource.FromVisual(this) is not HwndSource src) return false;
+            var selfHwnd = src.Handle;
+            if (fg == selfHwnd) return true;
+
+            if (!Win32.GetWindowRect(fg, out var fgRect)) return false;
+
+            const int maxFlyoutWidth  = 600;
+            const int maxFlyoutHeight = 700;
+            if (fgRect.Width > maxFlyoutWidth || fgRect.Height > maxFlyoutHeight) return false;
+
+            if (!Win32.GetWindowRect(selfHwnd, out var selfRect)) return false;
+
+            const int margin = 32; // px de tolerancia para flyouts pegados al borde
+            bool intersects =
+                fgRect.Left   < selfRect.Right  + margin &&
+                fgRect.Right  > selfRect.Left   - margin &&
+                fgRect.Top    < selfRect.Bottom + margin &&
+                fgRect.Bottom > selfRect.Top    - margin;
+
+            return intersects;
+        }
+        catch { return false; }
     }
 
     /// <summary>
