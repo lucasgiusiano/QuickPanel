@@ -40,6 +40,7 @@ public partial class DockBarWindow : Window
     private const double BarMarginRight = 14;   // separación de la barra respecto al borde del navegador
     private const double TopInset = 46;         // deja libre la franja de botones de la ventana (cerrar/min/max)
     private const double BottomInset = 14;
+    private const double EdgeGap = 22;          // separación del borde derecho para no tapar la barra de scroll del navegador
 
     public DockBarWindow(OverlayManager manager)
     {
@@ -108,7 +109,9 @@ public partial class DockBarWindow : Window
         Width = 220;
         Top = topDip + TopInset;
         Height = Math.Max(120, hDip - TopInset - BottomInset);
-        Left = rightDip - Width;
+        // Restamos EdgeGap para que la pestaña/barra queden a la izquierda de la barra
+        // de scroll del navegador (que vive en el borde derecho) y no la tapen.
+        Left = rightDip - Width - EdgeGap;
     }
 
     // ── Despliegue / colapso ──
@@ -137,8 +140,10 @@ public partial class DockBarWindow : Window
 
         if (!_expanded)
         {
-            // Zona caliente: franja angosta pegada al borde derecho (la pestaña).
-            bool nearTab = withinV && cx >= rightEdge - 40 && cx <= rightEdge + 4;
+            // Zona caliente: franja angosta sobre la pestaña, sin llegar al scrollbar.
+            // rightEdge es ahora EdgeGap px a la izquierda del borde del navegador, así
+            // que el scrollbar queda a la DERECHA de rightEdge y fuera de esta zona.
+            bool nearTab = withinV && cx >= rightEdge - 26 && cx <= rightEdge + 2;
             if (nearTab) Expand();
         }
         else
