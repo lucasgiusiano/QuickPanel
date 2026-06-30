@@ -13,6 +13,7 @@ namespace QuickPanel.Settings;
 public partial class SettingsWindow : Window
 {
     private readonly OverlayManager? _manager;
+    private bool _loadingLang;
 
     private static readonly string[] SeedPalette =
     {
@@ -230,6 +231,7 @@ public partial class SettingsWindow : Window
         ChkLite.IsChecked = s.LiteMode;
         (s.MenuMode == MenuMode.Dock ? ModeDock : ModeMaterial).IsChecked = true;
         PopulateStartAppCombo();
+        PopulateLanguageCombo();
         BuildActionHotkeys();
 
         (s.ThemeMode switch
@@ -240,11 +242,66 @@ public partial class SettingsWindow : Window
         }).IsChecked = true;
     }
 
+    /// <summary>Llena el combo de idioma: "Sistema" (automático) + nombres nativos.
+    /// Los nombres nativos no se traducen (se ven igual en cualquier idioma).</summary>
+    private void PopulateLanguageCombo()
+    {
+        _loadingLang = true;
+        LanguageCombo.Items.Clear();
+
+        void Add(string label, Lang? tag) =>
+            LanguageCombo.Items.Add(new ComboBoxItem { Content = label, Tag = tag });
+
+        Add(Loc.T("Common_System"), null);          // automático
+        Add("English",  Lang.English);
+        Add("Español",  Lang.Spanish);
+        Add("Deutsch",  Lang.German);
+        Add("Français", Lang.French);
+        Add("Italiano", Lang.Italian);
+        Add("Português", Lang.Portuguese);
+        Add("日本語",    Lang.Japanese);
+        Add("简体中文",  Lang.ChineseSimplified);
+        Add("繁體中文",  Lang.ChineseTraditional);
+
+        var cur = SettingsService.Current.Language;
+        for (int i = 0; i < LanguageCombo.Items.Count; i++)
+        {
+            var tag = ((ComboBoxItem)LanguageCombo.Items[i]).Tag;
+            Lang? val = tag is Lang lv ? lv : (Lang?)null;
+            if (val == cur) { LanguageCombo.SelectedIndex = i; break; }
+        }
+        if (LanguageCombo.SelectedIndex < 0) LanguageCombo.SelectedIndex = 0;
+
+        _loadingLang = false;
+    }
+
+    private void Language_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingLang) return;
+        if (LanguageCombo.SelectedItem is not ComboBoxItem item) return;
+
+        Lang? sel = item.Tag is Lang l ? l : (Lang?)null;
+        if (SettingsService.Current.Language == sel) return;
+
+        SettingsService.Current.Language = sel;
+        SettingsService.Save();
+        Loc.Init(sel);            // aplica de inmediato al resto de la app
+        App.RebuildOverlays();    // menús/tooltips de los overlays toman el nuevo idioma
+
+        // La extensión {loc:Loc} resuelve al cargar el XAML, no en vivo: reabrimos esta
+        // ventana para que su propia interfaz se muestre ya en el idioma elegido.
+        var mgr = _manager;
+        if (mgr != null)
+            Dispatcher.BeginInvoke(new Action(() => mgr.OpenSettings()),
+                System.Windows.Threading.DispatcherPriority.Background);
+        Close();
+    }
+
     private void Move_Click(object sender, RoutedEventArgs e)
     {
         if (_manager == null)
         {
-            MessageBox.Show("Abrí la configuración desde el botón flotante para mover su posición.",
+            MessageBox.Show(Loc.T("Settings_MoveFromButton"),
                 "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -316,12 +373,12 @@ public partial class SettingsWindow : Window
 
     private static readonly (HotkeyAction action, string label)[] ActionList =
     {
-        (HotkeyAction.ToggleMenu,      "Abrir/cerrar menú"),
-        (HotkeyAction.HideActivePanel, "Ocultar panel activo"),
-        (HotkeyAction.NextApp,         "App siguiente"),
-        (HotkeyAction.PrevApp,         "App anterior"),
-        (HotkeyAction.ToggleAutoHide,  "Activar/desactivar auto-ocultar"),
-        (HotkeyAction.MoveButton,      "Mover el botón flotante"),
+        (HotkeyAction.ToggleMenu,      Loc.T("Hotkey_OpenCloseMenu")),
+        (HotkeyAction.HideActivePanel, Loc.T("Hotkey_HideActivePanel")),
+        (HotkeyAction.NextApp,         Loc.T("Hotkey_NextApp")),
+        (HotkeyAction.PrevApp,         Loc.T("Hotkey_PrevApp")),
+        (HotkeyAction.ToggleAutoHide,  Loc.T("Hotkey_ToggleAutoHide")),
+        (HotkeyAction.MoveButton,      Loc.T("Hotkey_MoveButton")),
     };
 
     private void BuildActionHotkeys()
@@ -363,7 +420,7 @@ public partial class SettingsWindow : Window
         var hk = dlg.Result;
         if (hk.IsSet && ActionHotkeyTaken(hk, action))
         {
-            MessageBox.Show("Esa combinación ya está asignada a otra app o acción.",
+            MessageBox.Show(Loc.T("Common_DuplicateHotkey"),
                 "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -439,12 +496,12 @@ public partial class SettingsWindow : Window
             try
             {
                 SettingsService.Export(dlg.FileName);
-                MessageBox.Show("Configuración exportada.", "QuickPanel",
+                MessageBox.Show(Loc.T("Settings_ExportOk"), "QuickPanel",
                     MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch
             {
-                MessageBox.Show("No se pudo exportar la configuración.", "QuickPanel",
+                MessageBox.Show(Loc.T("Settings_ExportFail"), "QuickPanel",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -462,13 +519,13 @@ public partial class SettingsWindow : Window
             {
                 ThemeService.Apply(SettingsService.Current.SeedColor, SettingsService.Current.ThemeMode);
                 App.ReanchorAllPanels();
-                MessageBox.Show("Configuración importada.", "QuickPanel",
+                MessageBox.Show(Loc.T("Settings_ImportOk"), "QuickPanel",
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 Close();
             }
             else
             {
-                MessageBox.Show("El archivo no es una configuración válida.", "QuickPanel",
+                MessageBox.Show(Loc.T("Settings_ImportFail"), "QuickPanel",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }

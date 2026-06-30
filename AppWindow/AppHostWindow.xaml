@@ -1,6 +1,7 @@
 <Window x:Class="QuickPanel.AppWindow.AppHostWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:QuickPanel.Services"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="QuickPanel App"
         Width="440" Height="760"
@@ -58,7 +59,7 @@
 
                         <Image Grid.Column="0" x:Name="TitleIcon" Width="18" Height="18"
                                VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <TextBlock Grid.Column="1" x:Name="TitleText" Text="App"
+                        <TextBlock Grid.Column="1" x:Name="TitleText" Text="{loc:Loc AppHost_DefaultTitle}"
                                    VerticalAlignment="Center" FontSize="13" FontWeight="Medium"
                                    Foreground="{DynamicResource Md3OnSurface}"
                                    TextTrimming="CharacterEllipsis"/>
@@ -67,15 +68,15 @@
                             <ToggleButton x:Name="TglKeepAlive" Style="{StaticResource KeepAliveToggle}"
                                           Visibility="Collapsed" VerticalAlignment="Center"
                                           Click="TglKeepAlive_Click"
-                                          ToolTip="Este panel no se suspenderá ni se cerrará automáticamente con el Modo Lite. Útil para música o llamadas en curso."/>
+                                          ToolTip="{loc:Loc AppHost_KeepAliveTip}"/>
                             <Button x:Name="BtnHistory" Content="🕘" Click="BtnHistory_Click"
-                                    Style="{StaticResource TitleBtn}" ToolTip="Historial"/>
+                                    Style="{StaticResource TitleBtn}" ToolTip="{loc:Loc AppHost_History}"/>
                             <Button x:Name="BtnReload" Content="⟳" Click="BtnReload_Click"
-                                    Style="{StaticResource TitleBtn}" ToolTip="Recargar"/>
+                                    Style="{StaticResource TitleBtn}" ToolTip="{loc:Loc AppHost_Reload}"/>
                             <Button x:Name="BtnMinimize" Content="−" Click="BtnMinimize_Click"
-                                    Style="{StaticResource TitleBtn}" ToolTip="Minimizar (mantener en segundo plano)"/>
+                                    Style="{StaticResource TitleBtn}" ToolTip="{loc:Loc AppHost_Minimize}"/>
                             <Button x:Name="BtnClose" Content="✕" Click="BtnClose_Click"
-                                    Style="{StaticResource TitleBtnClose}" ToolTip="Cerrar (liberar memoria)"/>
+                                    Style="{StaticResource TitleBtnClose}" ToolTip="{loc:Loc AppHost_Close}"/>
                         </StackPanel>
                     </Grid>
                 </Border>

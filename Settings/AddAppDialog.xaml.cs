@@ -5,6 +5,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using QuickPanel.Models;
 
+using QuickPanel.Services;
+
 namespace QuickPanel.Settings;
 
 public partial class AddAppDialog : Window
@@ -91,7 +93,7 @@ public partial class AddAppDialog : Window
 
         if (string.IsNullOrEmpty(url))
         {
-            MessageBox.Show("Ingresá una URL.", "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(Loc.T("AddApp_NeedUrl"), "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         if (!url.StartsWith("http://") && !url.StartsWith("https://")) url = "https://" + url;

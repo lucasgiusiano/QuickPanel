@@ -24,9 +24,8 @@ public static class WebView2Check
         catch
         {
             var r = MessageBox.Show(
-                "QuickPanel necesita el runtime de Microsoft Edge WebView2, que no está instalado.\n\n" +
-                "¿Querés abrir la página de descarga ahora?",
-                "QuickPanel — Falta WebView2",
+                Loc.T("WebView2_Missing"),
+                "QuickPanel",
                 MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
             if (r == MessageBoxResult.Yes)

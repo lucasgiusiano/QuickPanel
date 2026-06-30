@@ -22,10 +22,15 @@ public partial class App : Application
         _mutex = new System.Threading.Mutex(true, "QuickPanel_SingleInstance", out bool isNew);
         if (!isNew) { Shutdown(); return; }
 
+        // Idioma: autodetección temprana para que el aviso de WebView2 salga en el
+        // idioma del sistema. Tras cargar settings se re-aplica la preferencia guardada.
+        Loc.Init(null);
+
         // Sin WebView2 la app no puede mostrar paneles: abortar con aviso.
         if (!Services.WebView2Check.EnsureAvailable()) { Shutdown(); return; }
 
         SettingsService.Load();
+        Loc.Init(SettingsService.Current.Language);
         ThemeService.Apply(SettingsService.Current.SeedColor, SettingsService.Current.ThemeMode);
         // Sincroniza solo si difiere: no re-escribe la clave/tarea en cada arranque
         // (evita pisar cambios externos / duplicar la entrada del instalador).
@@ -42,9 +47,7 @@ public partial class App : Application
         if (!_monitor.HasCompatibleBrowser)
         {
             System.Windows.MessageBox.Show(
-                "Tu navegador predeterminado no es compatible. QuickPanel funciona con navegadores " +
-                "basados en Chromium (Edge, Chrome, Brave, Opera, Vivaldi).\n\n" +
-                "Cambiá tu navegador predeterminado en Windows y reiniciá QuickPanel.",
+                Loc.T("App_ChangeBrowser"),
                 "QuickPanel", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
     }
@@ -82,13 +85,13 @@ public partial class App : Application
         };
 
         var menu = new WinForms.ContextMenuStrip();
-        menu.Items.Add("Configuración", null, (_, _) =>
+        menu.Items.Add(Loc.T("Tray_Settings"), null, (_, _) =>
         {
             var win = new Settings.SettingsWindow(null);
             win.Show();
         });
         menu.Items.Add(new WinForms.ToolStripSeparator());
-        menu.Items.Add("Salir", null, (_, _) => ExitApp());
+        menu.Items.Add(Loc.T("Tray_Exit"), null, (_, _) => ExitApp());
         _tray.ContextMenuStrip = menu;
     }
 

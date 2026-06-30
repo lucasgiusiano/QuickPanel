@@ -2,6 +2,8 @@ using System.Windows;
 using System.Windows.Input;
 using QuickPanel.Models;
 
+using QuickPanel.Services;
+
 namespace QuickPanel.Settings;
 
 /// <summary>Diálogo modal que captura una combinación de teclas.</summary>
@@ -12,7 +14,7 @@ public partial class HotkeyCaptureDialog : Window
     public HotkeyCaptureDialog(string appName)
     {
         InitializeComponent();
-        Prompt.Text = $"Presioná la combinación para «{appName}»";
+        Prompt.Text = string.Format(Loc.T("Hotkey_Prompt"), appName);
         Focusable = true;
         Loaded += (_, _) => Focus();
     }
@@ -32,7 +34,7 @@ public partial class HotkeyCaptureDialog : Window
         var mods = Keyboard.Modifiers;
         if (mods == ModifierKeys.None)
         {
-            Prompt.Text = "Usá al menos un modificador (Ctrl, Alt, Shift o Win).";
+            Prompt.Text = Loc.T("Hotkey_NeedModifier");
             return;
         }
 

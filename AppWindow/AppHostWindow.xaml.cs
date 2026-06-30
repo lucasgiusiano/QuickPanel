@@ -231,7 +231,7 @@ public partial class AppHostWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"No se pudo iniciar WebView2:\n{ex.Message}",
+            MessageBox.Show(string.Format(Loc.T("AppHost_WebView2Failed"), ex.Message),
                 "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Error);
             ForceClose();
         }
@@ -478,7 +478,7 @@ public partial class AppHostWindow : Window
         if (_app.History.Count == 0)
         {
             menu.Items.Add(new System.Windows.Controls.MenuItem
-            { Header = "Sin historial todavía", IsEnabled = false });
+            { Header = Loc.T("AppHost_NoHistory"), IsEnabled = false });
         }
         else
         {

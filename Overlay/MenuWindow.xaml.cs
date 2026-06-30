@@ -436,7 +436,7 @@ public partial class MenuWindow : Window
 
         grid.MouseRightButtonUp += (_, _) =>
         {
-            if (MessageBox.Show($"¿Quitar {app.Name}?", "QuickPanel",
+            if (MessageBox.Show(string.Format(Loc.T("Common_RemoveApp"), app.Name), "QuickPanel",
                     MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 _manager.RemoveApp(app);
         };

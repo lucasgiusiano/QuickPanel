@@ -29,6 +29,9 @@ public class QuickPanelSettings
     /// <summary>Estilo del menú: botón flotante Material (default) o barra Dock lateral.</summary>
     public MenuMode MenuMode { get; set; } = MenuMode.Material;
 
+    /// <summary>Idioma de la interfaz. null = automático (seguir el idioma de Windows).</summary>
+    public Lang? Language { get; set; } = null;
+
     /// <summary>Posición del botón relativa al rect de la ventana de Edge (0..1).</summary>
     public double ButtonRelX { get; set; } = 0.97;
     public double ButtonRelY { get; set; } = 0.92;

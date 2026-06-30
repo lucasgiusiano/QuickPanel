@@ -331,7 +331,7 @@ public partial class DockBarWindow : Window
         border.MouseLeftButtonUp += (_, _) => _manager.OpenApp(app, 0.5);
         border.MouseRightButtonUp += (_, _) =>
         {
-            if (MessageBox.Show($"¿Quitar {app.Name}?", "QuickPanel",
+            if (MessageBox.Show(string.Format(Loc.T("Common_RemoveApp"), app.Name), "QuickPanel",
                     MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 _manager.RemoveApp(app);
         };

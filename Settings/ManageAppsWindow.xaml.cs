@@ -43,7 +43,7 @@ public partial class ManageAppsWindow : Window
         {
             Rows.Children.Add(new TextBlock
             {
-                Text       = string.IsNullOrEmpty(q) ? "No agregaste apps todavía." : "Sin resultados.",
+                Text       = string.IsNullOrEmpty(q) ? Loc.T("Manage_NoApps") : Loc.T("Manage_NoResults"),
                 FontSize   = 13,
                 Margin     = new Thickness(0, 8, 0, 0),
                 Foreground = (Brush)FindResource("Md3OnSurfaceVariant")
@@ -131,9 +131,9 @@ public partial class ManageAppsWindow : Window
 
         actions.Children.Add(IconButton("⌨", HotkeyTip(app), () => AssignHotkey(app)));
         actions.Children.Add(IconButton("📁", GroupTip(app), b => PickGroup(app, b)));
-        actions.Children.Add(IconButton("🖼", "Ícono personalizado", () => PickIcon(app)));
-        actions.Children.Add(IconButton("🎨", "Color de la app", b => PickColor(app, b)));
-        actions.Children.Add(IconButton("✕", "Quitar", () => Remove(app)));
+        actions.Children.Add(IconButton("🖼", Loc.T("Manage_CustomIcon"), () => PickIcon(app)));
+        actions.Children.Add(IconButton("🎨", Loc.T("Manage_AppColor"), b => PickColor(app, b)));
+        actions.Children.Add(IconButton("✕", Loc.T("Common_Remove"), () => Remove(app)));
 
         Grid.SetColumn(actions, 3);
         grid.Children.Add(actions);
@@ -224,7 +224,7 @@ public partial class ManageAppsWindow : Window
     // ── Acciones ──
 
     private static string HotkeyTip(AppEntry app)
-        => app.Hotkey.IsSet ? $"Atajo: {app.Hotkey}" : "Asignar atajo de teclado";
+        => app.Hotkey.IsSet ? string.Format(Loc.T("Manage_HotkeyTipSet"), app.Hotkey) : Loc.T("Manage_HotkeyTipUnset");
 
     private void AssignHotkey(AppEntry app)
     {
@@ -244,7 +244,7 @@ public partial class ManageAppsWindow : Window
         // Evitar duplicados: si otra app o acción ya usa esta combinación, avisar.
         if (hk.IsSet && IsHotkeyTaken(hk, app))
         {
-            MessageBox.Show("Esa combinación ya está asignada a otra app o acción.",
+            MessageBox.Show(Loc.T("Common_DuplicateHotkey"),
                 "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -268,7 +268,7 @@ public partial class ManageAppsWindow : Window
     private static string GroupTip(AppEntry app)
     {
         var g = SettingsService.Current.Groups.FirstOrDefault(x => x.Id == app.GroupId);
-        return g != null ? $"Carpeta: {g.Name}" : "Asignar a una carpeta";
+        return g != null ? string.Format(Loc.T("Manage_FolderColon"), g.Name) : Loc.T("Manage_AssignFolder");
     }
 
     private void PickGroup(AppEntry app, UIElement anchor)
@@ -305,7 +305,7 @@ public partial class ManageAppsWindow : Window
             return b;
         }
 
-        panel.Children.Add(Row("Sin carpeta", () => { app.GroupId = ""; SettingsService.Save(); BuildRows(); },
+        panel.Children.Add(Row(Loc.T("Manage_NoFolder"), () => { app.GroupId = ""; SettingsService.Save(); BuildRows(); },
             string.IsNullOrEmpty(app.GroupId)));
 
         foreach (var g in SettingsService.Current.Groups)
@@ -318,7 +318,7 @@ public partial class ManageAppsWindow : Window
         var sep = new Border { Height = 1, Margin = new Thickness(4, 4, 4, 4),
             Background = (Brush)FindResource("Md3Outline") };
         panel.Children.Add(sep);
-        panel.Children.Add(Row("＋ Nueva carpeta…", () => CreateGroupAndAssign(app)));
+        panel.Children.Add(Row("＋ " + Loc.T("Manage_NewFolder"), () => CreateGroupAndAssign(app)));
 
         popup.Child = box;
         popup.IsOpen = true;
@@ -326,7 +326,7 @@ public partial class ManageAppsWindow : Window
 
     private void CreateGroupAndAssign(AppEntry app)
     {
-        var name = PromptText("Nombre de la carpeta", "Carpeta");
+        var name = PromptText(Loc.T("Manage_FolderNamePrompt"), Loc.T("Manage_FolderDefault"));
         if (string.IsNullOrWhiteSpace(name)) return;
 
         var group = new AppGroup { Name = name.Trim() };
@@ -347,7 +347,7 @@ public partial class ManageAppsWindow : Window
             ResizeMode = ResizeMode.NoResize
         };
         var tb = new TextBox { Text = initial, Style = (Style)FindResource("Md3TextBox"), Margin = new Thickness(0,0,0,12) };
-        var ok = new Button { Content = "Aceptar", Style = (Style)FindResource("Md3FilledButton"), HorizontalAlignment = HorizontalAlignment.Right };
+        var ok = new Button { Content = Loc.T("Common_OK"), Style = (Style)FindResource("Md3FilledButton"), HorizontalAlignment = HorizontalAlignment.Right };
         string? result = null;
         ok.Click += (_, _) => { result = tb.Text; win.DialogResult = true; };
 
@@ -392,7 +392,7 @@ public partial class ManageAppsWindow : Window
             Child = panel
         };
 
-        panel.Children.Add(new TextBlock { Text = "Carpetas", FontWeight = FontWeights.SemiBold,
+        panel.Children.Add(new TextBlock { Text = Loc.T("Manage_FoldersTitle"), FontWeight = FontWeights.SemiBold,
             Foreground = (Brush)FindResource("Md3OnSurface"), Margin = new Thickness(2,2,2,8) });
 
         foreach (var g in groups.ToList())
@@ -408,7 +408,7 @@ public partial class ManageAppsWindow : Window
             Grid.SetColumn(ren, 1);
             ren.Click += (_, _) =>
             {
-                var nm = PromptText("Renombrar carpeta", g.Name);
+                var nm = PromptText(Loc.T("Manage_RenameFolder"), g.Name);
                 if (!string.IsNullOrWhiteSpace(nm)) { g.Name = nm.Trim(); SettingsService.Save(); }
                 popup.IsOpen = false; BuildRows();
             };
@@ -427,7 +427,7 @@ public partial class ManageAppsWindow : Window
             panel.Children.Add(row);
         }
 
-        var newBtn = new Button { Content = "＋ Nueva carpeta", Style = (Style)FindResource("Md3TextButton"),
+        var newBtn = new Button { Content = "＋ " + Loc.T("Manage_NewFolder"), Style = (Style)FindResource("Md3TextButton"),
             HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0,6,0,0) };
         newBtn.Click += (_, _) => { popup.IsOpen = false; CreateGroupOnly(); };
         panel.Children.Add(newBtn);
@@ -438,7 +438,7 @@ public partial class ManageAppsWindow : Window
 
     private void CreateGroupOnly()
     {
-        var name = PromptText("Nombre de la carpeta", "Carpeta");
+        var name = PromptText(Loc.T("Manage_FolderNamePrompt"), Loc.T("Manage_FolderDefault"));
         if (string.IsNullOrWhiteSpace(name)) return;
         SettingsService.Current.Groups.Add(new AppGroup { Name = name.Trim() });
         SettingsService.Save();
@@ -449,7 +449,7 @@ public partial class ManageAppsWindow : Window
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
-            Filter = "Imágenes (*.png;*.jpg;*.jpeg;*.ico)|*.png;*.jpg;*.jpeg;*.ico"
+            Filter = Loc.T("Manage_ImageFilter")
         };
         if (dlg.ShowDialog() == true)
         {
@@ -518,7 +518,7 @@ public partial class ManageAppsWindow : Window
 
     private void Remove(AppEntry app)
     {
-        if (MessageBox.Show($"¿Quitar {app.Name}?", "QuickPanel",
+        if (MessageBox.Show(string.Format(Loc.T("Common_RemoveApp"), app.Name), "QuickPanel",
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
             return;
 
