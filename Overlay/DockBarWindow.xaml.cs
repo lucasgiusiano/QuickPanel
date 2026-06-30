@@ -40,7 +40,10 @@ public partial class DockBarWindow : Window
     private const double BarMarginRight = 14;   // separación de la barra respecto al borde del navegador
     private const double TopInset = 46;         // deja libre la franja de botones de la ventana (cerrar/min/max)
     private const double BottomInset = 14;
-    private const double EdgeGap = 22;          // separación del borde derecho para no tapar la barra de scroll del navegador
+    private const double HotZoneInner = 16;     // cuánto entra (hacia la izquierda del borde) la franja que
+                                                // dispara el despliegue. Pegada al borde, pero lo bastante ancha
+                                                // para seguir siendo alcanzable bajo el ~8px de desborde que
+                                                // Windows agrega a las ventanas maximizadas.
 
     public DockBarWindow(OverlayManager manager)
     {
@@ -109,9 +112,10 @@ public partial class DockBarWindow : Window
         Width = 220;
         Top = topDip + TopInset;
         Height = Math.Max(120, hDip - TopInset - BottomInset);
-        // Restamos EdgeGap para que la pestaña/barra queden a la izquierda de la barra
-        // de scroll del navegador (que vive en el borde derecho) y no la tapen.
-        Left = rightDip - Width - EdgeGap;
+        // El borde derecho de la ventana coincide con el del navegador: la pestaña "‹"
+        // (alineada a la derecha) queda pegada al borde. En ventanas maximizadas el
+        // ~8px de desborde la recorta contra el borde de pantalla, lo que la deja a ras.
+        Left = rightDip - Width;
     }
 
     // ── Despliegue / colapso ──
@@ -140,11 +144,12 @@ public partial class DockBarWindow : Window
 
         if (!_expanded)
         {
-            // Zona caliente: franja angosta sobre la pestaña, sin llegar al scrollbar.
-            // rightEdge es ahora EdgeGap px a la izquierda del borde del navegador, así
-            // que el scrollbar queda a la DERECHA de rightEdge y fuera de esta zona.
-            bool nearTab = withinV && cx >= rightEdge - 26 && cx <= rightEdge + 2;
-            if (nearTab) Expand();
+            // Franja caliente angosta pegada al borde derecho del navegador. Solo abarca
+            // los últimos HotZoneInner px (más un pequeño margen externo), así que el
+            // cursor solo dispara el despliegue al ir DECIDIDAMENTE al borde, y no al
+            // tocar controles del contenido que están unos px hacia adentro.
+            bool nearEdge = withinV && cx >= rightEdge - HotZoneInner && cx <= rightEdge + 4;
+            if (nearEdge) Expand();
         }
         else
         {

@@ -21,10 +21,18 @@
                     Y="0"/>
         </Grid.RenderTransform>
 
-        <!-- Pestaña colapsada "<" (anclada a la derecha, centrada vertical) -->
+        <!-- Pestaña colapsada "<" (anclada a la derecha, centrada vertical).
+             Margin derecho: Windows reserva ~7-8px invisibles alrededor de la ventana
+             para la sombra/efectos de DWM, que SÍ cuentan en GetWindowRect pero NO se ven.
+             Sin este margen, el borde derecho de la pestaña (que se calcula pegado a ese
+             borde "lógico") queda mitad dentro / mitad en esa franja invisible, y se ve
+             como si sobresaliera de la ventana del navegador. Esto es puramente visual:
+             no mueve Left/Width de la ventana, así que la zona de hover y el anclaje de
+             paneles (BarRect) quedan exactamente igual que antes. -->
         <Border x:Name="Tab"
                 Width="18"
                 Height="64"
+                Margin="0,0,7,0"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"
                 CornerRadius="8,0,0,8"
