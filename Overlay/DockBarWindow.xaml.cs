@@ -253,18 +253,36 @@ public partial class DockBarWindow : Window
                 continue;
             }
 
-            // Carpeta: en la posición de su primera app (en este orden), insertar el header.
+            // Carpeta: en la posición de su primera app, insertar el header. Si está
+            // expandida, envolver carpeta + hijas en un "pill" con el color de la carpeta.
             if (seenGroups.Add(app.GroupId))
             {
                 var group = s.Groups.First(g => g.Id == app.GroupId);
-                AppsList.Children.Add(MakeFolderButton(group));
 
                 if (_expandedGroupId == group.Id)
                 {
+                    var pill = new Border
+                    {
+                        CornerRadius        = new CornerRadius(26),
+                        Background          = GroupTint(group, 46),   // color de la carpeta, tenue
+                        Margin              = new Thickness(0, 3, 0, 3),
+                        Padding             = new Thickness(0, 4, 0, 4),
+                        HorizontalAlignment = HorizontalAlignment.Center
+                    };
+                    var inner = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+                    inner.Children.Add(MakeFolderButton(group));
+
                     int ci = 0;
                     foreach (var child in apps.Where(a => a.GroupId == group.Id))
-                        AppsList.Children.Add(MakeAppButton(child, 36,
+                        inner.Children.Add(MakeAppButton(child, 36,
                             _animateChildrenOnce ? ci++ : (int?)null)); // hijas más chicas
+
+                    pill.Child = inner;
+                    AppsList.Children.Add(pill);
+                }
+                else
+                {
+                    AppsList.Children.Add(MakeFolderButton(group));
                 }
             }
         }
@@ -272,9 +290,21 @@ public partial class DockBarWindow : Window
         _animateChildrenOnce = false; // la animación es de un solo uso
     }
 
+    private static Color GroupColorOf(AppGroup g)
+    {
+        var hex = string.IsNullOrEmpty(g.Color) ? "#64748B" : g.Color;
+        try { return (Color)ColorConverter.ConvertFromString(hex); }
+        catch { return (Color)ColorConverter.ConvertFromString("#64748B"); }
+    }
+    private static Brush GroupSolid(AppGroup g) => new SolidColorBrush(GroupColorOf(g));
+    private static Brush GroupTint(AppGroup g, byte alpha)
+    {
+        var c = GroupColorOf(g); c.A = alpha; return new SolidColorBrush(c);
+    }
+
     private FrameworkElement MakeFolderButton(AppGroup group)
     {
-        var border = Circle(44, (Brush)FindResource("Md3SurfaceContainerHigh"));
+        var border = Circle(44, GroupSolid(group));   // el ícono lleva el color de la carpeta
         border.Child = new TextBlock
         {
             Text = "📁",

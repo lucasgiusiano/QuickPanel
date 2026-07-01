@@ -112,6 +112,7 @@ internal static class Translations
         ["Manage_HotkeyTipSet"] = "Shortcut: {0}",
         ["Manage_HotkeyTipUnset"] = "Assign keyboard shortcut",
         ["Manage_NoResults"] = "No results.",
+        ["Manage_DropHint"] = "Drag apps here",
     };
 
     private static readonly Dictionary<string, string> Es = new()
@@ -205,6 +206,7 @@ internal static class Translations
         ["Manage_HotkeyTipSet"] = "Atajo: {0}",
         ["Manage_HotkeyTipUnset"] = "Asignar atajo de teclado",
         ["Manage_NoResults"] = "Sin resultados.",
+        ["Manage_DropHint"] = "Arrastrá apps acá",
     };
 
     private static readonly Dictionary<string, string> De = new()
@@ -298,6 +300,7 @@ internal static class Translations
         ["Manage_HotkeyTipSet"] = "Tastenkürzel: {0}",
         ["Manage_HotkeyTipUnset"] = "Tastenkürzel zuweisen",
         ["Manage_NoResults"] = "Keine Ergebnisse.",
+        ["Manage_DropHint"] = "Apps hierher ziehen",
     };
 
     private static readonly Dictionary<string, string> Fr = new()
@@ -391,6 +394,7 @@ internal static class Translations
         ["Manage_HotkeyTipSet"] = "Raccourci : {0}",
         ["Manage_HotkeyTipUnset"] = "Affecter un raccourci clavier",
         ["Manage_NoResults"] = "Aucun résultat.",
+        ["Manage_DropHint"] = "Glissez des apps ici",
     };
 
     private static readonly Dictionary<string, string> It = new()
@@ -484,6 +488,7 @@ internal static class Translations
         ["Manage_HotkeyTipSet"] = "Scorciatoia: {0}",
         ["Manage_HotkeyTipUnset"] = "Assegna scorciatoia da tastiera",
         ["Manage_NoResults"] = "Nessun risultato.",
+        ["Manage_DropHint"] = "Trascina le app qui",
     };
 
     private static readonly Dictionary<string, string> Pt = new()
@@ -577,6 +582,7 @@ internal static class Translations
         ["Manage_HotkeyTipSet"] = "Atalho: {0}",
         ["Manage_HotkeyTipUnset"] = "Atribuir atalho de teclado",
         ["Manage_NoResults"] = "Sem resultados.",
+        ["Manage_DropHint"] = "Arraste apps aqui",
     };
 
     private static readonly Dictionary<string, string> Ja = new()
@@ -670,6 +676,7 @@ internal static class Translations
         ["Manage_HotkeyTipSet"] = "ショートカット: {0}",
         ["Manage_HotkeyTipUnset"] = "キーボードショートカットを割り当て",
         ["Manage_NoResults"] = "結果がありません。",
+        ["Manage_DropHint"] = "アプリをここにドラッグ",
     };
 
     private static readonly Dictionary<string, string> ZhHans = new()
@@ -763,6 +770,7 @@ internal static class Translations
         ["Manage_HotkeyTipSet"] = "快捷键：{0}",
         ["Manage_HotkeyTipUnset"] = "分配键盘快捷键",
         ["Manage_NoResults"] = "无结果。",
+        ["Manage_DropHint"] = "将应用拖到这里",
     };
 
     private static readonly Dictionary<string, string> ZhHant = new()
@@ -856,5 +864,6 @@ internal static class Translations
         ["Manage_HotkeyTipSet"] = "快速鍵：{0}",
         ["Manage_HotkeyTipUnset"] = "指派鍵盤快速鍵",
         ["Manage_NoResults"] = "無結果。",
+        ["Manage_DropHint"] = "將應用程式拖到這裡",
     };
 }

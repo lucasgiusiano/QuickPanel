@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -31,41 +32,89 @@ public partial class ManageAppsWindow : Window
     private void BuildRows()
     {
         Rows.Children.Clear();
-        var all = SettingsService.Current.Apps;
+        var s = SettingsService.Current;
+        var all = s.Apps;
 
         string q = SearchBox?.Text?.Trim() ?? "";
-        var apps = string.IsNullOrEmpty(q)
-            ? all
-            : all.Where(a => a.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
-                          || a.Url.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
 
-        if (apps.Count == 0)
+        // Con búsqueda activa: lista plana filtrada (sin carpetas), para encontrar rápido.
+        if (!string.IsNullOrEmpty(q))
         {
-            Rows.Children.Add(new TextBlock
-            {
-                Text       = string.IsNullOrEmpty(q) ? Loc.T("Manage_NoApps") : Loc.T("Manage_NoResults"),
-                FontSize   = 13,
-                Margin     = new Thickness(0, 8, 0, 0),
-                Foreground = (Brush)FindResource("Md3OnSurfaceVariant")
-            });
+            var filtered = all.Where(a => a.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
+                                       || a.Url.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (filtered.Count == 0) { Rows.Children.Add(EmptyText(Loc.T("Manage_NoResults"))); return; }
+            foreach (var a in filtered) Rows.Children.Add(BuildAppRow(a, insideFolder: false));
             return;
         }
 
-        for (int i = 0; i < apps.Count; i++)
-            Rows.Children.Add(BuildRow(apps[i], i, apps.Count));
+        if (all.Count == 0 && s.Groups.Count == 0)
+        {
+            Rows.Children.Add(EmptyText(Loc.T("Manage_NoApps")));
+            return;
+        }
+
+        // Sin búsqueda: cada carpeta aparece como tarjeta en la posición de su PRIMERA app
+        // (mismo criterio que el dock), intercalada con las apps sueltas.
+        bool ValidGroup(string gid) => !string.IsNullOrEmpty(gid) && s.Groups.Any(g => g.Id == gid);
+        var rendered = new HashSet<string>();
+
+        foreach (var app in all)
+        {
+            if (ValidGroup(app.GroupId))
+            {
+                if (rendered.Add(app.GroupId))
+                {
+                    var g = s.Groups.First(x => x.Id == app.GroupId);
+                    Rows.Children.Add(BuildFolderCard(g, all.Where(a => a.GroupId == g.Id).ToList()));
+                }
+                // apps siguientes de la misma carpeta ya quedaron dentro de la tarjeta
+            }
+            else
+            {
+                Rows.Children.Add(BuildAppRow(app, insideFolder: false));
+            }
+        }
+
+        // Carpetas vacías al final: visibles y listas para recibir apps arrastradas.
+        foreach (var g in s.Groups.Where(g => !all.Any(a => a.GroupId == g.Id)))
+            Rows.Children.Add(BuildFolderCard(g, new List<AppEntry>()));
     }
+
+    private TextBlock EmptyText(string text) => new TextBlock
+    {
+        Text       = text,
+        FontSize   = 13,
+        Margin     = new Thickness(0, 8, 0, 0),
+        Foreground = (Brush)FindResource("Md3OnSurfaceVariant")
+    };
 
     private void Search_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e) => BuildRows();
 
-    private Border BuildRow(AppEntry app, int index, int total)
+    // ── Color de carpeta ──
+    private const string DefaultGroupColor = "#64748B"; // gris azulado neutro (fallback)
+
+    private Color GroupColorOf(AppGroup g)
+    {
+        var hex = string.IsNullOrEmpty(g.Color) ? DefaultGroupColor : g.Color;
+        try { return (Color)ColorConverter.ConvertFromString(hex); }
+        catch { return (Color)ColorConverter.ConvertFromString(DefaultGroupColor); }
+    }
+    private Brush GroupSolid(AppGroup g) => new SolidColorBrush(GroupColorOf(g));
+    private Brush GroupTint(AppGroup g, byte alpha)
+    {
+        var c = GroupColorOf(g); c.A = alpha; return new SolidColorBrush(c);
+    }
+
+    /// <summary>Fila de una app. insideFolder=true la indenta bajo la tarjeta de su carpeta.</summary>
+    private Border BuildAppRow(AppEntry app, bool insideFolder)
     {
         var card = new Border
         {
             CornerRadius = new CornerRadius(12),
-            Margin       = new Thickness(0, 0, 0, 8),
+            Margin       = new Thickness(insideFolder ? 28 : 0, 0, 0, insideFolder ? 6 : 8),
             Padding      = new Thickness(10),
             Background   = (Brush)FindResource("Md3SurfaceContainer"),
-            Tag          = app,                 // usado por el drag&drop para identificar la fila
+            Tag          = app,                 // el drag&drop identifica la fila por su Tag
             AllowDrop    = true
         };
 
@@ -75,29 +124,22 @@ public partial class ManageAppsWindow : Window
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // nombre
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // acciones
 
-        // ── Handle de arrastre ──
         var handle = new TextBlock
         {
-            Text              = "⠿",
-            FontSize          = 16,
-            Margin            = new Thickness(0, 0, 8, 0),
+            Text = "⠿", FontSize = 16, Margin = new Thickness(0, 0, 8, 0),
             VerticalAlignment = VerticalAlignment.Center,
-            Foreground        = (Brush)FindResource("Md3OnSurfaceVariant"),
-            Cursor            = Cursors.SizeAll
+            Foreground = (Brush)FindResource("Md3OnSurfaceVariant"),
+            Cursor = Cursors.SizeAll
         };
         Grid.SetColumn(handle, 0);
         grid.Children.Add(handle);
         WireDragHandle(handle, card);
 
-        // ── Ícono ──
         var icon = new Border
         {
-            Width        = 32,
-            Height       = 32,
-            CornerRadius = new CornerRadius(16),
-            Margin       = new Thickness(0, 0, 10, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-            Background   = AccentBrush(app) ?? (Brush)FindResource("Md3SurfaceContainerHigh")
+            Width = 32, Height = 32, CornerRadius = new CornerRadius(16),
+            Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center,
+            Background = AccentBrush(app) ?? (Brush)FindResource("Md3SurfaceContainerHigh")
         };
         var img = LoadIcon(app);
         if (img != null)
@@ -106,35 +148,26 @@ public partial class ManageAppsWindow : Window
         Grid.SetColumn(icon, 1);
         grid.Children.Add(icon);
 
-        // ── Nombre editable ──
         var name = new TextBox
         {
-            Text              = app.Name,
-            Style             = (Style)FindResource("Md3TextBox"),
+            Text = app.Name, Style = (Style)FindResource("Md3TextBox"),
             VerticalAlignment = VerticalAlignment.Center
         };
         name.LostFocus += (_, _) =>
         {
             var t = name.Text.Trim();
-            if (!string.IsNullOrEmpty(t) && t != app.Name)
-            {
-                app.Name = t;
-                SettingsService.Save();
-            }
+            if (!string.IsNullOrEmpty(t) && t != app.Name) { app.Name = t; SettingsService.Save(); }
         };
         Grid.SetColumn(name, 2);
         grid.Children.Add(name);
 
-        // ── Acciones ──
         var actions = new StackPanel { Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
-
         actions.Children.Add(IconButton("⌨", HotkeyTip(app), () => AssignHotkey(app)));
-        actions.Children.Add(IconButton("📁", GroupTip(app), b => PickGroup(app, b)));
+        actions.Children.Add(IconButton("📁", GroupTip(app), b => PickGroup(app, b)));   // se mantiene el botón de asignar
         actions.Children.Add(IconButton("🖼", Loc.T("Manage_CustomIcon"), () => PickIcon(app)));
         actions.Children.Add(IconButton("🎨", Loc.T("Manage_AppColor"), b => PickColor(app, b)));
         actions.Children.Add(IconButton("✕", Loc.T("Common_Remove"), () => Remove(app)));
-
         Grid.SetColumn(actions, 3);
         grid.Children.Add(actions);
 
@@ -142,6 +175,147 @@ public partial class ManageAppsWindow : Window
         WireDropTarget(card);
         return card;
     }
+
+    /// <summary>Tarjeta de carpeta: header coloreado con acciones + apps miembro anidadas.
+    /// Es destino de arrastre: soltar una app encima la asigna a esta carpeta.</summary>
+    private Border BuildFolderCard(AppGroup group, List<AppEntry> members)
+    {
+        var card = new Border
+        {
+            CornerRadius   = new CornerRadius(14),
+            Margin         = new Thickness(0, 0, 0, 8),
+            Padding        = new Thickness(8),
+            Background     = GroupTint(group, 40),      // tinte suave del color de la carpeta
+            BorderBrush    = GroupTint(group, 130),
+            BorderThickness = new Thickness(1),
+            Tag            = group,                       // drop aquí = asignar a esta carpeta
+            AllowDrop      = true
+        };
+
+        var stack = new StackPanel();
+
+        var head = new Grid { Margin = new Thickness(2, 2, 2, 6) };
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var handle = new TextBlock
+        {
+            Text = "⠿", FontSize = 16, Margin = new Thickness(0, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = (Brush)FindResource("Md3OnSurfaceVariant"),
+            Cursor = Cursors.SizeAll
+        };
+        Grid.SetColumn(handle, 0);
+        head.Children.Add(handle);
+        WireDragHandle(handle, card);        // arrastra la carpeta entera (bloque de miembros)
+
+        var dot = new Border
+        {
+            Width = 28, Height = 28, CornerRadius = new CornerRadius(14),
+            Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center,
+            Background = GroupSolid(group),
+            Child = new TextBlock { Text = "📁", FontSize = 15,
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
+        };
+        Grid.SetColumn(dot, 1);
+        head.Children.Add(dot);
+
+        var title = new TextBlock
+        {
+            Text = members.Count > 0 ? $"{group.Name}  ({members.Count})" : group.Name,
+            FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center,
+            Foreground = (Brush)FindResource("Md3OnSurface")
+        };
+        Grid.SetColumn(title, 2);
+        head.Children.Add(title);
+
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        actions.Children.Add(IconButton("✎", Loc.T("Manage_RenameFolder"), () => RenameGroup(group)));
+        actions.Children.Add(IconButton("🎨", Loc.T("Manage_AppColor"), b => PickGroupColor(group, b)));
+        actions.Children.Add(IconButton("✕", Loc.T("Common_Remove"), () => DeleteGroup(group)));
+        Grid.SetColumn(actions, 3);
+        head.Children.Add(actions);
+
+        stack.Children.Add(head);
+
+        if (members.Count == 0)
+            stack.Children.Add(new TextBlock
+            {
+                Text = Loc.T("Manage_DropHint"), FontSize = 12,
+                Margin = new Thickness(38, 2, 0, 4),
+                Foreground = (Brush)FindResource("Md3OnSurfaceVariant")
+            });
+        else
+            foreach (var m in members) stack.Children.Add(BuildAppRow(m, insideFolder: true));
+
+        card.Child = stack;
+        WireDropTarget(card);
+        return card;
+    }
+
+    private void RenameGroup(AppGroup g)
+    {
+        var nm = PromptText(Loc.T("Manage_RenameFolder"), g.Name);
+        if (!string.IsNullOrWhiteSpace(nm)) { g.Name = nm.Trim(); SettingsService.Save(); }
+        BuildRows();
+    }
+
+    private void DeleteGroup(AppGroup g)
+    {
+        foreach (var a in SettingsService.Current.Apps.Where(a => a.GroupId == g.Id)) a.GroupId = "";
+        SettingsService.Current.Groups.Remove(g);
+        SettingsService.Save();
+        BuildRows();
+    }
+
+    private void PickGroupColor(AppGroup g, UIElement anchor)
+    {
+        var popup = new Popup
+        {
+            PlacementTarget = anchor, Placement = PlacementMode.Bottom,
+            StaysOpen = false, AllowsTransparency = true
+        };
+        var wrap = new WrapPanel { Width = 168 };
+        var box = new Border
+        {
+            CornerRadius = new CornerRadius(12), Padding = new Thickness(8),
+            Background = (Brush)FindResource("Md3SurfaceContainerHigh"),
+            BorderBrush = (Brush)FindResource("Md3Outline"), BorderThickness = new Thickness(1),
+            Child = wrap
+        };
+        void AddSwatch(string? hex)
+        {
+            var dot = new Border
+            {
+                Width = 26, Height = 26, Margin = new Thickness(3), CornerRadius = new CornerRadius(13),
+                Cursor = Cursors.Hand,
+                Background = hex == null
+                    ? (Brush)FindResource("Md3SurfaceContainer")
+                    : new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)),
+                BorderBrush = (Brush)FindResource("Md3Outline"),
+                BorderThickness = new Thickness(hex == null ? 1 : 0)
+            };
+            if (hex == null)
+                dot.Child = new TextBlock { Text = "∅", FontSize = 12,
+                    HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = (Brush)FindResource("Md3OnSurfaceVariant") };
+            dot.MouseLeftButtonUp += (_, _) =>
+            {
+                g.Color = hex ?? "";
+                SettingsService.Save();
+                popup.IsOpen = false;
+                BuildRows();
+            };
+            wrap.Children.Add(dot);
+        }
+        AddSwatch(null);
+        foreach (var hex in AccentPalette) AddSwatch(hex);
+        popup.Child = box;
+        popup.IsOpen = true;
+    }
+
 
     // ── Drag & drop de filas ──
 
@@ -159,35 +333,98 @@ public partial class ManageAppsWindow : Window
         };
     }
 
-    private void WireDropTarget(Border row)
+    private void WireDropTarget(Border target)
     {
-        row.DragOver += (_, e) =>
+        target.DragOver += (_, e) =>
         {
             e.Effects = e.Data.GetDataPresent(typeof(Border)) ? DragDropEffects.Move : DragDropEffects.None;
-            row.Opacity = 0.7;
+            target.Opacity = 0.75;
             e.Handled = true;
         };
 
-        row.DragLeave += (_, _) => row.Opacity = 1.0;
+        target.DragLeave += (_, _) => target.Opacity = 1.0;
 
-        row.Drop += (_, e) =>
+        target.Drop += (_, e) =>
         {
-            row.Opacity = 1.0;
-            if (_dragSource == null || _dragSource == row) return;
-            if (_dragSource.Tag is not AppEntry from || row.Tag is not AppEntry to) return;
+            target.Opacity = 1.0;
+            e.Handled = true;
+            if (_dragSource == null || _dragSource == target) return;
 
+            object? src = _dragSource.Tag;
+            object? dst = target.Tag;
             var apps = SettingsService.Current.Apps;
-            int iFrom = apps.IndexOf(from);
-            int iTo   = apps.IndexOf(to);
-            if (iFrom < 0 || iTo < 0) return;
 
-            apps.RemoveAt(iFrom);
-            apps.Insert(iTo, from);
+            if (src is AppEntry dragApp)
+            {
+                if (dst is AppGroup dstGroup)
+                {
+                    // Soltar una app sobre una tarjeta de carpeta → asignarla a esa carpeta.
+                    AssignAppToGroup(dragApp, dstGroup);
+                }
+                else if (dst is AppEntry dstApp)
+                {
+                    // Soltar una app sobre otra → misma carpeta que la destino (o suelta) y esa posición.
+                    apps.Remove(dragApp);
+                    int ti = apps.IndexOf(dstApp);
+                    if (ti < 0) ti = apps.Count;
+                    dragApp.GroupId = dstApp.GroupId;
+                    apps.Insert(ti, dragApp);
+                }
+                else return;
+            }
+            else if (src is AppGroup dragGroup)
+            {
+                // Mover la carpeta entera (bloque de sus miembros) a la posición del destino.
+                int ti;
+                if (dst is AppEntry da) ti = apps.IndexOf(da);
+                else if (dst is AppGroup dg) ti = FirstMemberIndex(dg);
+                else return;
+                MoveGroupBlock(dragGroup, ti);
+            }
+            else return;
+
             ReassignPositionalHotkeys();
             SettingsService.Save();
             App.ReloadHotkeys();
             BuildRows();
         };
+    }
+
+    /// <summary>Asigna una app a una carpeta y la reubica junto al resto de sus miembros.</summary>
+    private void AssignAppToGroup(AppEntry app, AppGroup g)
+    {
+        var apps = SettingsService.Current.Apps;
+        apps.Remove(app);
+        app.GroupId = g.Id;
+        int last = -1;
+        for (int i = 0; i < apps.Count; i++) if (apps[i].GroupId == g.Id) last = i;
+        if (last >= 0) apps.Insert(last + 1, app); else apps.Add(app);
+    }
+
+    private int FirstMemberIndex(AppGroup g)
+    {
+        var apps = SettingsService.Current.Apps;
+        for (int i = 0; i < apps.Count; i++) if (apps[i].GroupId == g.Id) return i;
+        return apps.Count;
+    }
+
+    /// <summary>Reubica el bloque completo de miembros de una carpeta ante el índice destino.</summary>
+    private void MoveGroupBlock(AppGroup g, int targetIndex)
+    {
+        var apps = SettingsService.Current.Apps;
+        var members = apps.Where(a => a.GroupId == g.Id).ToList();
+        if (members.Count == 0) return;
+
+        // Ancla: la app en la posición destino (si no es del propio grupo), para recalcular
+        // el índice tras remover los miembros.
+        AppEntry? anchor = (targetIndex >= 0 && targetIndex < apps.Count) ? apps[targetIndex] : null;
+        if (anchor != null && anchor.GroupId == g.Id) anchor = null;
+
+        foreach (var m in members) apps.Remove(m);
+
+        int ins = anchor != null ? apps.IndexOf(anchor) : apps.Count;
+        if (ins < 0) ins = apps.Count;
+        apps.InsertRange(ins, members);
     }
 
     /// <summary>
@@ -263,7 +500,7 @@ public partial class ManageAppsWindow : Window
         return SettingsService.Current.ActionHotkeys.Values.Any(h => h != null && h.IsSet && h.ToString() == s);
     }
 
-    private void Groups_Click(object sender, RoutedEventArgs e) => ManageGroups();
+    private void Groups_Click(object sender, RoutedEventArgs e) => CreateGroupOnly();
 
     private static string GroupTip(AppEntry app)
     {
