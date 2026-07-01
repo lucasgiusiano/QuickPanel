@@ -232,6 +232,7 @@ public partial class SettingsWindow : Window
         (s.MenuMode == MenuMode.Dock ? ModeDock : ModeMaterial).IsChecked = true;
         PopulateStartAppCombo();
         PopulateLanguageCombo();
+        UpdateFloatingMenuAvailability();
         BuildActionHotkeys();
 
         (s.ThemeMode switch
@@ -240,6 +241,54 @@ public partial class SettingsWindow : Window
             ThemeMode.System => ThemeSystem,
             _                => ThemeDark
         }).IsChecked = true;
+
+        NavGeneral.IsChecked = true;
+        ShowSection(SecGeneral);
+    }
+
+    // ── Navegación por secciones ──
+
+    private void Nav_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton rb) return;
+        var target = rb.Name switch
+        {
+            nameof(NavGeneral)       => SecGeneral,
+            nameof(NavApps)          => SecApps,
+            nameof(NavFloatingMenu)  => SecFloatingMenu,
+            nameof(NavTheme)         => SecTheme,
+            nameof(NavNotifications) => SecNotifications,
+            nameof(NavPerformance)   => SecPerformance,
+            nameof(NavHotkeys)       => SecHotkeys,
+            nameof(NavBackup)        => SecBackup,
+            _                        => SecGeneral
+        };
+        ShowSection(target);
+    }
+
+    private void ShowSection(StackPanel target)
+    {
+        foreach (var sec in new[] { SecGeneral, SecApps, SecFloatingMenu, SecTheme,
+                                     SecNotifications, SecPerformance, SecHotkeys, SecBackup })
+            sec.Visibility = sec == target ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>
+    /// La sección "Menú flotante" (mover botón, tamaño del menú de puntos) solo tiene
+    /// sentido en modo Material: en modo Dock no hay botón que mover ni menú de puntos
+    /// que dimensionar. La ocultamos del panel lateral y, si era la sección activa,
+    /// volvemos a General para no dejar la ventana en un estado vacío.
+    /// </summary>
+    private void UpdateFloatingMenuAvailability()
+    {
+        bool isDock = SettingsService.Current.MenuMode == MenuMode.Dock;
+        NavFloatingMenu.Visibility = isDock ? Visibility.Collapsed : Visibility.Visible;
+
+        if (isDock && SecFloatingMenu.Visibility == Visibility.Visible)
+        {
+            NavGeneral.IsChecked = true;
+            ShowSection(SecGeneral);
+        }
     }
 
     /// <summary>Llena el combo de idioma: "Sistema" (automático) + nombres nativos.
@@ -349,6 +398,10 @@ public partial class SettingsWindow : Window
         SettingsService.Save();
         // Cambia el tipo de ventana de control: hay que recrear los overlays.
         App.RebuildOverlays();
+        // El botón flotante y su menú de puntos no existen en modo Dock: ocultar esa
+        // sección y quitar el atajo "Mover botón" (no aplica) de la lista de Atajos.
+        UpdateFloatingMenuAvailability();
+        BuildActionHotkeys();
     }
 
     private void AutoHide_Click(object sender, RoutedEventArgs e)
@@ -384,8 +437,13 @@ public partial class SettingsWindow : Window
     private void BuildActionHotkeys()
     {
         ActionHotkeysRow.Children.Clear();
+        bool isDock = SettingsService.Current.MenuMode == MenuMode.Dock;
+
         foreach (var (action, label) in ActionList)
         {
+            // "Mover botón" no aplica en modo Dock: no hay botón flotante que mover.
+            if (isDock && action == HotkeyAction.MoveButton) continue;
+
             var key = action.ToString();
             SettingsService.Current.ActionHotkeys.TryGetValue(key, out var hk);
 
@@ -401,7 +459,7 @@ public partial class SettingsWindow : Window
 
             var btn = new Button
             {
-                Content = hk?.IsSet == true ? hk.ToString() : "Asignar",
+                Content = hk?.IsSet == true ? hk.ToString() : Loc.T("Common_Assign"),
                 Style   = (Style)FindResource("Md3TextButton")
             };
             Grid.SetColumn(btn, 1);
@@ -446,7 +504,7 @@ public partial class SettingsWindow : Window
     {
         _populatingCombo = true;
         StartAppCombo.Items.Clear();
-        StartAppCombo.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Ninguna", Tag = "" });
+        StartAppCombo.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = Loc.T("Common_None"), Tag = "" });
         foreach (var app in SettingsService.Current.Apps)
             StartAppCombo.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = app.Name, Tag = app.Id });
 

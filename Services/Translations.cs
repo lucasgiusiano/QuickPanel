@@ -113,6 +113,16 @@ internal static class Translations
         ["Manage_HotkeyTipUnset"] = "Assign keyboard shortcut",
         ["Manage_NoResults"] = "No results.",
         ["Manage_DropHint"] = "Drag apps here",
+        ["Settings_NavGeneral"] = "General",
+        ["Settings_NavApps"] = "Apps",
+        ["Settings_NavFloatingMenu"] = "Floating menu",
+        ["Settings_NavTheme"] = "Theme",
+        ["Settings_NavNotifications"] = "Notifications",
+        ["Settings_NavPerformance"] = "Performance",
+        ["Settings_NavHotkeys"] = "Shortcuts",
+        ["Settings_NavBackup"] = "Backup",
+        ["Common_Assign"] = "Assign",
+        ["Common_None"] = "None",
     };
 
     private static readonly Dictionary<string, string> Es = new()
@@ -207,6 +217,16 @@ internal static class Translations
         ["Manage_HotkeyTipUnset"] = "Asignar atajo de teclado",
         ["Manage_NoResults"] = "Sin resultados.",
         ["Manage_DropHint"] = "Arrastrá apps acá",
+        ["Settings_NavGeneral"] = "General",
+        ["Settings_NavApps"] = "Apps",
+        ["Settings_NavFloatingMenu"] = "Menú flotante",
+        ["Settings_NavTheme"] = "Tema",
+        ["Settings_NavNotifications"] = "Notificaciones",
+        ["Settings_NavPerformance"] = "Rendimiento",
+        ["Settings_NavHotkeys"] = "Atajos",
+        ["Settings_NavBackup"] = "Copia de seguridad",
+        ["Common_Assign"] = "Asignar",
+        ["Common_None"] = "Ninguna",
     };
 
     private static readonly Dictionary<string, string> De = new()
@@ -301,6 +321,16 @@ internal static class Translations
         ["Manage_HotkeyTipUnset"] = "Tastenkürzel zuweisen",
         ["Manage_NoResults"] = "Keine Ergebnisse.",
         ["Manage_DropHint"] = "Apps hierher ziehen",
+        ["Settings_NavGeneral"] = "Allgemein",
+        ["Settings_NavApps"] = "Apps",
+        ["Settings_NavFloatingMenu"] = "Schwebendes Menü",
+        ["Settings_NavTheme"] = "Design",
+        ["Settings_NavNotifications"] = "Benachrichtigungen",
+        ["Settings_NavPerformance"] = "Leistung",
+        ["Settings_NavHotkeys"] = "Tastenkürzel",
+        ["Settings_NavBackup"] = "Sicherung",
+        ["Common_Assign"] = "Zuweisen",
+        ["Common_None"] = "Keine",
     };
 
     private static readonly Dictionary<string, string> Fr = new()
@@ -395,6 +425,16 @@ internal static class Translations
         ["Manage_HotkeyTipUnset"] = "Affecter un raccourci clavier",
         ["Manage_NoResults"] = "Aucun résultat.",
         ["Manage_DropHint"] = "Glissez des apps ici",
+        ["Settings_NavGeneral"] = "Général",
+        ["Settings_NavApps"] = "Applications",
+        ["Settings_NavFloatingMenu"] = "Menu flottant",
+        ["Settings_NavTheme"] = "Thème",
+        ["Settings_NavNotifications"] = "Notifications",
+        ["Settings_NavPerformance"] = "Performances",
+        ["Settings_NavHotkeys"] = "Raccourcis",
+        ["Settings_NavBackup"] = "Sauvegarde",
+        ["Common_Assign"] = "Affecter",
+        ["Common_None"] = "Aucune",
     };
 
     private static readonly Dictionary<string, string> It = new()
@@ -489,6 +529,16 @@ internal static class Translations
         ["Manage_HotkeyTipUnset"] = "Assegna scorciatoia da tastiera",
         ["Manage_NoResults"] = "Nessun risultato.",
         ["Manage_DropHint"] = "Trascina le app qui",
+        ["Settings_NavGeneral"] = "Generale",
+        ["Settings_NavApps"] = "App",
+        ["Settings_NavFloatingMenu"] = "Menu flottante",
+        ["Settings_NavTheme"] = "Tema",
+        ["Settings_NavNotifications"] = "Notifiche",
+        ["Settings_NavPerformance"] = "Prestazioni",
+        ["Settings_NavHotkeys"] = "Scorciatoie",
+        ["Settings_NavBackup"] = "Backup",
+        ["Common_Assign"] = "Assegna",
+        ["Common_None"] = "Nessuna",
     };
 
     private static readonly Dictionary<string, string> Pt = new()
@@ -583,6 +633,16 @@ internal static class Translations
         ["Manage_HotkeyTipUnset"] = "Atribuir atalho de teclado",
         ["Manage_NoResults"] = "Sem resultados.",
         ["Manage_DropHint"] = "Arraste apps aqui",
+        ["Settings_NavGeneral"] = "Geral",
+        ["Settings_NavApps"] = "Apps",
+        ["Settings_NavFloatingMenu"] = "Menu flutuante",
+        ["Settings_NavTheme"] = "Tema",
+        ["Settings_NavNotifications"] = "Notificações",
+        ["Settings_NavPerformance"] = "Desempenho",
+        ["Settings_NavHotkeys"] = "Atalhos",
+        ["Settings_NavBackup"] = "Backup",
+        ["Common_Assign"] = "Atribuir",
+        ["Common_None"] = "Nenhuma",
     };
 
     private static readonly Dictionary<string, string> Ja = new()
@@ -677,6 +737,16 @@ internal static class Translations
         ["Manage_HotkeyTipUnset"] = "キーボードショートカットを割り当て",
         ["Manage_NoResults"] = "結果がありません。",
         ["Manage_DropHint"] = "アプリをここにドラッグ",
+        ["Settings_NavGeneral"] = "一般",
+        ["Settings_NavApps"] = "アプリ",
+        ["Settings_NavFloatingMenu"] = "フローティングメニュー",
+        ["Settings_NavTheme"] = "テーマ",
+        ["Settings_NavNotifications"] = "通知",
+        ["Settings_NavPerformance"] = "パフォーマンス",
+        ["Settings_NavHotkeys"] = "ショートカット",
+        ["Settings_NavBackup"] = "バックアップ",
+        ["Common_Assign"] = "割り当て",
+        ["Common_None"] = "なし",
     };
 
     private static readonly Dictionary<string, string> ZhHans = new()
@@ -771,6 +841,16 @@ internal static class Translations
         ["Manage_HotkeyTipUnset"] = "分配键盘快捷键",
         ["Manage_NoResults"] = "无结果。",
         ["Manage_DropHint"] = "将应用拖到这里",
+        ["Settings_NavGeneral"] = "常规",
+        ["Settings_NavApps"] = "应用",
+        ["Settings_NavFloatingMenu"] = "悬浮菜单",
+        ["Settings_NavTheme"] = "主题",
+        ["Settings_NavNotifications"] = "通知",
+        ["Settings_NavPerformance"] = "性能",
+        ["Settings_NavHotkeys"] = "快捷键",
+        ["Settings_NavBackup"] = "备份",
+        ["Common_Assign"] = "分配",
+        ["Common_None"] = "无",
     };
 
     private static readonly Dictionary<string, string> ZhHant = new()
@@ -865,5 +945,15 @@ internal static class Translations
         ["Manage_HotkeyTipUnset"] = "指派鍵盤快速鍵",
         ["Manage_NoResults"] = "無結果。",
         ["Manage_DropHint"] = "將應用程式拖到這裡",
+        ["Settings_NavGeneral"] = "一般",
+        ["Settings_NavApps"] = "應用程式",
+        ["Settings_NavFloatingMenu"] = "浮動選單",
+        ["Settings_NavTheme"] = "主題",
+        ["Settings_NavNotifications"] = "通知",
+        ["Settings_NavPerformance"] = "效能",
+        ["Settings_NavHotkeys"] = "快速鍵",
+        ["Settings_NavBackup"] = "備份",
+        ["Common_Assign"] = "指派",
+        ["Common_None"] = "無",
     };
 }

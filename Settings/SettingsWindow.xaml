@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:QuickPanel.Services"
         Title="QuickPanel"
-        Width="420" Height="560"
+        Width="640" Height="600"
         WindowStyle="None" AllowsTransparency="True" Background="{x:Null}"
         WindowStartupLocation="CenterScreen" ShowInTaskbar="True"
         ResizeMode="NoResize">
@@ -54,6 +54,43 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Ítem del panel lateral de navegación: ícono + etiqueta, resaltado si está activo. -->
+        <Style x:Key="NavItem" TargetType="RadioButton">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Margin" Value="0,0,0,2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="b" CornerRadius="10" Background="Transparent"
+                                Padding="10,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock x:Name="glyph" Text="{TemplateBinding Tag}" FontSize="15"
+                                           Width="22" TextAlignment="Center"
+                                           Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+                                <ContentPresenter Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="{DynamicResource Md3SurfaceContainerHigh}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="{DynamicResource Md3PrimaryContainer}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Foreground" Value="{DynamicResource Md3OnSurface}"/>
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource Md3OnPrimaryContainer}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <Border CornerRadius="20" Background="{DynamicResource Md3Surface}"
@@ -69,115 +106,161 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <Grid Grid.Row="0" Margin="0,0,0,20" MouseLeftButtonDown="Header_Drag">
+            <!-- Header -->
+            <Grid Grid.Row="0" Margin="0,0,0,16" MouseLeftButtonDown="Header_Drag">
                 <TextBlock Text="{loc:Loc Settings_Title}" FontSize="20" FontWeight="SemiBold"
                            Foreground="{DynamicResource Md3OnSurface}"/>
                 <Button Content="✕" Click="Close_Click" HorizontalAlignment="Right"
                         Style="{StaticResource TitleBtn}"/>
             </Grid>
 
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
-            <StackPanel>
+            <!-- Cuerpo: panel lateral de secciones + contenido -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="164"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-                <!-- Mover botón -->
-                <TextBlock Text="{loc:Loc Settings_ButtonPosition}" Style="{StaticResource SettingLabel}"/>
-                <Button Content="{loc:Loc Settings_MoveButton}" Click="Move_Click"
-                        Style="{StaticResource Md3FilledButton}" HorizontalAlignment="Left" Margin="0,0,0,20"/>
+                <!-- Panel lateral -->
+                <Border Grid.Column="0" BorderBrush="{DynamicResource Md3Outline}"
+                        BorderThickness="0,0,1,0" Padding="0,0,14,0" Margin="0,0,12,0">
+                    <StackPanel>
+                        <RadioButton x:Name="NavGeneral" GroupName="nav" Tag="⚙" Style="{StaticResource NavItem}"
+                                     Content="{loc:Loc Settings_NavGeneral}" Click="Nav_Click"/>
+                        <RadioButton x:Name="NavApps" GroupName="nav" Tag="🧩" Style="{StaticResource NavItem}"
+                                     Content="{loc:Loc Settings_NavApps}" Click="Nav_Click"/>
+                        <RadioButton x:Name="NavFloatingMenu" GroupName="nav" Tag="🖱" Style="{StaticResource NavItem}"
+                                     Content="{loc:Loc Settings_NavFloatingMenu}" Click="Nav_Click"/>
+                        <RadioButton x:Name="NavTheme" GroupName="nav" Tag="🎨" Style="{StaticResource NavItem}"
+                                     Content="{loc:Loc Settings_NavTheme}" Click="Nav_Click"/>
+                        <RadioButton x:Name="NavNotifications" GroupName="nav" Tag="🔔" Style="{StaticResource NavItem}"
+                                     Content="{loc:Loc Settings_NavNotifications}" Click="Nav_Click"/>
+                        <RadioButton x:Name="NavPerformance" GroupName="nav" Tag="⚡" Style="{StaticResource NavItem}"
+                                     Content="{loc:Loc Settings_NavPerformance}" Click="Nav_Click"/>
+                        <RadioButton x:Name="NavHotkeys" GroupName="nav" Tag="⌨" Style="{StaticResource NavItem}"
+                                     Content="{loc:Loc Settings_NavHotkeys}" Click="Nav_Click"/>
+                        <RadioButton x:Name="NavBackup" GroupName="nav" Tag="💾" Style="{StaticResource NavItem}"
+                                     Content="{loc:Loc Settings_NavBackup}" Click="Nav_Click"/>
+                    </StackPanel>
+                </Border>
 
-                <!-- Apps -->
-                <TextBlock Text="{loc:Loc Settings_Apps}" Style="{StaticResource SettingLabel}"/>
-                <Button Content="{loc:Loc Settings_ManageApps}" Click="Manage_Click"
-                        Style="{StaticResource Md3FilledButton}" HorizontalAlignment="Left" Margin="0,0,0,20"/>
+                <!-- Contenido: todas las secciones ocupan la misma celda; solo una es visible -->
+                <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+                <Grid>
 
-                <!-- Color -->
-                <TextBlock Text="{loc:Loc Settings_InterfaceColor}" Style="{StaticResource SettingLabel}"/>
-                <WrapPanel x:Name="Swatches" Margin="0,0,0,20"/>
+                    <!-- ═══ General ═══ -->
+                    <StackPanel x:Name="SecGeneral">
+                        <TextBlock Text="{loc:Loc Settings_MenuStyle}" Style="{StaticResource SettingLabel}"/>
+                        <TextBlock Text="{loc:Loc Settings_MenuStyleDesc}"
+                                   FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                            <RadioButton x:Name="ModeMaterial" Content="{loc:Loc MenuMode_Material}" GroupName="menumode" Margin="0,0,12,0"
+                                         Foreground="{DynamicResource Md3OnSurface}" Click="MenuMode_Click"/>
+                            <RadioButton x:Name="ModeDock" Content="{loc:Loc MenuMode_Dock}" GroupName="menumode"
+                                         Foreground="{DynamicResource Md3OnSurface}" Click="MenuMode_Click"/>
+                        </StackPanel>
 
-                <!-- Tema -->
-                <TextBlock Text="{loc:Loc Settings_Theme}" Style="{StaticResource SettingLabel}"/>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                    <RadioButton x:Name="ThemeDark" Content="{loc:Loc Theme_Dark}" GroupName="theme" Margin="0,0,12,0"
-                                 Foreground="{DynamicResource Md3OnSurface}" Click="Theme_Click" Tag="Dark"/>
-                    <RadioButton x:Name="ThemeLight" Content="{loc:Loc Theme_Light}" GroupName="theme" Margin="0,0,12,0"
-                                 Foreground="{DynamicResource Md3OnSurface}" Click="Theme_Click" Tag="Light"/>
-                    <RadioButton x:Name="ThemeSystem" Content="{loc:Loc Common_System}" GroupName="theme" Margin="0,0,12,0"
-                                 Foreground="{DynamicResource Md3OnSurface}" Click="Theme_Click" Tag="System"/>
-                </StackPanel>
+                        <TextBlock Text="{loc:Loc Common_System}" Style="{StaticResource SettingLabel}"/>
+                        <CheckBox x:Name="ChkStartup" Content="{loc:Loc Settings_StartWithWindows}"
+                                  Foreground="{DynamicResource Md3OnSurface}" Click="Startup_Click"/>
 
-                <!-- Tamaño panel de apps -->
-                <TextBlock Text="{loc:Loc Settings_PanelSize}" Style="{StaticResource SettingLabel}"/>
-                <TextBlock Text="{loc:Loc Settings_PanelSizeDesc}"
-                           FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
-                           Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
-                <StackPanel x:Name="PanelSizeRow" Orientation="Horizontal" Margin="0,0,0,20"/>
+                        <TextBlock Text="{loc:Loc Settings_OpenAtStart}" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>
+                        <ComboBox x:Name="StartAppCombo" SelectionChanged="StartApp_Changed"
+                                  Style="{StaticResource Md3ComboBox}" Margin="0,0,0,20"/>
 
-                <!-- Modo de menú -->
-                <TextBlock Text="{loc:Loc Settings_MenuStyle}" Style="{StaticResource SettingLabel}"/>
-                <TextBlock Text="{loc:Loc Settings_MenuStyleDesc}"
-                           FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
-                           Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                    <RadioButton x:Name="ModeMaterial" Content="{loc:Loc MenuMode_Material}" GroupName="menumode" Margin="0,0,12,0"
-                                 Foreground="{DynamicResource Md3OnSurface}" Click="MenuMode_Click"/>
-                    <RadioButton x:Name="ModeDock" Content="{loc:Loc MenuMode_Dock}" GroupName="menumode"
-                                 Foreground="{DynamicResource Md3OnSurface}" Click="MenuMode_Click"/>
-                </StackPanel>
+                        <TextBlock Text="{loc:Loc Settings_Language}" Style="{StaticResource SettingLabel}"/>
+                        <ComboBox x:Name="LanguageCombo" SelectionChanged="Language_Changed"
+                                  Style="{StaticResource Md3ComboBox}"/>
+                    </StackPanel>
 
-                <!-- Tamaño del menú flotante -->
-                <TextBlock Text="{loc:Loc Settings_MenuSize}" Style="{StaticResource SettingLabel}"/>
-                <TextBlock Text="{loc:Loc Settings_MenuSizeDesc}"
-                           FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
-                           Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
-                <StackPanel x:Name="MenuSizeRow" Orientation="Horizontal" Margin="0,0,0,20"/>
+                    <!-- ═══ Apps ═══ -->
+                    <StackPanel x:Name="SecApps" Visibility="Collapsed">
+                        <TextBlock Text="{loc:Loc Settings_Apps}" Style="{StaticResource SettingLabel}"/>
+                        <Button Content="{loc:Loc Settings_ManageApps}" Click="Manage_Click"
+                                Style="{StaticResource Md3FilledButton}" HorizontalAlignment="Left" Margin="0,0,0,20"/>
 
-                <!-- Startup -->
-                <TextBlock Text="{loc:Loc Common_System}" Style="{StaticResource SettingLabel}"/>
-                <CheckBox x:Name="ChkStartup" Content="{loc:Loc Settings_StartWithWindows}"
-                          Foreground="{DynamicResource Md3OnSurface}" Click="Startup_Click"/>
-                <CheckBox x:Name="ChkAutoHide" Content="{loc:Loc Settings_AutoHide}"
-                          Foreground="{DynamicResource Md3OnSurface}" Click="AutoHide_Click" Margin="0,10,0,0"/>
+                        <TextBlock Text="{loc:Loc Settings_PanelSize}" Style="{StaticResource SettingLabel}"/>
+                        <TextBlock Text="{loc:Loc Settings_PanelSizeDesc}"
+                                   FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+                        <StackPanel x:Name="PanelSizeRow" Orientation="Horizontal"/>
+                    </StackPanel>
 
-                <TextBlock Text="{loc:Loc Settings_OpenAtStart}" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>
-                <ComboBox x:Name="StartAppCombo" SelectionChanged="StartApp_Changed"
-                          Style="{StaticResource Md3ComboBox}"/>
+                    <!-- ═══ Menú flotante (solo Material; oculto en modo Dock) ═══ -->
+                    <StackPanel x:Name="SecFloatingMenu" Visibility="Collapsed">
+                        <TextBlock Text="{loc:Loc Settings_ButtonPosition}" Style="{StaticResource SettingLabel}"/>
+                        <Button Content="{loc:Loc Settings_MoveButton}" Click="Move_Click"
+                                Style="{StaticResource Md3FilledButton}" HorizontalAlignment="Left" Margin="0,0,0,20"/>
 
-                <!-- Notificaciones -->
-                <TextBlock Text="{loc:Loc Settings_Notifications}" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>
-                <CheckBox x:Name="ChkBadges" Content="{loc:Loc Settings_ShowUnread}"
-                          Foreground="{DynamicResource Md3OnSurface}" Click="Badges_Click"/>
+                        <TextBlock Text="{loc:Loc Settings_MenuSize}" Style="{StaticResource SettingLabel}"/>
+                        <TextBlock Text="{loc:Loc Settings_MenuSizeDesc}"
+                                   FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+                        <StackPanel x:Name="MenuSizeRow" Orientation="Horizontal" Margin="0,0,0,20"/>
 
-                <!-- Rendimiento -->
-                <TextBlock Text="{loc:Loc Settings_Performance}" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>
-                <CheckBox x:Name="ChkLite" Content="{loc:Loc Settings_LiteMode}"
-                          Foreground="{DynamicResource Md3OnSurface}" Click="Lite_Click"/>
-                <TextBlock Text="{loc:Loc Settings_LiteModeDesc}"
-                           FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
-                           Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+                        <CheckBox x:Name="ChkAutoHide" Content="{loc:Loc Settings_AutoHide}"
+                                  Foreground="{DynamicResource Md3OnSurface}" Click="AutoHide_Click"/>
+                    </StackPanel>
 
-                <!-- Atajos de acciones -->
-                <TextBlock Text="{loc:Loc Settings_Hotkeys}" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>
-                <TextBlock Text="{loc:Loc Settings_HotkeysDesc}"
-                           FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
-                           Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
-                <StackPanel x:Name="ActionHotkeysRow"/>
+                    <!-- ═══ Tema ═══ -->
+                    <StackPanel x:Name="SecTheme" Visibility="Collapsed">
+                        <TextBlock Text="{loc:Loc Settings_InterfaceColor}" Style="{StaticResource SettingLabel}"/>
+                        <WrapPanel x:Name="Swatches" Margin="0,0,0,20"/>
 
-                <!-- Idioma -->
-                <TextBlock Text="{loc:Loc Settings_Language}" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>
-                <ComboBox x:Name="LanguageCombo" SelectionChanged="Language_Changed"
-                          Style="{StaticResource Md3ComboBox}"/>
+                        <TextBlock Text="{loc:Loc Settings_Theme}" Style="{StaticResource SettingLabel}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="ThemeDark" Content="{loc:Loc Theme_Dark}" GroupName="theme" Margin="0,0,12,0"
+                                         Foreground="{DynamicResource Md3OnSurface}" Click="Theme_Click" Tag="Dark"/>
+                            <RadioButton x:Name="ThemeLight" Content="{loc:Loc Theme_Light}" GroupName="theme" Margin="0,0,12,0"
+                                         Foreground="{DynamicResource Md3OnSurface}" Click="Theme_Click" Tag="Light"/>
+                            <RadioButton x:Name="ThemeSystem" Content="{loc:Loc Common_System}" GroupName="theme" Margin="0,0,12,0"
+                                         Foreground="{DynamicResource Md3OnSurface}" Click="Theme_Click" Tag="System"/>
+                        </StackPanel>
+                    </StackPanel>
 
-                <!-- Backup -->
-                <TextBlock Text="{loc:Loc Settings_ConfigSection}" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>
-                <StackPanel Orientation="Horizontal">
-                    <Button Content="{loc:Loc Common_Export}" Click="Export_Click"
-                            Style="{StaticResource Md3TextButton}" Margin="0,0,8,0"/>
-                    <Button Content="{loc:Loc Common_Import}" Click="Import_Click"
-                            Style="{StaticResource Md3TextButton}"/>
-                </StackPanel>
-            </StackPanel>
-            </ScrollViewer>
+                    <!-- ═══ Notificaciones ═══ -->
+                    <StackPanel x:Name="SecNotifications" Visibility="Collapsed">
+                        <TextBlock Text="{loc:Loc Settings_Notifications}" Style="{StaticResource SettingLabel}"/>
+                        <CheckBox x:Name="ChkBadges" Content="{loc:Loc Settings_ShowUnread}"
+                                  Foreground="{DynamicResource Md3OnSurface}" Click="Badges_Click"/>
+                    </StackPanel>
 
-            <TextBlock Grid.Row="2" x:Name="VersionText" Text="QuickPanel" FontSize="11"
+                    <!-- ═══ Rendimiento ═══ -->
+                    <StackPanel x:Name="SecPerformance" Visibility="Collapsed">
+                        <TextBlock Text="{loc:Loc Settings_Performance}" Style="{StaticResource SettingLabel}"/>
+                        <CheckBox x:Name="ChkLite" Content="{loc:Loc Settings_LiteMode}"
+                                  Foreground="{DynamicResource Md3OnSurface}" Click="Lite_Click"/>
+                        <TextBlock Text="{loc:Loc Settings_LiteModeDesc}"
+                                   FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+                    </StackPanel>
+
+                    <!-- ═══ Atajos ═══ -->
+                    <StackPanel x:Name="SecHotkeys" Visibility="Collapsed">
+                        <TextBlock Text="{loc:Loc Settings_Hotkeys}" Style="{StaticResource SettingLabel}"/>
+                        <TextBlock Text="{loc:Loc Settings_HotkeysDesc}"
+                                   FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+                        <StackPanel x:Name="ActionHotkeysRow"/>
+                    </StackPanel>
+
+                    <!-- ═══ Copia de seguridad ═══ -->
+                    <StackPanel x:Name="SecBackup" Visibility="Collapsed">
+                        <TextBlock Text="{loc:Loc Settings_ConfigSection}" Style="{StaticResource SettingLabel}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="{loc:Loc Common_Export}" Click="Export_Click"
+                                    Style="{StaticResource Md3TextButton}" Margin="0,0,8,0"/>
+                            <Button Content="{loc:Loc Common_Import}" Click="Import_Click"
+                                    Style="{StaticResource Md3TextButton}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                </Grid>
+                </ScrollViewer>
+            </Grid>
+
+            <TextBlock Grid.Row="2" x:Name="VersionText" Text="QuickPanel" FontSize="11" Margin="0,12,0,0"
                        Foreground="{DynamicResource Md3OnSurfaceVariant}" HorizontalAlignment="Center"/>
         </Grid>
     </Border>
