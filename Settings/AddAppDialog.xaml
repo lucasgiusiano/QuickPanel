@@ -5,7 +5,7 @@
         Title="QuickPanel"
         Width="420" Height="540"
         WindowStyle="None" AllowsTransparency="True" Background="{x:Null}"
-        WindowStartupLocation="CenterScreen" ShowInTaskbar="False"
+        WindowStartupLocation="CenterScreen" ShowInTaskbar="False" Topmost="True"
         ResizeMode="NoResize">
 
     <Border CornerRadius="20" Background="{DynamicResource Md3Surface}"

@@ -477,7 +477,7 @@ public partial class SettingsWindow : Window
     }
 
     private void Manage_Click(object sender, RoutedEventArgs e)
-        => new ManageAppsWindow(_manager).ShowDialog();
+        => new ManageAppsWindow(_manager) { Owner = this }.ShowDialog();
 
     private void Header_Drag(object sender, MouseButtonEventArgs e)
     {

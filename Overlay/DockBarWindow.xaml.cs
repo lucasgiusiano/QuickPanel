@@ -236,8 +236,8 @@ public partial class DockBarWindow : Window
         AppsList.Children.Clear();
         var s = SettingsService.Current;
 
-        // Orden invertido respecto al menú Material.
-        var apps = s.Apps.AsEnumerable().Reverse().ToList();
+        // Mismo orden que el menú Material (sin invertir).
+        var apps = s.Apps.ToList();
         bool groupsOn = s.Groups.Count > 0;
 
         var seenGroups = new HashSet<string>();
