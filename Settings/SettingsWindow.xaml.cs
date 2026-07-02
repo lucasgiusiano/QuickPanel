@@ -7,6 +7,7 @@ using System.Windows.Shapes;
 using QuickPanel.Core;
 using QuickPanel.Models;
 using QuickPanel.Services;
+using QuickPanel.Services.CloudSync;
 
 namespace QuickPanel.Settings;
 
@@ -14,6 +15,7 @@ public partial class SettingsWindow : Window
 {
     private readonly OverlayManager? _manager;
     private bool _loadingLang;
+    private bool _suppressAutoClose;
 
     private static readonly string[] SeedPalette =
     {
@@ -29,6 +31,7 @@ public partial class SettingsWindow : Window
         BuildPanelSizeRow();
         BuildMenuSizeRow();
         LoadState();
+        RefreshSyncState();
 
         var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
         VersionText.Text = $"QuickPanel v{v?.Major}.{v?.Minor}.{v?.Build}";
@@ -42,6 +45,9 @@ public partial class SettingsWindow : Window
     /// </summary>
     private void OnDeactivated(object? sender, EventArgs e)
     {
+        // Durante un flujo de sync (OAuth abre el navegador y roba foco), no autocerrar.
+        if (_suppressAutoClose) return;
+
         // Si otra ventana de la propia app quedó activa, es un modal hijo: no cerrar.
         foreach (Window w in Application.Current.Windows)
             if (w != this && w.IsActive)
@@ -587,6 +593,127 @@ public partial class SettingsWindow : Window
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+    }
+
+    // ═══ Cloud Sync (Fase 1: manual) ═══════════════════════════════
+
+    /// <summary>Refresca la UI según haya o no un proveedor vinculado.</summary>
+    private void RefreshSyncState()
+    {
+        var provider = CloudSyncService.Current;
+        bool linked = provider != null && !string.IsNullOrEmpty(SettingsService.Current.CloudAccount);
+
+        SyncLinkedPanel.Visibility   = linked ? Visibility.Visible : Visibility.Collapsed;
+        SyncUnlinkedPanel.Visibility = linked ? Visibility.Collapsed : Visibility.Visible;
+
+        if (linked)
+        {
+            SyncStatusText.Text = string.Format(
+                Loc.T("Sync_LinkedTo"),
+                provider!.DisplayName,
+                SettingsService.Current.CloudAccount);
+        }
+    }
+
+    /// <summary>Ejecuta una operación de sync suprimiendo el autocierre y deshabilitando la UI.</summary>
+    private async Task RunSyncAsync(Func<Task> op)
+    {
+        _suppressAutoClose = true;
+        SetSyncButtonsEnabled(false);
+        try
+        {
+            await op();
+        }
+        catch (Exception ex)
+        {
+            LogSyncError(ex);
+            MessageBox.Show(Loc.T("Sync_Error"), "QuickPanel",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            SetSyncButtonsEnabled(true);
+            _suppressAutoClose = false;
+        }
+    }
+
+    private void SetSyncButtonsEnabled(bool enabled)
+    {
+        BtnLinkGoogle.IsEnabled   = enabled;
+        BtnLinkOneDrive.IsEnabled = enabled;
+        BtnSyncUpload.IsEnabled   = enabled;
+        BtnSyncDownload.IsEnabled = enabled;
+        BtnSyncUnlink.IsEnabled   = enabled;
+    }
+
+    private async void LinkGoogle_Click(object sender, RoutedEventArgs e) =>
+        await LinkAsync(CloudProviderKind.GoogleDrive);
+
+    private async void LinkOneDrive_Click(object sender, RoutedEventArgs e) =>
+        await LinkAsync(CloudProviderKind.OneDrive);
+
+    private async Task LinkAsync(CloudProviderKind kind)
+    {
+        await RunSyncAsync(async () =>
+        {
+            var account = await CloudSyncService.LinkAsync(kind);
+            if (account == null) return; // usuario canceló
+            RefreshSyncState();
+        });
+    }
+
+    private async void SyncUpload_Click(object sender, RoutedEventArgs e)
+    {
+        await RunSyncAsync(async () =>
+        {
+            await CloudSyncService.UploadCurrentAsync();
+            MessageBox.Show(Loc.T("Sync_UploadOk"), "QuickPanel",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        });
+    }
+
+    private async void SyncDownload_Click(object sender, RoutedEventArgs e)
+    {
+        await RunSyncAsync(async () =>
+        {
+            bool found = await CloudSyncService.DownloadAndApplyAsync();
+            if (!found)
+            {
+                MessageBox.Show(Loc.T("Sync_DownloadEmpty"), "QuickPanel",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            ThemeService.Apply(SettingsService.Current.SeedColor, SettingsService.Current.ThemeMode);
+            App.ReanchorAllPanels();
+            MessageBox.Show(Loc.T("Sync_DownloadOk"), "QuickPanel",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            Close();
+        });
+    }
+
+    private async void SyncUnlink_Click(object sender, RoutedEventArgs e)
+    {
+        await RunSyncAsync(async () =>
+        {
+            await CloudSyncService.UnlinkAsync();
+            RefreshSyncState();
+        });
+    }
+
+    private static void LogSyncError(Exception ex)
+    {
+        try
+        {
+            var dir = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "QuickPanel", "CloudSync");
+            System.IO.Directory.CreateDirectory(dir);
+            System.IO.File.AppendAllText(
+                System.IO.Path.Combine(dir, "sync-error.log"),
+                $"[{DateTime.Now:u}] {ex}\n\n");
+        }
+        catch { }
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();

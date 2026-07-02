@@ -32,6 +32,11 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2592.51" />
     <!-- WinForms solo para NotifyIcon y Screen; UseWindowsForms=false para evitar colisiones con WPF -->
     <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
+
+    <!-- Cloud Sync: Google Drive (appDataFolder) + OneDrive (Graph vía MSAL) -->
+    <PackageReference Include="Google.Apis.Drive.v3" Version="1.74.0.4135" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.85.2" />
+    <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.85.2" />
   </ItemGroup>
 
   <ItemGroup>

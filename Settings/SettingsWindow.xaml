@@ -254,6 +254,36 @@
                             <Button Content="{loc:Loc Common_Import}" Click="Import_Click"
                                     Style="{StaticResource Md3TextButton}"/>
                         </StackPanel>
+
+                        <!-- ── Sincronización en la nube (Fase 1: manual) ── -->
+                        <TextBlock Text="{loc:Loc Sync_Section}" Style="{StaticResource SettingLabel}"
+                                   Margin="0,24,0,0"/>
+                        <TextBlock Text="{loc:Loc Sync_Description}" TextWrapping="Wrap" Opacity="0.7"
+                                   FontSize="12" Margin="0,0,0,12"/>
+
+                        <!-- Estado: sin vincular -->
+                        <StackPanel x:Name="SyncUnlinkedPanel">
+                            <TextBlock Text="{loc:Loc Sync_ChooseProvider}" Margin="0,0,0,8" Opacity="0.85"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="BtnLinkGoogle" Content="Google Drive" Click="LinkGoogle_Click"
+                                        Style="{StaticResource Md3TextButton}" Margin="0,0,8,0"/>
+                                <Button x:Name="BtnLinkOneDrive" Content="OneDrive" Click="LinkOneDrive_Click"
+                                        Style="{StaticResource Md3TextButton}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Estado: vinculado -->
+                        <StackPanel x:Name="SyncLinkedPanel" Visibility="Collapsed">
+                            <TextBlock x:Name="SyncStatusText" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="BtnSyncUpload" Content="{loc:Loc Sync_Upload}" Click="SyncUpload_Click"
+                                        Style="{StaticResource Md3TextButton}" Margin="0,0,8,0"/>
+                                <Button x:Name="BtnSyncDownload" Content="{loc:Loc Sync_Download}" Click="SyncDownload_Click"
+                                        Style="{StaticResource Md3TextButton}" Margin="0,0,8,0"/>
+                                <Button x:Name="BtnSyncUnlink" Content="{loc:Loc Sync_Unlink}" Click="SyncUnlink_Click"
+                                        Style="{StaticResource Md3TextButton}"/>
+                            </StackPanel>
+                        </StackPanel>
                     </StackPanel>
 
                 </Grid>

@@ -55,4 +55,24 @@ public static class SettingsService
         }
         catch { return false; }
     }
+
+    /// <summary>Serializa la configuración actual a JSON (mismo formato que el archivo local).</summary>
+    public static string SerializeCurrent() => JsonSerializer.Serialize(Current, JsonOpts);
+
+    /// <summary>
+    /// Aplica una configuración recibida como JSON (ej. bajada de la nube) y la persiste.
+    /// Devuelve true si se aplicó correctamente. Usado por el Cloud Sync.
+    /// </summary>
+    public static bool ApplyFromJson(string json)
+    {
+        try
+        {
+            var loaded = JsonSerializer.Deserialize<QuickPanelSettings>(json);
+            if (loaded == null) return false;
+            Current = loaded;
+            Save();
+            return true;
+        }
+        catch { return false; }
+    }
 }

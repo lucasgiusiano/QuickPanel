@@ -58,4 +58,23 @@ public class QuickPanelSettings
 
     /// <summary>Carpetas para agrupar apps en el menú.</summary>
     public List<AppGroup> Groups { get; set; } = new();
+
+    // ── Cloud Sync (Fase 1) ────────────────────────────────────────
+
+    /// <summary>Proveedor de sync vinculado: "None" (default), "GoogleDrive" u "OneDrive".</summary>
+    public string CloudProvider { get; set; } = "None";
+
+    /// <summary>Email/UPN de la cuenta vinculada, para mostrarlo en la UI. Vacío = sin vincular.</summary>
+    public string CloudAccount { get; set; } = "";
+
+    /// <summary>
+    /// Parsea <see cref="CloudProvider"/> al enum de sync sin acoplar el modelo a
+    /// la capa de servicios. Valores desconocidos = None.
+    /// </summary>
+    public static Services.CloudSync.CloudProviderKind ParseProvider(string? value) => value switch
+    {
+        "GoogleDrive" => Services.CloudSync.CloudProviderKind.GoogleDrive,
+        "OneDrive"    => Services.CloudSync.CloudProviderKind.OneDrive,
+        _             => Services.CloudSync.CloudProviderKind.None
+    };
 }

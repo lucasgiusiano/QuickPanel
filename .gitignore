@@ -25,3 +25,6 @@ BundleArtifacts/
 
 # Misc
 *.log
+
+# Cloud Sync secrets (no versionar; ver CloudSyncSecrets.example.cs)
+Services/CloudSync/CloudSyncSecrets.cs
