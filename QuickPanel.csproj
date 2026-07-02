@@ -45,4 +45,9 @@
     </Content>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Excluir el archivo de ejemplo de credenciales para que no choque con el real -->
+    <Compile Remove="Services\CloudSync\CloudSyncSecrets.example.cs" />
+  </ItemGroup>
+
 </Project>
