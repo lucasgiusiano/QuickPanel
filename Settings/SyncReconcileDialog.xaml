@@ -1,0 +1,42 @@
+<Window x:Class="QuickPanel.Settings.SyncReconcileDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:QuickPanel.Services"
+        Title="QuickPanel"
+        Width="420" SizeToContent="Height"
+        WindowStyle="None" AllowsTransparency="True" Background="{x:Null}"
+        WindowStartupLocation="CenterScreen" ShowInTaskbar="False" Topmost="True"
+        ResizeMode="NoResize">
+
+    <Border CornerRadius="20" Background="{DynamicResource Md3Surface}"
+            BorderBrush="{DynamicResource Md3Outline}" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="28" ShadowDepth="6" Opacity="0.55" Color="#000000"/>
+        </Border.Effect>
+
+        <Grid Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="{loc:Loc Sync_ReconcileTitle}" FontSize="20" FontWeight="SemiBold"
+                       Foreground="{DynamicResource Md3OnSurface}" Margin="0,0,0,8"/>
+            <TextBlock Grid.Row="1" Text="{loc:Loc Sync_ReconcilePrompt}" TextWrapping="Wrap"
+                       FontSize="13" Foreground="{DynamicResource Md3OnSurfaceVariant}" Margin="0,0,0,20"/>
+
+            <StackPanel Grid.Row="2" HorizontalAlignment="Right">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8" HorizontalAlignment="Right">
+                    <Button Content="{loc:Loc Sync_ReconcileKeepLocal}" Click="KeepLocal_Click"
+                            Style="{StaticResource Md3TextButton}" Margin="0,0,8,0"/>
+                    <Button Content="{loc:Loc Sync_ReconcileUseCloud}" Click="UseCloud_Click"
+                            Style="{StaticResource Md3FilledButton}"/>
+                </StackPanel>
+                <TextBlock Text="{loc:Loc Sync_ReconcileHint}" FontSize="11" TextWrapping="Wrap"
+                           Foreground="{DynamicResource Md3OnSurfaceVariant}" HorizontalAlignment="Right"
+                           TextAlignment="Right"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

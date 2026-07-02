@@ -291,16 +291,16 @@
                                 <ComboBoxItem Content="{loc:Loc Sync_IntervalRealtime}"/>
                             </ComboBox>
 
-                            <StackPanel Orientation="Horizontal">
+                            <WrapPanel>
                                 <Button x:Name="BtnSyncNow" Content="{loc:Loc Sync_Now}" Click="SyncNow_Click"
-                                        Style="{StaticResource Md3TextButton}" Margin="0,0,8,0"/>
+                                        Style="{StaticResource Md3TextButton}" Margin="0,0,8,8"/>
                                 <Button x:Name="BtnSyncUpload" Content="{loc:Loc Sync_Upload}" Click="SyncUpload_Click"
-                                        Style="{StaticResource Md3TextButton}" Margin="0,0,8,0"/>
+                                        Style="{StaticResource Md3TextButton}" Margin="0,0,8,8"/>
                                 <Button x:Name="BtnSyncDownload" Content="{loc:Loc Sync_Download}" Click="SyncDownload_Click"
-                                        Style="{StaticResource Md3TextButton}" Margin="0,0,8,0"/>
+                                        Style="{StaticResource Md3TextButton}" Margin="0,0,8,8"/>
                                 <Button x:Name="BtnSyncUnlink" Content="{loc:Loc Sync_Unlink}" Click="SyncUnlink_Click"
-                                        Style="{StaticResource Md3TextButton}"/>
-                            </StackPanel>
+                                        Style="{StaticResource Md3TextButton}" Margin="0,0,8,8"/>
+                            </WrapPanel>
                         </StackPanel>
                     </StackPanel>
 

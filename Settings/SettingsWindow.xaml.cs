@@ -676,16 +676,14 @@ public partial class SettingsWindow : Window
     /// <summary>PC nueva con datos en ambos lados: preguntar usar nube / mantener local.</summary>
     private async Task ReconcileAsync()
     {
-        var choice = MessageBox.Show(
-            Loc.T("Sync_ReconcilePrompt"), "QuickPanel",
-            MessageBoxButton.YesNo, MessageBoxImage.Question);
+        var dlg = new SyncReconcileDialog { Owner = this };
+        if (dlg.ShowDialog() != true) return; // cerró sin elegir: no tocar nada
 
-        // Yes = usar la nube (bajar); No = mantener local (subir).
-        var r = choice == MessageBoxResult.Yes
+        var r = dlg.UseCloud
             ? await CloudSyncService.ForceDownloadAsync()
             : await CloudSyncService.ForceUploadAsync();
 
-        if (choice == MessageBoxResult.Yes && r.Outcome == SyncOutcome.Downloaded)
+        if (dlg.UseCloud && r.Outcome == SyncOutcome.Downloaded)
             ApplyDownloadedConfigAndClose();
         else
             ShowOutcome(r.Outcome);
@@ -720,6 +718,10 @@ public partial class SettingsWindow : Window
 
     private async void SyncUnlink_Click(object sender, RoutedEventArgs e)
     {
+        var confirm = MessageBox.Show(Loc.T("Sync_UnlinkConfirm"), "QuickPanel",
+            MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes) return;
+
         await RunSyncAsync(async () =>
         {
             await CloudSyncService.UnlinkAsync();
