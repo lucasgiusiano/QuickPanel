@@ -67,6 +67,18 @@ public class QuickPanelSettings
     /// <summary>Email/UPN de la cuenta vinculada, para mostrarlo en la UI. Vacío = sin vincular.</summary>
     public string CloudAccount { get; set; } = "";
 
+    // ── Cloud Sync (Fase 2) ────────────────────────────────────────
+
+    /// <summary>Cada cuándo sincronizar automáticamente. Default: al cerrar la app.</summary>
+    public Services.CloudSync.SyncInterval SyncInterval { get; set; }
+        = Services.CloudSync.SyncInterval.OnAppClose;
+
+    /// <summary>
+    /// Journal de metadata de sync (timestamps por Id, tombstones, timestamp global).
+    /// Separado de los modelos de dominio.
+    /// </summary>
+    public Services.CloudSync.SyncJournal SyncJournal { get; set; } = new();
+
     /// <summary>
     /// Parsea <see cref="CloudProvider"/> al enum de sync sin acoplar el modelo a
     /// la capa de servicios. Valores desconocidos = None.

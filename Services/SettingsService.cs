@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using QuickPanel.Models;
+using QuickPanel.Services.CloudSync;
 
 namespace QuickPanel.Services;
 
@@ -14,6 +15,12 @@ public static class SettingsService
     public static QuickPanelSettings Current { get; private set; } = new();
 
     public static string ProfilesDir => Path.Combine(Dir, "Profiles");
+
+    /// <summary>True si hay cambios locales pendientes de subir a la nube. Lo consume el CloudSyncService.</summary>
+    public static bool IsDirty { get; private set; }
+
+    /// <summary>Se dispara tras cada Save() con cambios (para debounce en Realtime).</summary>
+    public static event Action? Changed;
 
     public static void Load()
     {
@@ -29,11 +36,53 @@ public static class SettingsService
     {
         try
         {
+            ReconcileJournal(DateTimeOffset.UtcNow);
             Directory.CreateDirectory(Dir);
             File.WriteAllText(FilePath, JsonSerializer.Serialize(Current, JsonOpts));
+            IsDirty = true;
+            Changed?.Invoke();
         }
         catch { /* no romper la app por IO */ }
     }
+
+    /// <summary>Marca la config como ya subida (limpia el dirty). La llama el CloudSyncService tras subir.</summary>
+    public static void ClearDirty() => IsDirty = false;
+
+    /// <summary>
+    /// Alinea el journal con el estado actual de las colecciones:
+    /// - Ids nuevos (sin timestamp ni tombstone) → se marcan modificados ahora.
+    /// - Ids que ya no están vivos ni tienen tombstone → se marcan borrados ahora.
+    /// - Config global → se toca el timestamp global en cada guardado.
+    /// Esto cubre los cambios sin exigir que cada punto de edición avise al journal,
+    /// aunque igual conviene usar TouchItem/KillItem para timestamps precisos.
+    /// </summary>
+    private static void ReconcileJournal(DateTimeOffset now)
+    {
+        var j = Current.SyncJournal;
+
+        var liveIds = Current.Apps.Select(a => a.Id)
+            .Concat(Current.Groups.Select(g => g.Id))
+            .Concat(Current.ActionHotkeys.Keys)
+            .ToHashSet();
+
+        foreach (var id in liveIds)
+            if (!j.ItemModifiedUtc.ContainsKey(id))
+                j.TouchItem(id, now);
+
+        // Ids que estaban vivos en el journal pero ya no existen → tombstone.
+        var vanished = j.ItemModifiedUtc.Keys.Where(id => !liveIds.Contains(id)).ToList();
+        foreach (var id in vanished)
+            j.KillItem(id, now);
+
+        j.TouchGlobal(now);
+        j.PruneTombstones(now);
+    }
+
+    /// <summary>Marca explícitamente un ítem (app/grupo/hotkey) como modificado. Uso opcional para timestamps finos.</summary>
+    public static void TouchItem(string id) => Current.SyncJournal.TouchItem(id, DateTimeOffset.UtcNow);
+
+    /// <summary>Marca explícitamente un ítem como borrado (tombstone).</summary>
+    public static void KillItem(string id) => Current.SyncJournal.KillItem(id, DateTimeOffset.UtcNow);
 
     /// <summary>Exporta la configuración actual a un archivo JSON.</summary>
     public static void Export(string path) =>
@@ -58,6 +107,21 @@ public static class SettingsService
 
     /// <summary>Serializa la configuración actual a JSON (mismo formato que el archivo local).</summary>
     public static string SerializeCurrent() => JsonSerializer.Serialize(Current, JsonOpts);
+
+    /// <summary>Deserializa una config desde JSON sin aplicarla. null si es inválida. Usado por el merge.</summary>
+    public static QuickPanelSettings? Deserialize(string json)
+    {
+        try { return JsonSerializer.Deserialize<QuickPanelSettings>(json); }
+        catch { return null; }
+    }
+
+    /// <summary>Reemplaza la config actual en memoria por otra ya construida (ej. resultado de merge) y persiste.</summary>
+    public static void Replace(QuickPanelSettings merged)
+    {
+        Current = merged;
+        Directory.CreateDirectory(Dir);
+        try { File.WriteAllText(FilePath, JsonSerializer.Serialize(Current, JsonOpts)); } catch { }
+    }
 
     /// <summary>
     /// Aplica una configuración recibida como JSON (ej. bajada de la nube) y la persiste.

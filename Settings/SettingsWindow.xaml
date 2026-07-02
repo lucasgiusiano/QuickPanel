@@ -255,15 +255,17 @@
                                     Style="{StaticResource Md3TextButton}"/>
                         </StackPanel>
 
-                        <!-- ── Sincronización en la nube (Fase 1: manual) ── -->
+                        <!-- ── Sincronización en la nube ── -->
                         <TextBlock Text="{loc:Loc Sync_Section}" Style="{StaticResource SettingLabel}"
                                    Margin="0,24,0,0"/>
-                        <TextBlock Text="{loc:Loc Sync_Description}" TextWrapping="Wrap" Opacity="0.7"
+                        <TextBlock Text="{loc:Loc Sync_Description}" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource Md3OnSurfaceVariant}"
                                    FontSize="12" Margin="0,0,0,12"/>
 
                         <!-- Estado: sin vincular -->
                         <StackPanel x:Name="SyncUnlinkedPanel">
-                            <TextBlock Text="{loc:Loc Sync_ChooseProvider}" Margin="0,0,0,8" Opacity="0.85"/>
+                            <TextBlock Text="{loc:Loc Sync_ChooseProvider}" Margin="0,0,0,8"
+                                       Foreground="{DynamicResource Md3OnSurface}"/>
                             <StackPanel Orientation="Horizontal">
                                 <Button x:Name="BtnLinkGoogle" Content="Google Drive" Click="LinkGoogle_Click"
                                         Style="{StaticResource Md3TextButton}" Margin="0,0,8,0"/>
@@ -274,8 +276,24 @@
 
                         <!-- Estado: vinculado -->
                         <StackPanel x:Name="SyncLinkedPanel" Visibility="Collapsed">
-                            <TextBlock x:Name="SyncStatusText" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <TextBlock x:Name="SyncStatusText" TextWrapping="Wrap" Margin="0,0,0,12"
+                                       Foreground="{DynamicResource Md3OnSurface}"/>
+
+                            <TextBlock Text="{loc:Loc Sync_IntervalLabel}" Margin="0,0,0,4"
+                                       Foreground="{DynamicResource Md3OnSurfaceVariant}" FontSize="12"/>
+                            <ComboBox x:Name="SyncIntervalCombo" Style="{StaticResource Md3ComboBox}"
+                                      SelectionChanged="SyncInterval_Changed" Margin="0,0,0,12" Width="220"
+                                      HorizontalAlignment="Left">
+                                <ComboBoxItem Content="{loc:Loc Sync_IntervalManual}"/>
+                                <ComboBoxItem Content="{loc:Loc Sync_IntervalOnClose}"/>
+                                <ComboBoxItem Content="{loc:Loc Sync_Interval15}"/>
+                                <ComboBoxItem Content="{loc:Loc Sync_IntervalHourly}"/>
+                                <ComboBoxItem Content="{loc:Loc Sync_IntervalRealtime}"/>
+                            </ComboBox>
+
                             <StackPanel Orientation="Horizontal">
+                                <Button x:Name="BtnSyncNow" Content="{loc:Loc Sync_Now}" Click="SyncNow_Click"
+                                        Style="{StaticResource Md3TextButton}" Margin="0,0,8,0"/>
                                 <Button x:Name="BtnSyncUpload" Content="{loc:Loc Sync_Upload}" Click="SyncUpload_Click"
                                         Style="{StaticResource Md3TextButton}" Margin="0,0,8,0"/>
                                 <Button x:Name="BtnSyncDownload" Content="{loc:Loc Sync_Download}" Click="SyncDownload_Click"

@@ -16,6 +16,7 @@ public partial class SettingsWindow : Window
     private readonly OverlayManager? _manager;
     private bool _loadingLang;
     private bool _suppressAutoClose;
+    private bool _loadingSync;
 
     private static readonly string[] SeedPalette =
     {
@@ -595,7 +596,7 @@ public partial class SettingsWindow : Window
         }
     }
 
-    // ═══ Cloud Sync (Fase 1: manual) ═══════════════════════════════
+    // ═══ Cloud Sync (Fase 2: merge + intervalos) ═══════════════════
 
     /// <summary>Refresca la UI según haya o no un proveedor vinculado.</summary>
     private void RefreshSyncState()
@@ -607,11 +608,15 @@ public partial class SettingsWindow : Window
         SyncUnlinkedPanel.Visibility = linked ? Visibility.Collapsed : Visibility.Visible;
 
         if (linked)
-        {
             SyncStatusText.Text = string.Format(
-                Loc.T("Sync_LinkedTo"),
-                provider!.DisplayName,
-                SettingsService.Current.CloudAccount);
+                Loc.T("Sync_LinkedTo"), provider!.DisplayName, SettingsService.Current.CloudAccount);
+
+        // Selector de intervalo (se carga sin disparar el handler).
+        if (SyncIntervalCombo.Items.Count > 0)
+        {
+            _loadingSync = true;
+            SyncIntervalCombo.SelectedIndex = (int)SettingsService.Current.SyncInterval;
+            _loadingSync = false;
         }
     }
 
@@ -620,15 +625,11 @@ public partial class SettingsWindow : Window
     {
         _suppressAutoClose = true;
         SetSyncButtonsEnabled(false);
-        try
-        {
-            await op();
-        }
+        try { await op(); }
         catch (Exception ex)
         {
             LogSyncError(ex);
-            MessageBox.Show(Loc.T("Sync_Error"), "QuickPanel",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Loc.T("Sync_Error"), "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -641,6 +642,7 @@ public partial class SettingsWindow : Window
     {
         BtnLinkGoogle.IsEnabled   = enabled;
         BtnLinkOneDrive.IsEnabled = enabled;
+        BtnSyncNow.IsEnabled      = enabled;
         BtnSyncUpload.IsEnabled   = enabled;
         BtnSyncDownload.IsEnabled = enabled;
         BtnSyncUnlink.IsEnabled   = enabled;
@@ -657,38 +659,62 @@ public partial class SettingsWindow : Window
         await RunSyncAsync(async () =>
         {
             var account = await CloudSyncService.LinkAsync(kind);
-            if (account == null) return; // usuario canceló
+            if (account == null) return; // canceló
             RefreshSyncState();
+
+            // Primera reconciliación de esta PC.
+            var first = await CloudSyncService.FirstSyncAsync();
+            if (first.Outcome == SyncOutcome.NeedsReconcile)
+                await ReconcileAsync();
+            else
+                ShowOutcome(first.Outcome);
+
+            CloudSyncService.StartAutoSync();
         });
     }
 
-    private async void SyncUpload_Click(object sender, RoutedEventArgs e)
+    /// <summary>PC nueva con datos en ambos lados: preguntar usar nube / mantener local.</summary>
+    private async Task ReconcileAsync()
+    {
+        var choice = MessageBox.Show(
+            Loc.T("Sync_ReconcilePrompt"), "QuickPanel",
+            MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+        // Yes = usar la nube (bajar); No = mantener local (subir).
+        var r = choice == MessageBoxResult.Yes
+            ? await CloudSyncService.ForceDownloadAsync()
+            : await CloudSyncService.ForceUploadAsync();
+
+        if (choice == MessageBoxResult.Yes && r.Outcome == SyncOutcome.Downloaded)
+            ApplyDownloadedConfigAndClose();
+        else
+            ShowOutcome(r.Outcome);
+    }
+
+    private async void SyncNow_Click(object sender, RoutedEventArgs e)
     {
         await RunSyncAsync(async () =>
         {
-            await CloudSyncService.UploadCurrentAsync();
-            MessageBox.Show(Loc.T("Sync_UploadOk"), "QuickPanel",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            var r = await CloudSyncService.SyncAsync();
+            if (r.Outcome is SyncOutcome.Merged or SyncOutcome.Downloaded)
+            {
+                ApplyDownloadedConfigAndClose();
+                return;
+            }
+            ShowOutcome(r.Outcome);
         });
     }
+
+    private async void SyncUpload_Click(object sender, RoutedEventArgs e) =>
+        await RunSyncAsync(async () => ShowOutcome((await CloudSyncService.ForceUploadAsync()).Outcome));
 
     private async void SyncDownload_Click(object sender, RoutedEventArgs e)
     {
         await RunSyncAsync(async () =>
         {
-            bool found = await CloudSyncService.DownloadAndApplyAsync();
-            if (!found)
-            {
-                MessageBox.Show(Loc.T("Sync_DownloadEmpty"), "QuickPanel",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            ThemeService.Apply(SettingsService.Current.SeedColor, SettingsService.Current.ThemeMode);
-            App.ReanchorAllPanels();
-            MessageBox.Show(Loc.T("Sync_DownloadOk"), "QuickPanel",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-            Close();
+            var r = await CloudSyncService.ForceDownloadAsync();
+            if (r.Outcome == SyncOutcome.Downloaded) { ApplyDownloadedConfigAndClose(); return; }
+            ShowOutcome(r.Outcome);
         });
     }
 
@@ -699,6 +725,39 @@ public partial class SettingsWindow : Window
             await CloudSyncService.UnlinkAsync();
             RefreshSyncState();
         });
+    }
+
+    private void SyncInterval_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingSync) return;
+        SettingsService.Current.SyncInterval = (SyncInterval)SyncIntervalCombo.SelectedIndex;
+        SettingsService.Save();
+        CloudSyncService.StartAutoSync();
+    }
+
+    /// <summary>Reaplica tema, reancla paneles y cierra (tras bajar/mergear config de otra PC).</summary>
+    private void ApplyDownloadedConfigAndClose()
+    {
+        ThemeService.Apply(SettingsService.Current.SeedColor, SettingsService.Current.ThemeMode);
+        App.ReanchorAllPanels();
+        MessageBox.Show(Loc.T("Sync_DownloadOk"), "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Information);
+        Close();
+    }
+
+    private void ShowOutcome(SyncOutcome outcome)
+    {
+        string key = outcome switch
+        {
+            SyncOutcome.Uploaded  => "Sync_UploadOk",
+            SyncOutcome.Merged    => "Sync_MergeOk",
+            SyncOutcome.UpToDate  => "Sync_UpToDate",
+            SyncOutcome.Conflicts => "Sync_Conflicts",
+            SyncOutcome.Failed    => "Sync_Error",
+            _ => ""
+        };
+        if (key.Length == 0) return;
+        var icon = outcome == SyncOutcome.Failed ? MessageBoxImage.Error : MessageBoxImage.Information;
+        MessageBox.Show(Loc.T(key), "QuickPanel", MessageBoxButton.OK, icon);
     }
 
     private static void LogSyncError(Exception ex)

@@ -44,6 +44,17 @@ public partial class App : Application
         _monitor = new EdgeWindowMonitor();
         _hotkeys = new HotkeyService(_monitor);
 
+        // Cloud Sync: refresca desde la nube al arrancar y activa el modo automático elegido.
+        if (Services.CloudSync.CloudSyncService.IsLinked)
+        {
+            Services.CloudSync.CloudSyncService.SyncedInBackground += OnBackgroundSynced;
+            _ = System.Threading.Tasks.Task.Run(async () =>
+            {
+                await Services.CloudSync.CloudSyncService.SyncAsync();
+                Services.CloudSync.CloudSyncService.StartAutoSync();
+            });
+        }
+
         if (!_monitor.HasCompatibleBrowser)
         {
             System.Windows.MessageBox.Show(
@@ -109,8 +120,24 @@ public partial class App : Application
         Shutdown();
     }
 
+    /// <summary>Un sync automático (intervalo/inicio) trajo cambios: reaplica tema y reancla paneles.</summary>
+    private void OnBackgroundSynced() => Dispatcher.Invoke(() =>
+    {
+        ThemeService.Apply(SettingsService.Current.SeedColor, SettingsService.Current.ThemeMode);
+        ReanchorAllPanels();
+    });
+
     protected override void OnExit(ExitEventArgs e)
     {
+        // Si el intervalo es "al cerrar" y hay cambios pendientes, subir antes de salir.
+        try
+        {
+            Services.CloudSync.CloudSyncService.SyncOnCloseAsync()
+                .Wait(TimeSpan.FromSeconds(10));
+        }
+        catch { /* no bloquear el cierre por un fallo de red */ }
+        Services.CloudSync.CloudSyncService.StopAutoSync();
+
         _hotkeys?.Dispose();
         _monitor?.Dispose();
         if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
