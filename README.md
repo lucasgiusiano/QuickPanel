@@ -60,6 +60,13 @@ restrictions**.
   background using your theme's primary color.
 - Export and import your whole setup (apps, groups, theme, hotkeys) as a single file — handy for
   moving to another PC or keeping a backup.
+- **Cloud sync** — link your own Google Drive or OneDrive (private app folder, invisible to you
+  in the regular Drive UI) to sync settings, apps, folders, and shortcuts across PCs. Choose how
+  often it syncs: manual, on app close (default), every 15 minutes, hourly, or instantly. When two
+  PCs both changed something, it merges field-by-field instead of overwriting — the newest edit
+  per app/folder/shortcut wins, deletions are respected on both sides, and if a brand-new PC finds
+  existing cloud data it asks which version to keep before touching anything. Web sessions are
+  never synced, only the config.
 
 **Productivity**
 - Global keyboard shortcuts: `Ctrl+Alt+1‑0` auto-assign to your first 10 apps (and reassign
@@ -132,6 +139,16 @@ dotnet publish QuickPanel.csproj -c Release -r win-x64 --self-contained true -o 
 ```
 
 The output lands in `publish\QuickPanel.exe`.
+
+> **Cloud Sync won't compile out of the box.** `Services/CloudSync/CloudSyncConstants.cs` is
+> `partial` and expects a `CloudSyncSecrets.cs` file (gitignored, not in this repo) with your own
+> Google Cloud / Entra ID OAuth Client ID and Secret — see
+> `Services/CloudSync/CloudSyncSecrets.example.cs` for the exact fields. In a desktop app these
+> values aren't secret in the traditional sense (PKCE + local loopback redirect is what actually
+> protects the flow), but they're still tied to *this* app's OAuth registration, so they're kept
+> out of the public repo. Create your own OAuth client in each provider and drop your values into
+> `CloudSyncSecrets.cs` to build with Cloud Sync working; everything else compiles and runs fine
+> without it, Cloud Sync just won't be available.
 
 To build an installer, install [Inno Setup](https://jrsoftware.org/isinfo.php) and compile
 `installer.iss` with `ISCC.exe installer.iss` — the result lands in `installer-output\`.
