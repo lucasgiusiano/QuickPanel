@@ -19,6 +19,21 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Generate CloudSyncSecrets.cs
+        shell: pwsh
+        run: |
+          $lines = @(
+            'namespace QuickPanel.Services.CloudSync;'
+            ''
+            'public static partial class CloudSyncConstants'
+            '{'
+            "    public const string GoogleClientId = ""${{ secrets.GOOGLE_CLIENT_ID }}"";"
+            "    public const string GoogleClientSecret = ""${{ secrets.GOOGLE_CLIENT_SECRET }}"";"
+            "    public const string MicrosoftClientId = ""${{ secrets.MICROSOFT_CLIENT_ID }}"";"
+            '}'
+          )
+          $lines | Set-Content Services\CloudSync\CloudSyncSecrets.cs
+
       - name: Publish (portable, self-contained)
         run: dotnet publish QuickPanel.csproj -c Release -r win-x64 --self-contained true -o publish /p:PublishSingleFile=true
 
