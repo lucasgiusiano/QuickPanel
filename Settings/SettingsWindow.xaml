@@ -262,6 +262,12 @@
                                    Foreground="{DynamicResource Md3OnSurfaceVariant}"
                                    FontSize="12" Margin="0,0,0,12"/>
 
+                        <!-- Indicador de progreso (indeterminado) mientras corre una operación -->
+                        <ProgressBar x:Name="SyncProgress" IsIndeterminate="True" Height="3"
+                                     Visibility="Collapsed" Margin="0,0,0,12"
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="{DynamicResource Md3Primary}"/>
+
                         <!-- Estado: sin vincular -->
                         <StackPanel x:Name="SyncUnlinkedPanel">
                             <TextBlock Text="{loc:Loc Sync_ChooseProvider}" Margin="0,0,0,8"
@@ -276,8 +282,12 @@
 
                         <!-- Estado: vinculado -->
                         <StackPanel x:Name="SyncLinkedPanel" Visibility="Collapsed">
-                            <TextBlock x:Name="SyncStatusText" TextWrapping="Wrap" Margin="0,0,0,12"
+                            <TextBlock x:Name="SyncStatusText" TextWrapping="Wrap" Margin="0,0,0,4"
                                        Foreground="{DynamicResource Md3OnSurface}"/>
+
+                            <TextBlock x:Name="SyncLastText" TextWrapping="Wrap" Margin="0,0,0,12"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
 
                             <TextBlock Text="{loc:Loc Sync_IntervalLabel}" Margin="0,0,0,4"
                                        Foreground="{DynamicResource Md3OnSurfaceVariant}" FontSize="12"/>

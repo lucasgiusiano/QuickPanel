@@ -111,8 +111,8 @@ public static class CloudSyncService
             bool localHasData = SettingsService.Current.Apps.Count > 0
                              || SettingsService.Current.Groups.Count > 0;
 
-            if (!cloudHasData) { await UploadAsync(provider, ct).ConfigureAwait(false); return new SyncRunResult(SyncOutcome.Uploaded); }
-            if (!localHasData) { await DownloadReplaceAsync(provider, ct).ConfigureAwait(false); return new SyncRunResult(SyncOutcome.Downloaded); }
+            if (!cloudHasData) { await UploadAsync(provider, ct).ConfigureAwait(false); return Done(SyncOutcome.Uploaded); }
+            if (!localHasData) { await DownloadReplaceAsync(provider, ct).ConfigureAwait(false); return Done(SyncOutcome.Downloaded); }
 
             return new SyncRunResult(SyncOutcome.NeedsReconcile);
         }
@@ -126,7 +126,7 @@ public static class CloudSyncService
     {
         var provider = Current;
         if (provider == null) return new SyncRunResult(SyncOutcome.NoProvider);
-        try { await UploadAsync(provider, ct).ConfigureAwait(false); return new SyncRunResult(SyncOutcome.Uploaded); }
+        try { await UploadAsync(provider, ct).ConfigureAwait(false); return Done(SyncOutcome.Uploaded); }
         catch { return new SyncRunResult(SyncOutcome.Failed); }
     }
 
@@ -138,7 +138,7 @@ public static class CloudSyncService
         try
         {
             bool ok = await DownloadReplaceAsync(provider, ct).ConfigureAwait(false);
-            return new SyncRunResult(ok ? SyncOutcome.Downloaded : SyncOutcome.UpToDate);
+            return Done(ok ? SyncOutcome.Downloaded : SyncOutcome.UpToDate);
         }
         catch { return new SyncRunResult(SyncOutcome.Failed); }
     }
@@ -161,7 +161,7 @@ public static class CloudSyncService
             if (remoteJson == null)
             {
                 await UploadAsync(provider, ct).ConfigureAwait(false);
-                return new SyncRunResult(SyncOutcome.Uploaded);
+                return Done(SyncOutcome.Uploaded);
             }
 
             var remote = SettingsService.Deserialize(remoteJson);
@@ -174,7 +174,7 @@ public static class CloudSyncService
             await UploadAsync(provider, ct).ConfigureAwait(false);
 
             var outcome = result.HasConflicts ? SyncOutcome.Conflicts : SyncOutcome.Merged;
-            return new SyncRunResult(outcome, result.Conflicts);
+            return Done(outcome, result.Conflicts);
         }
         catch { return new SyncRunResult(SyncOutcome.Failed); }
         finally { _gate.Release(); }
@@ -227,6 +227,18 @@ public static class CloudSyncService
     }
 
     // ── Helpers de bajo nivel ──────────────────────────────────────
+
+    /// <summary>Construye el resultado y, si el outcome representa una sincronización
+    /// completada sin errores, registra el timestamp de "última sync exitosa" de esta PC.
+    /// Se deja fuera a Conflicts (necesita atención del usuario), Failed, NoProvider y
+    /// NeedsReconcile.</summary>
+    private static SyncRunResult Done(SyncOutcome outcome, List<MergeConflict>? conflicts = null)
+    {
+        if (outcome is SyncOutcome.Uploaded or SyncOutcome.Downloaded
+                     or SyncOutcome.Merged or SyncOutcome.UpToDate)
+            SettingsService.MarkSyncSuccess();
+        return new SyncRunResult(outcome, conflicts);
+    }
 
     private static async Task UploadAsync(ICloudSyncProvider provider, CancellationToken ct)
     {

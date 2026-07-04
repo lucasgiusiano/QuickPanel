@@ -608,8 +608,11 @@ public partial class SettingsWindow : Window
         SyncUnlinkedPanel.Visibility = linked ? Visibility.Collapsed : Visibility.Visible;
 
         if (linked)
+        {
             SyncStatusText.Text = string.Format(
                 Loc.T("Sync_LinkedTo"), provider!.DisplayName, SettingsService.Current.CloudAccount);
+            SyncLastText.Text = string.Format(Loc.T("Sync_LastPrefix"), FormatLastSync());
+        }
 
         // Selector de intervalo (se carga sin disparar el handler).
         if (SyncIntervalCombo.Items.Count > 0)
@@ -625,6 +628,7 @@ public partial class SettingsWindow : Window
     {
         _suppressAutoClose = true;
         SetSyncButtonsEnabled(false);
+        SyncProgress.Visibility = Visibility.Visible;
         try { await op(); }
         catch (Exception ex)
         {
@@ -633,9 +637,29 @@ public partial class SettingsWindow : Window
         }
         finally
         {
+            SyncProgress.Visibility = Visibility.Collapsed;
             SetSyncButtonsEnabled(true);
             _suppressAutoClose = false;
+            // Refresca la línea de "última sincronización" para las operaciones que dejan
+            // la ventana abierta (subir, ya-al-día). Las que bajan config cierran la ventana.
+            RefreshSyncState();
         }
+    }
+
+    /// <summary>Devuelve el momento de la última sync como texto relativo localizado
+    /// ("recién", "hace 5 min", "hace 2 h", "hace 3 d") o "nunca" si no hay registro.</summary>
+    private static string FormatLastSync()
+    {
+        var last = SettingsService.LastSyncSuccessUtc;
+        if (last == null) return Loc.T("Sync_Never");
+
+        var delta = DateTime.UtcNow - last.Value;
+        if (delta < TimeSpan.Zero) delta = TimeSpan.Zero;
+
+        if (delta.TotalMinutes < 1) return Loc.T("Sync_JustNow");
+        if (delta.TotalHours   < 1) return string.Format(Loc.T("Sync_MinAgo"),   (int)delta.TotalMinutes);
+        if (delta.TotalDays    < 1) return string.Format(Loc.T("Sync_HoursAgo"), (int)delta.TotalHours);
+        return string.Format(Loc.T("Sync_DaysAgo"), (int)delta.TotalDays);
     }
 
     private void SetSyncButtonsEnabled(bool enabled)

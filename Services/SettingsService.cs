@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using QuickPanel.Models;
@@ -10,6 +11,14 @@ public static class SettingsService
     private static readonly string Dir =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "QuickPanel");
     private static readonly string FilePath = Path.Combine(Dir, "settings.json");
+
+    // Estado local per-device de la última sincronización exitosa. Deliberadamente NO
+    // vive en QuickPanelSettings (no se serializa en settings.json ni se sube a la nube):
+    // "cuándo sincronizó ESTA PC" es un dato propio de cada equipo. Meterlo en el payload
+    // sincronizado haría que dos PCs se pisaran el timestamp indefinidamente y que cada
+    // stamp marcara la config como dirty (loop en modo Realtime).
+    private static readonly string LastSyncPath = Path.Combine(Dir, "lastsync.txt");
+
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
 
     public static QuickPanelSettings Current { get; private set; } = new();
@@ -30,6 +39,39 @@ public static class SettingsService
                 Current = JsonSerializer.Deserialize<QuickPanelSettings>(File.ReadAllText(FilePath)) ?? new();
         }
         catch { Current = new(); }
+
+        LoadLastSync();
+    }
+
+    /// <summary>UTC del último sync exitoso de ESTA PC, o null si nunca sincronizó. Solo lectura;
+    /// se actualiza vía <see cref="MarkSyncSuccess"/>.</summary>
+    public static DateTime? LastSyncSuccessUtc { get; private set; }
+
+    private static void LoadLastSync()
+    {
+        try
+        {
+            if (File.Exists(LastSyncPath) &&
+                DateTime.TryParse(File.ReadAllText(LastSyncPath).Trim(),
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.RoundtripKind, out var dt))
+                LastSyncSuccessUtc = dt.ToUniversalTime();
+        }
+        catch { LastSyncSuccessUtc = null; }
+    }
+
+    /// <summary>Registra que esta PC acaba de sincronizar con éxito. Persiste en un archivo
+    /// local aparte (no en settings.json, no sube a la nube). La llama el CloudSyncService.</summary>
+    public static void MarkSyncSuccess()
+    {
+        LastSyncSuccessUtc = DateTime.UtcNow;
+        try
+        {
+            Directory.CreateDirectory(Dir);
+            File.WriteAllText(LastSyncPath,
+                LastSyncSuccessUtc.Value.ToString("o", CultureInfo.InvariantCulture));
+        }
+        catch { /* no romper la app por IO */ }
     }
 
     public static void Save()
