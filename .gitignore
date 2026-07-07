@@ -35,3 +35,5 @@ QuickPanel.Package/obj/
 QuickPanel.Package/AppPackages/
 QuickPanel.Package/BundleArtifacts/
 QuickPanel.Package/*.wapproj.user
+QuickPanel.Package/*.Backup.tmp
+QuickPanel.Package/*.assets.cache
