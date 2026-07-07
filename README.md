@@ -97,14 +97,16 @@ Things planned but not built yet — not promises, just where this is headed:
 
 - Picture-in-picture for panels.
 - Multiple accounts and multiple profiles per app.
-- Native "Start with Windows" support for the Microsoft Store build (today this only works
-  reliably in the portable/installer build; the Store build needs a packaged startup task).
+- Native "Start with Windows" support for the Microsoft Store build — the C# side
+  (`StartupService`, using the WinRT `StartupTask` API) is implemented; only the
+  `uap5:StartupTask` extension declaration in `Package.appxmanifest` (separate
+  `QuickPanel.Package` project) is still pending.
 
 ## Installation
 
 Pick whichever fits you:
 
-- **Microsoft Store** — [SidePanel for Edge](https://apps.microsoft.com/detail/9N3Z0WKL8KPN).
+- **Microsoft Store** — [SidePanel for Browsers](https://apps.microsoft.com/detail/9N3Z0WKL8KPN).
   Installs and updates itself like any Store app.
 - **Installer** — download `QuickPanelSetup.exe` from [Releases](../../releases) and run it. No
   admin rights required. Adds a Start Menu shortcut and an uninstaller.
