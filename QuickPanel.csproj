@@ -21,9 +21,9 @@
     <Company>Lucas Giusiano</Company>
     <Authors>Lucas Giusiano</Authors>
     <Copyright>Copyright © 2026 Lucas Giusiano</Copyright>
-    <Version>1.0.10</Version>
-    <FileVersion>1.0.10.0</FileVersion>
-    <AssemblyVersion>1.0.10.0</AssemblyVersion>
+    <Version>1.0.12</Version>
+    <FileVersion>1.0.12.0</FileVersion>
+    <AssemblyVersion>1.0.12.0</AssemblyVersion>
     <PackageProjectUrl>https://github.com/lucasgiusiano/QuickPanel</PackageProjectUrl>
     <RepositoryUrl>https://github.com/lucasgiusiano/QuickPanel</RepositoryUrl>
   </PropertyGroup>

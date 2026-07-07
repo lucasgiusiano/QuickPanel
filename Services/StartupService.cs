@@ -35,6 +35,34 @@ public static class StartupService
         }
     }
 
+    /// <summary>
+    /// Versión Major.Minor.Build a mostrar en la UI. En el build de Store la lee
+    /// del paquete instalado (Package.Current.Id.Version), que es la fuente de verdad
+    /// del MSIX y nunca se desincroniza con lo subido a Partner Center. Fuera de un
+    /// paquete (portable/instalador) usa la versión del assembly, como antes.
+    /// </summary>
+    public static string AppVersionString
+    {
+        get
+        {
+            if (IsPackaged)
+            {
+                try
+                {
+                    var v = Package.Current.Id.Version;
+                    return $"{v.Major}.{v.Minor}.{v.Build}";
+                }
+                catch
+                {
+                    // Si por alguna razón no se puede leer el paquete, caer al assembly.
+                }
+            }
+
+            var asm = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            return $"{asm?.Major ?? 0}.{asm?.Minor ?? 0}.{asm?.Build ?? 0}";
+        }
+    }
+
     /// <summary>¿Está actualmente configurado el inicio automático?</summary>
     public static async Task<bool> IsEnabledAsync()
     {
@@ -121,27 +149,3 @@ public static class StartupService
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, StringBuilder? packageFullName);
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PENDIENTE FUERA DE ESTE REPO: declarar la extensión en Package.appxmanifest
-// (proyecto QuickPanel.Package / .wapproj). Sin esto, IsPackaged sigue
-// funcionando, pero StartupTask.GetAsync siempre falla (no-op silencioso).
-//
-// 1) En la raíz <Package>, agregar el namespace y declararlo ignorable:
-//      xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
-//      <IgnorableNamespaces>... uap5</IgnorableNamespaces>
-//
-// 2) Dentro de <Applications><Application Id="App" ...>, agregar:
-//      <Extensions>
-//        <uap5:Extension Category="windows.startupTask">
-//          <uap5:StartupTask
-//            TaskId="QuickPanelStartupTask"
-//            Enabled="false"
-//            DisplayName="SidePanel for Edge" />
-//        </uap5:Extension>
-//      </Extensions>
-//
-//    TaskId debe coincidir EXACTO con StartupTaskId de esta clase.
-//    Esto se edita en Visual Studio (doble clic en Package.appxmanifest → vista
-//    de diseñador, o "View Code" para editarlo a mano).
-// ─────────────────────────────────────────────────────────────────────────────

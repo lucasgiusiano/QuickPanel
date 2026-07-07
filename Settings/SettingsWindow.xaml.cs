@@ -34,8 +34,7 @@ public partial class SettingsWindow : Window
         LoadState();
         RefreshSyncState();
 
-        var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-        VersionText.Text = $"QuickPanel v{v?.Major}.{v?.Minor}.{v?.Build}";
+        VersionText.Text = $"QuickPanel v{StartupService.AppVersionString}";
 
         Deactivated += OnDeactivated;
     }
