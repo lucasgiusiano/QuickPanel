@@ -28,3 +28,10 @@ BundleArtifacts/
 
 # Cloud Sync secrets (no versionar; ver CloudSyncSecrets.example.cs)
 Services/CloudSync/CloudSyncSecrets.cs
+
+
+QuickPanel.Package/bin/
+QuickPanel.Package/obj/
+QuickPanel.Package/AppPackages/
+QuickPanel.Package/BundleArtifacts/
+QuickPanel.Package/*.wapproj.user
