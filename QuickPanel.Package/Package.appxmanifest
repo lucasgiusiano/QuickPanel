@@ -10,7 +10,7 @@
   <Identity
     Name="LucasGiusiano.SidePanelforEdge"
     Publisher="CN=72910066-0BAF-4DF0-AB97-9650E951337B"
-    Version="1.0.11.0" />
+    Version="1.0.12.0" />
 
   <Properties>
     <DisplayName>SidePanel for Browsers</DisplayName>
