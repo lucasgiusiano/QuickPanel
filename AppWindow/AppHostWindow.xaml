@@ -40,7 +40,7 @@
 
         <Border Grid.Column="1" x:Name="PanelCard"
                 Background="{DynamicResource Md3Surface}"
-                BorderBrush="{DynamicResource Md3Outline}" BorderThickness="1">
+                BorderBrush="{DynamicResource Md3Outline}" BorderThickness="0">
 
             <Grid>
                 <Grid.RowDefinitions>
