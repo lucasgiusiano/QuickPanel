@@ -111,6 +111,13 @@ public partial class AppHostWindow : Window
         var ex = Win32.GetWindowLongPtr(hwnd, Win32.GWL_EXSTYLE).ToInt64();
         Win32.SetWindowLongPtr(hwnd, Win32.GWL_EXSTYLE,
             new IntPtr(ex | Win32.WS_EX_TOOLWINDOW));
+
+        // Esquinas redondeadas (Windows 11+; no-op silencioso en Windows 10, donde
+        // DwmSetWindowAttribute simplemente ignora el atributo). AllowsTransparency
+        // está en False (lo pide WebView2), así que el redondeo real de la ventana
+        // solo puede venir de DWM, no de un CornerRadius en XAML.
+        int corner = Win32.DWMWCP_ROUND;
+        Win32.DwmSetWindowAttribute(hwnd, Win32.DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
     }
 
     public void AnchorToEdge()
