@@ -82,6 +82,13 @@
                         CornerRadius="22"
                         Background="{DynamicResource Md3Primary}"
                         HorizontalAlignment="Center">
+                    <!-- Ajuste óptico: el icono del Store tiene un gap de ~4% del ancho
+                         entre la píldora y el marco. A 300px eso son 6px y se ve; acá el
+                         icono mide 24px, así que ese 4% queda en <1px y el antialiasing lo
+                         funde con el trazo (la píldora se pega al borde). Por eso el trazo
+                         va más fino (11 en vez de 13) y el gap más abierto (14 en vez de 6):
+                         a este tamaño LEE igual al original, aunque las proporciones exactas
+                         no sean idénticas. -->
                     <Viewbox Width="24"
                             Height="24"
                             HorizontalAlignment="Center"
@@ -89,21 +96,21 @@
                         <Canvas Width="148"
                                 Height="136">
                             <!-- Marco exterior (trazo) -->
-                            <Rectangle Canvas.Left="6.5"
-                                    Canvas.Top="6.5"
-                                    Width="135"
-                                    Height="123"
+                            <Rectangle Canvas.Left="5.5"
+                                    Canvas.Top="5.5"
+                                    Width="137"
+                                    Height="125"
+                                    RadiusX="13.5"
+                                    RadiusY="13.5"
+                                    Stroke="{DynamicResource Md3OnPrimary}"
+                                    StrokeThickness="11"/>
+                            <!-- Píldora del panel lateral -->
+                            <Rectangle Canvas.Left="98"
+                                    Canvas.Top="24"
+                                    Width="25"
+                                    Height="88"
                                     RadiusX="12.5"
                                     RadiusY="12.5"
-                                    Stroke="{DynamicResource Md3OnPrimary}"
-                                    StrokeThickness="13"/>
-                            <!-- Píldora del panel lateral -->
-                            <Rectangle Canvas.Left="103"
-                                    Canvas.Top="24"
-                                    Width="26"
-                                    Height="88"
-                                    RadiusX="13"
-                                    RadiusY="13"
                                     Fill="{DynamicResource Md3OnPrimary}"/>
                         </Canvas>
                     </Viewbox>

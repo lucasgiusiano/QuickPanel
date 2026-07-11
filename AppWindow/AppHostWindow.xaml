@@ -20,11 +20,21 @@
             <ColumnDefinition x:Name="GripRightCol" Width="0"/>
         </Grid.ColumnDefinitions>
 
+        <!-- Franjas de resize (6px). El Border va en Transparent (no null) porque es lo
+             que mantiene el hit-test para poder arrastrar. Adentro va una barrita centrada
+             que sugiere visualmente que el borde se puede deslizar. Solo se ve en el grip
+             activo: el code-behind pone Opacity=1 al lado que corresponde y 0 al otro. -->
         <Thumb x:Name="GripLeft" Grid.Column="0" Width="6" Cursor="SizeWE"
                DragDelta="GripLeft_DragDelta" Opacity="0">
             <Thumb.Template>
                 <ControlTemplate TargetType="Thumb">
-                    <Border Background="Transparent"/>
+                    <Border Background="Transparent">
+                        <Rectangle Width="3" Height="34"
+                                   RadiusX="1.5" RadiusY="1.5"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Fill="{DynamicResource Md3Outline}"/>
+                    </Border>
                 </ControlTemplate>
             </Thumb.Template>
         </Thumb>
@@ -33,7 +43,13 @@
                DragDelta="GripRight_DragDelta" Opacity="0">
             <Thumb.Template>
                 <ControlTemplate TargetType="Thumb">
-                    <Border Background="Transparent"/>
+                    <Border Background="Transparent">
+                        <Rectangle Width="3" Height="34"
+                                   RadiusX="1.5" RadiusY="1.5"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Fill="{DynamicResource Md3Outline}"/>
+                    </Border>
                 </ControlTemplate>
             </Thumb.Template>
         </Thumb>
