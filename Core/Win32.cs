@@ -17,6 +17,8 @@ public static class Win32
     // DWM
     public const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     public const int DWMWCP_ROUND = 2;
+    public const int DWMWA_BORDER_COLOR = 34;
+public const uint DWMWA_COLOR_NONE  = 0xFFFFFFFE;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT

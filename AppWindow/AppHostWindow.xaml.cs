@@ -15,9 +15,9 @@ namespace QuickPanel.AppWindow;
 public partial class AppHostWindow : Window
 {
     private readonly AppEntry _app;
-    private readonly IntPtr   _edgeHwnd;
+    private readonly IntPtr _edgeHwnd;
     private PanelSide _side;
-    private readonly double   _originRelY;
+    private readonly double _originRelY;
     private readonly Func<double, PanelGeometry.Rect> _computeBounds; // width -> geometría
     private readonly Func<double> _maxWidth;
     private bool _forceClose;
@@ -41,12 +41,12 @@ public partial class AppHostWindow : Window
         AppEntry app, IntPtr edgeHwnd, PanelSide side, double originRelY,
         Func<double, PanelGeometry.Rect> computeBounds, Func<double> maxWidth)
     {
-        _app           = app;
-        _edgeHwnd      = edgeHwnd;
-        _side          = side;
-        _originRelY    = Math.Clamp(originRelY, 0.05, 0.95);
+        _app = app;
+        _edgeHwnd = edgeHwnd;
+        _side = side;
+        _originRelY = Math.Clamp(originRelY, 0.05, 0.95);
         _computeBounds = computeBounds;
-        _maxWidth      = maxWidth;
+        _maxWidth = maxWidth;
         InitializeComponent();
 
         TitleText.Text = app.Name;
@@ -89,13 +89,13 @@ public partial class AppHostWindow : Window
         if (_side == PanelSide.Right)
         {
             GripLeftCol.Width = new GridLength(6);
-            GripLeft.Opacity  = 1;
+            GripLeft.Opacity = 1;
             RootHost.RenderTransformOrigin = new Point(1, _originRelY);
         }
         else
         {
             GripRightCol.Width = new GridLength(6);
-            GripRight.Opacity  = 1;
+            GripRight.Opacity = 1;
             RootHost.RenderTransformOrigin = new Point(0, _originRelY);
         }
     }
@@ -118,6 +118,12 @@ public partial class AppHostWindow : Window
         // solo puede venir de DWM, no de un CornerRadius en XAML.
         int corner = Win32.DWMWCP_ROUND;
         Win32.DwmSetWindowAttribute(hwnd, Win32.DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
+
+        // Windows dibuja por su cuenta un borde de 1px alrededor de la ventana (viene
+        // junto con el redondeo de DWM). Se ve como una línea gris fina contra el
+        // navegador; DWMWA_COLOR_NONE lo saca.
+        int borderColor = unchecked((int)Win32.DWMWA_COLOR_NONE);
+        Win32.DwmSetWindowAttribute(hwnd, Win32.DWMWA_BORDER_COLOR, ref borderColor, sizeof(int));
     }
 
     public void AnchorToEdge()
@@ -125,10 +131,10 @@ public partial class AppHostWindow : Window
         if (!Win32.IsWindow(_edgeHwnd)) return;
         double w = Math.Max(PanelGeometry.MinPanel, SettingsService.Current.PanelWidth);
         var g = _computeBounds(w);
-        Width  = g.Width;
+        Width = g.Width;
         Height = g.Height;
-        Left   = g.Left;
-        Top    = g.Top;
+        Left = g.Left;
+        Top = g.Top;
     }
 
     public void Reanchor()
@@ -180,13 +186,13 @@ public partial class AppHostWindow : Window
             await Web.EnsureCoreWebView2Async(env, controllerOptions);
 
             var s = Web.CoreWebView2.Settings;
-            s.AreDefaultContextMenusEnabled    = true;
-            s.IsStatusBarEnabled               = false;
+            s.AreDefaultContextMenusEnabled = true;
+            s.IsStatusBarEnabled = false;
             s.AreBrowserAcceleratorKeysEnabled = true;
             // En modo Lite se apaga autofill/autosave: corren servicios en background.
             bool lite = SettingsService.Current.LiteMode;
-            s.IsGeneralAutofillEnabled         = !lite;
-            s.IsPasswordAutosaveEnabled        = !lite;
+            s.IsGeneralAutofillEnabled = !lite;
+            s.IsPasswordAutosaveEnabled = !lite;
 
             Web.CoreWebView2.NewWindowRequested += (_, ev) =>
             {
@@ -252,7 +258,7 @@ public partial class AppHostWindow : Window
             if (string.IsNullOrEmpty(url)) return;
             var img = new BitmapImage();
             img.BeginInit();
-            img.UriSource   = new Uri(url);
+            img.UriSource = new Uri(url);
             img.CacheOption = BitmapCacheOption.OnLoad;
             img.EndInit();
             TitleIcon.Source = img;
@@ -271,10 +277,10 @@ public partial class AppHostWindow : Window
         if (_side == side) return;
         _side = side;
         // Limpiar grips previos y reconfigurar para el nuevo lado.
-        GripLeftCol.Width  = new GridLength(0);
+        GripLeftCol.Width = new GridLength(0);
         GripRightCol.Width = new GridLength(0);
-        GripLeft.Opacity   = 0;
-        GripRight.Opacity  = 0;
+        GripLeft.Opacity = 0;
+        GripRight.Opacity = 0;
         ConfigureGripSide();
     }
 
@@ -383,7 +389,7 @@ public partial class AppHostWindow : Window
 
     private void BtnReload_Click(object sender, RoutedEventArgs e) => Web.CoreWebView2?.Reload();
     private void BtnMinimize_Click(object sender, RoutedEventArgs e) => HidePanel();
-    private void BtnClose_Click(object sender, RoutedEventArgs e)  => ForceClose();
+    private void BtnClose_Click(object sender, RoutedEventArgs e) => ForceClose();
 
     /// <summary>
     /// Extrae el conteo de no leídos del título de la web app. La mayoría usa
@@ -418,7 +424,7 @@ public partial class AppHostWindow : Window
             if (AuthHosts.Any(a => host.EndsWith(a, StringComparison.OrdinalIgnoreCase)))
                 return true;
 
-            var target  = RootDomain(host);
+            var target = RootDomain(host);
             var appHost = RootDomain(new Uri(_app.Url).Host);
             return string.Equals(target, appHost, StringComparison.OrdinalIgnoreCase);
         }
@@ -450,8 +456,8 @@ public partial class AppHostWindow : Window
         {
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
-                FileName        = "msedge.exe",
-                Arguments       = $"\"{url}\"",
+                FileName = "msedge.exe",
+                Arguments = $"\"{url}\"",
                 UseShellExecute = true
             });
         }
@@ -461,7 +467,7 @@ public partial class AppHostWindow : Window
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName        = url,
+                    FileName = url,
                     UseShellExecute = true
                 });
             }
@@ -571,7 +577,7 @@ public partial class AppHostWindow : Window
 
             if (!Win32.GetWindowRect(fg, out var fgRect)) return false;
 
-            const int maxFlyoutWidth  = 600;
+            const int maxFlyoutWidth = 600;
             const int maxFlyoutHeight = 700;
             if (fgRect.Width > maxFlyoutWidth || fgRect.Height > maxFlyoutHeight) return false;
 
@@ -579,10 +585,10 @@ public partial class AppHostWindow : Window
 
             const int margin = 32; // px de tolerancia para flyouts pegados al borde
             bool intersects =
-                fgRect.Left   < selfRect.Right  + margin &&
-                fgRect.Right  > selfRect.Left   - margin &&
-                fgRect.Top    < selfRect.Bottom + margin &&
-                fgRect.Bottom > selfRect.Top    - margin;
+                fgRect.Left < selfRect.Right + margin &&
+                fgRect.Right > selfRect.Left - margin &&
+                fgRect.Top < selfRect.Bottom + margin &&
+                fgRect.Bottom > selfRect.Top - margin;
 
             return intersects;
         }
