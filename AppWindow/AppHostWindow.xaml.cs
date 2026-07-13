@@ -52,6 +52,7 @@ public partial class AppHostWindow : Window
         TitleText.Text = app.Name;
         LoadIcon();
         ConfigureGripSide();
+        UpdateSizeLock();
 
         SourceInitialized += OnSourceInitialized;
         Loaded += async (_, _) =>
@@ -126,10 +127,19 @@ public partial class AppHostWindow : Window
         Win32.DwmSetWindowAttribute(hwnd, Win32.DWMWA_BORDER_COLOR, ref borderColor, sizeof(int));
     }
 
+    /// <summary>
+    /// Ancho efectivo: el propio de la app si está desvinculada, si no el estándar
+    /// de Configuración. Un solo lugar decide, así que cambiar el estándar reacomoda
+    /// las apps vinculadas y deja quietas a las que tienen tamaño propio.
+    /// </summary>
+    private double EffectiveWidth =>
+        Math.Max(PanelGeometry.MinPanel,
+            _app.HasCustomWidth ? _app.CustomWidth : SettingsService.Current.PanelWidth);
+
     public void AnchorToEdge()
     {
         if (!Win32.IsWindow(_edgeHwnd)) return;
-        double w = Math.Max(PanelGeometry.MinPanel, SettingsService.Current.PanelWidth);
+        double w = EffectiveWidth;
         var g = _computeBounds(w);
         Width = g.Width;
         Height = g.Height;
@@ -166,8 +176,58 @@ public partial class AppHostWindow : Window
         else if (anchorLeft is { } al) Left = al;
 
         Width = newW;
-        SettingsService.Current.PanelWidth = newW;
+
+        // Redimensionar a mano DESVINCULA esta app del tamaño estándar: el ancho pasa a
+        // vivir en la AppEntry, no en la config global. Así mover el grip de Gemini no
+        // reescala WhatsApp ni los paneles que se abran después.
+        bool wasLinked = !_app.HasCustomWidth;
+        _app.CustomWidth    = newW;
+        _app.UseCustomWidth = true;
+        SettingsService.TouchItem(_app.Id);
         SettingsService.Save();
+
+        if (wasLinked) UpdateSizeLock();
+    }
+
+    // ── Vínculo con el tamaño estándar ──
+
+    /// <summary>Refleja en el botón si esta app sigue el tamaño estándar o tiene el suyo.</summary>
+    private void UpdateSizeLock()
+    {
+        bool custom = _app.HasCustomWidth;
+
+        LockShackleClosed.Visibility = custom ? Visibility.Collapsed : Visibility.Visible;
+        LockShackleOpen.Visibility   = custom ? Visibility.Visible   : Visibility.Collapsed;
+
+        // SetResourceReference (y no FindResource) para que el brush siga vivo si
+        // ThemeService reemplaza la paleta en caliente.
+        LockBody.SetResourceReference(System.Windows.Controls.Border.BorderBrushProperty,
+            custom ? "Md3Error" : "Md3OnSurfaceVariant");
+
+        // Tres estados: usando tamaño propio / en el estándar con uno guardado para volver /
+        // en el estándar sin nada guardado (el click no hace nada).
+        BtnSizeLock.ToolTip = Loc.T(
+            custom                      ? "AppHost_SizeCustom"
+            : _app.CanRestoreCustomWidth ? "AppHost_SizeLinkedRestore"
+                                         : "AppHost_SizeLinked");
+    }
+
+    /// <summary>
+    /// Alterna entre el tamaño estándar y el propio. El ancho personalizado NO se borra al
+    /// volver al estándar: queda guardado en la AppEntry, así que un segundo click lo restaura.
+    /// Sin ancho propio guardado no hay nada que alternar.
+    /// </summary>
+    private void BtnSizeLock_Click(object sender, RoutedEventArgs e)
+    {
+        if (_app.HasCustomWidth)                 _app.UseCustomWidth = false; // → estándar
+        else if (_app.CanRestoreCustomWidth)     _app.UseCustomWidth = true;  // → propio guardado
+        else                                     return;                      // nada que hacer
+
+        SettingsService.TouchItem(_app.Id);
+        SettingsService.Save();
+
+        UpdateSizeLock();
+        AnchorToEdge();
     }
 
     private async Task InitWebViewAsync()

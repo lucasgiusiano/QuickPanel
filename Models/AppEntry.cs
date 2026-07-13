@@ -22,6 +22,27 @@ public class AppEntry
     /// <summary>Factor de zoom recordado para esta app (1.0 = 100%).</summary>
     public double ZoomFactor { get; set; } = 1.0;
 
+    /// <summary>
+    /// Ancho propio del panel en DIPs, fijado a mano al arrastrar el grip. Es un valor
+    /// RECORDADO: sobrevive a volver al tamaño estándar, para poder restaurarlo después.
+    /// Quién manda hoy lo decide <see cref="UseCustomWidth"/>, no este campo.
+    /// </summary>
+    public double CustomWidth { get; set; } = 0;
+
+    /// <summary>
+    /// <c>false</c> (default) = la app está VINCULADA al tamaño estándar de Configuración
+    /// (<see cref="QuickPanelSettings.PanelWidth"/>) y sigue sus cambios.
+    /// <c>true</c> = usa su <see cref="CustomWidth"/> y el estándar ya no la afecta.
+    /// Se alterna con el candado de la barra de título; arrastrar el grip lo pone en true.
+    /// </summary>
+    public bool UseCustomWidth { get; set; } = false;
+
+    /// <summary>True si esta app está usando ahora su ancho propio (candado abierto).</summary>
+    public bool HasCustomWidth => UseCustomWidth && CustomWidth > 0;
+
+    /// <summary>True si está en el estándar pero tiene un ancho propio guardado para volver.</summary>
+    public bool CanRestoreCustomWidth => !UseCustomWidth && CustomWidth > 0;
+
     /// <summary>Mantener el panel vivo aunque el Modo Lite esté activo (ej. música de fondo).</summary>
     public bool KeepAlive { get; set; } = false;
 

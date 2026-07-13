@@ -85,6 +85,43 @@
                                           Visibility="Collapsed" VerticalAlignment="Center"
                                           Click="TglKeepAlive_Click"
                                           ToolTip="{loc:Loc AppHost_KeepAliveTip}"/>
+                            <!-- Vínculo del tamaño de ESTE panel con el tamaño estándar de
+                                 Configuración. Ventana + candado leen como una sola unidad.
+                                 Candado cerrado gris = vinculado (sin acción al click).
+                                 Candado abierto rojo = tamaño propio; el click lo devuelve
+                                 al estándar. El code-behind alterna ambos estados. -->
+                            <Button x:Name="BtnSizeLock" Click="BtnSizeLock_Click"
+                                    Style="{StaticResource TitleBtn}" Width="44"
+                                    ToolTip="{loc:Loc AppHost_SizeLinked}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <!-- Ventana (siempre gris: identifica de qué habla el botón) -->
+                                    <Grid Width="15" Height="13" Margin="0,0,3,0">
+                                        <Border BorderBrush="{DynamicResource Md3OnSurfaceVariant}"
+                                                BorderThickness="1.2" CornerRadius="2.5"/>
+                                        <Rectangle Height="1.2" VerticalAlignment="Top" Margin="0,3.6,0,0"
+                                                   Fill="{DynamicResource Md3OnSurfaceVariant}"/>
+                                    </Grid>
+
+                                    <!-- Candado (cambia de forma y color según el estado) -->
+                                    <Grid Width="13" Height="15">
+                                        <Path x:Name="LockShackleClosed"
+                                              Data="M3.4,7 L3.4,4.6 A3.1,3.1 0 0 1 9.6,4.6 L9.6,7"
+                                              Stroke="{DynamicResource Md3OnSurfaceVariant}"
+                                              StrokeThickness="1.3"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                        <Path x:Name="LockShackleOpen" Visibility="Collapsed"
+                                              Data="M3.4,7 L3.4,4.2 A3.1,3.1 0 0 1 9.3,3.1"
+                                              Stroke="{DynamicResource Md3Error}"
+                                              StrokeThickness="1.3"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                        <Border x:Name="LockBody" Width="11" Height="8" CornerRadius="2"
+                                                VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                                                BorderBrush="{DynamicResource Md3OnSurfaceVariant}"
+                                                BorderThickness="1.3"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Button>
+
                             <Button x:Name="BtnHistory" Content="🕘" Click="BtnHistory_Click"
                                     Style="{StaticResource TitleBtn}" ToolTip="{loc:Loc AppHost_History}"/>
                             <Button x:Name="BtnReload" Content="⟳" Click="BtnReload_Click"
