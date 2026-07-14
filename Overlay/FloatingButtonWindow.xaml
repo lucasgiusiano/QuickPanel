@@ -25,17 +25,21 @@
                 <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.45" Color="#000000"/>
             </Border.Effect>
 
-            <!-- Glifo del panel -->
-            <Canvas Width="22" Height="22">
-                <Rectangle Canvas.Left="1" Canvas.Top="3" Width="4.5" Height="16" RadiusX="1.5" RadiusY="1.5"
-                           Fill="{DynamicResource Md3OnPrimaryContainer}"/>
-                <Rectangle Canvas.Left="8.5" Canvas.Top="3" Width="12.5" Height="3" RadiusX="1.5" RadiusY="1.5"
-                           Fill="{DynamicResource Md3OnPrimaryContainer}"/>
-                <Rectangle Canvas.Left="8.5" Canvas.Top="9.5" Width="12.5" Height="3" RadiusX="1.5" RadiusY="1.5"
-                           Fill="{DynamicResource Md3OnPrimaryContainer}"/>
-                <Rectangle Canvas.Left="8.5" Canvas.Top="16" Width="9" Height="3" RadiusX="1.5" RadiusY="1.5"
-                           Fill="{DynamicResource Md3OnPrimaryContainer}"/>
-            </Canvas>
+            <!-- Glifo del panel — mismo icono que el Store/dock/favicon: marco redondeado
+                 con la píldora del panel lateral a la derecha. Ver nota de ajuste óptico
+                 en DockBarWindow.xaml (mismo Canvas 148x136, mismo trazo/gap ajustados
+                 para leer bien a tamaño chico). Usa Md3OnPrimaryContainer, el color que
+                 ya tenía el glifo viejo, para no desentonar con el FAB. -->
+            <Viewbox Width="22" Height="22">
+                <Canvas Width="148" Height="136">
+                    <Rectangle Canvas.Left="5.5" Canvas.Top="5.5" Width="137" Height="125"
+                               RadiusX="13.5" RadiusY="13.5"
+                               Stroke="{DynamicResource Md3OnPrimaryContainer}" StrokeThickness="11"/>
+                    <Rectangle Canvas.Left="98" Canvas.Top="24" Width="25" Height="88"
+                               RadiusX="12.5" RadiusY="12.5"
+                               Fill="{DynamicResource Md3OnPrimaryContainer}"/>
+                </Canvas>
+            </Viewbox>
         </Border>
 
         <!-- Halo de modo mover -->

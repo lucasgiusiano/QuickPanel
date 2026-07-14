@@ -97,10 +97,6 @@ Things planned but not built yet — not promises, just where this is headed:
 
 - Picture-in-picture for panels.
 - Multiple accounts and multiple profiles per app.
-- Native "Start with Windows" support for the Microsoft Store build — the C# side
-  (`StartupService`, using the WinRT `StartupTask` API) is implemented; only the
-  `uap5:StartupTask` extension declaration in `Package.appxmanifest` (separate
-  `QuickPanel.Package` project) is still pending.
 
 ## Installation
 
