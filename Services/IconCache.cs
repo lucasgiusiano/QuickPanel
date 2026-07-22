@@ -52,6 +52,10 @@ public static class IconCache
     /// <summary>Claves cuyo ícono en memoria vino de la página (no se pisan con descargas).</summary>
     private static readonly HashSet<string> _fromPage = new();
 
+    /// <summary>Lado mayor en píxeles del ícono de página guardado por clave. Es lo que
+    /// permite quedarse con el de mejor resolución entre los varios que declara un sitio.</summary>
+    private static readonly Dictionary<string, int> _pageSizePx = new();
+
     private static readonly object _lock = new();
     private static bool _preloaded;
 
@@ -126,34 +130,94 @@ public static class IconCache
                 return raced;
 
             _cache[key] = img;
-            if (fromPage) _fromPage.Add(key);
+            if (fromPage)
+            {
+                _fromPage.Add(key);
+                // Recuperar la resolución del respaldo: sin esto, tras reiniciar la app
+                // cualquier captura posterior de menor calidad podría pisar a esta.
+                _pageSizePx[key] = Math.Max(img.PixelWidth, img.PixelHeight);
+            }
         }
         return img;
     }
 
     /// <summary>
-    /// Registra el favicon REAL que declara la página, capturado del WebView2 del panel.
-    /// Pisa lo que hubiera en memoria y en disco para esa clave, y a partir de acá ninguna
-    /// descarga remota vuelve a sobrescribirlo. Notifica vía <see cref="IconUpdated"/>.
+    /// Registra el favicon REAL de la página, capturado del WebView2 del panel.
+    ///
+    /// Recibe DOS candidatos y se queda con el de mayor resolución:
+    ///   faviconUri     → la URL del archivo que declara la página. Se descarga acá para
+    ///                    obtenerlo en su tamaño ORIGINAL. Es el bueno: WebView2 entrega
+    ///                    el favicon ya reducido al tamaño de pestaña (~16px), que se ve
+    ///                    borroso en los círculos del dock.
+    ///   webViewBytes   → lo que devolvió GetFaviconAsync. Sirve de respaldo cuando la URL
+    ///                    no se puede descargar (data: URI, requiere sesión, 404…).
+    ///
+    /// El trabajo va a un hilo de fondo porque incluye una descarga: la llamada retorna
+    /// enseguida y el aviso llega después por <see cref="IconUpdated"/>.
     /// </summary>
-    public static void SetFromPage(string? key, byte[]? bytes)
+    public static void SetFromPage(string? key, string? faviconUri, byte[]? webViewBytes)
     {
-        if (string.IsNullOrEmpty(key) || bytes is not { Length: > 0 }) return;
+        if (string.IsNullOrEmpty(key)) return;
+        Task.Run(() => ApplyPageIcon(key, faviconUri, webViewBytes));
+    }
 
-        var img = DecodeFrozen(bytes);
-        if (img == null) return; // bytes corruptos o formato no soportado: dejar lo que había
+    /// <summary>
+    /// Aplica el mejor candidato de la página, si supera a lo que ya había.
+    ///
+    /// La regla es "gana el más grande, y ante empate gana el primero". No es un detalle
+    /// menor: el favicon de una página cambia varias veces por documento (primero el
+    /// /favicon.ico por defecto, después el declarado en el HTML, y más tarde el que
+    /// escribe el JS con el punto de no leídos). Quedarse con el de mayor resolución
+    /// descarta el primero, y el desempate por orden evita que la variante "con
+    /// notificación" —que suele venir al mismo tamaño que la limpia— pise a la buena.
+    /// </summary>
+    private static void ApplyPageIcon(string key, string? faviconUri, byte[]? webViewBytes)
+    {
+        byte[]? best = null;
+        int bestPx = 0;
+
+        // Orden: primero el original descargado, después el de WebView2. Con la regla de
+        // desempate por orden, ante igual resolución gana el original.
+        foreach (var candidate in new[] { DownloadPageFavicon(faviconUri), webViewBytes })
+        {
+            if (candidate is not { Length: > 0 }) continue;
+            var probe = DecodeFrozen(candidate);
+            if (probe == null) continue;
+
+            int px = Math.Max(probe.PixelWidth, probe.PixelHeight);
+            if (px > bestPx) { best = candidate; bestPx = px; }
+        }
+
+        if (best == null) return;
+
+        var img = DecodeFrozen(best);
+        if (img == null) return;
 
         lock (_lock)
         {
-            _cache[key] = img;
+            // Ya hay uno de la página igual o mejor: no tocar nada (ni disco, ni evento).
+            if (_fromPage.Contains(key) && bestPx <= _pageSizePx.GetValueOrDefault(key))
+                return;
+
+            _cache[key]     = img;
+            _pageSizePx[key] = bestPx;
             _fromPage.Add(key);
             _retrying.Remove(key); // si había un reintento en vuelo, ya no hace falta
         }
 
-        WriteToDisk(key, bytes, fromPage: true);
+        WriteToDisk(key, best, fromPage: true);
 
         // Fuera del lock: los suscriptores hacen trabajo de UI.
         IconUpdated?.Invoke(key);
+    }
+
+    /// <summary>Descarga el archivo de favicon que declara la página, en su tamaño original.
+    /// Devuelve null para URIs no descargables (vacías, <c>data:</c>, o si falla la red):
+    /// en esos casos se usa el respaldo que dio GetFaviconAsync.</summary>
+    private static byte[]? DownloadPageFavicon(string? faviconUri)
+    {
+        if (string.IsNullOrEmpty(faviconUri) || !IsHttp(faviconUri)) return null;
+        return DownloadOnce(faviconUri);
     }
 
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(10) };

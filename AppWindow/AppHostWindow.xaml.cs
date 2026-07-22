@@ -283,7 +283,9 @@ public partial class AppHostWindow : Window
 
             // Favicon real de la página (el mismo que el navegador dibuja en la pestaña).
             // Reemplaza al aproximado que trajimos de un servicio remoto al agregar la app.
+            _faviconDeadlineUtc = DateTime.UtcNow + FaviconCaptureWindow;
             Web.CoreWebView2.FaviconChanged += OnFaviconChanged;
+            IconCache.IconUpdated += OnIconUpdated;
 
             // Historial: registrar cada navegación de nivel superior.
             Web.CoreWebView2.SourceChanged += (_, _) =>
@@ -337,53 +339,73 @@ public partial class AppHostWindow : Window
         catch { }
     }
 
-    /// <summary>True una vez capturado el favicon de la página en esta sesión del panel.</summary>
-    private bool _faviconCaptured;
+    /// <summary>
+    /// Cuánto tiempo después de la navegación inicial se siguen atendiendo cambios de
+    /// favicon. Acotarlo evita quedarse con el ícono que un sitio escribe por JS mucho
+    /// más tarde (típicamente el que lleva el punto de no leídos).
+    /// </summary>
+    private static readonly TimeSpan FaviconCaptureWindow = TimeSpan.FromSeconds(30);
+
+    /// <summary>Momento hasta el que se atienden cambios de favicon. Se fija al navegar.</summary>
+    private DateTime _faviconDeadlineUtc = DateTime.MinValue;
 
     /// <summary>
-    /// Captura el favicon que declara la página y lo promueve a ícono definitivo de la app.
+    /// Captura el favicon que declara la página y lo promueve a ícono de la app.
     ///
-    /// Se toma SOLO el primer favicon válido de cada apertura del panel y después se deja
-    /// de escuchar: muchos sitios (Gmail es el caso típico) reescriben el favicon para
-    /// meterle el punto/número de no leídos, y persistir uno de esos dejaría guardado para
-    /// siempre el ícono "con notificación" en vez del limpio. Los no leídos ya se muestran
-    /// aparte, con el badge que sale de UpdateUnread.
+    /// NO se puede tomar el primer disparo: la documentación de WebView2 aclara que el
+    /// evento se lanza al empezar a cargar el documento, ANTES de parsear el HTML — o sea,
+    /// con el /favicon.ico por defecto y no con el que la página declara — y se vuelve a
+    /// lanzar cuando aparece el declarado o cuando un script lo cambia. Por eso se escuchan
+    /// todos los cambios de la ventana de captura y es IconCache el que decide con cuál
+    /// quedarse (gana el de mayor resolución; ante empate, el primero).
     ///
-    /// Se recaptura en cada apertura del panel (no una única vez en la vida de la app):
-    /// es una llamada trivial y hace que el ícono se corrija solo si el sitio cambia de
-    /// imagen o si el caché de disco se borra.
+    /// Se le pasan los dos candidatos: la URI del favicon (para bajarlo en tamaño original)
+    /// y los bytes de GetFaviconAsync como respaldo, porque este último entrega la imagen
+    /// ya reducida al tamaño de pestaña y se ve borrosa en los círculos del dock.
     /// </summary>
     private async void OnFaviconChanged(object? sender, object e)
     {
-        if (_faviconCaptured) return;
-
         // Un ícono elegido a mano por el usuario tiene prioridad sobre el del sitio.
-        if (_app.HasCustomIcon) { _faviconCaptured = true; return; }
+        if (_app.HasCustomIcon) return;
+        if (DateTime.UtcNow > _faviconDeadlineUtc) return;
 
         try
         {
             var core = Web.CoreWebView2;
             if (core == null) return;
 
-            using var stream = await core.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png);
-            if (stream == null) return;
+            var uri = core.FaviconUri; // "" si la página no tiene favicon
 
-            using var ms = new MemoryStream();
-            await stream.CopyToAsync(ms);
-            var bytes = ms.ToArray();
-            if (bytes.Length == 0) return; // página sin favicon declarado: seguir con el remoto
+            byte[]? bytes = null;
+            using (var stream = await core.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png))
+            {
+                if (stream != null)
+                {
+                    using var ms = new MemoryStream();
+                    await stream.CopyToAsync(ms);
+                    bytes = ms.ToArray();
+                }
+            }
 
-            _faviconCaptured = true;
-            core.FaviconChanged -= OnFaviconChanged;
+            // Sin ninguno de los dos no hay nada que hacer: queda el aproximado remoto.
+            if (string.IsNullOrEmpty(uri) && bytes is not { Length: > 0 }) return;
 
-            // Guarda en memoria y disco, y avisa al dock para que refresque el ícono viejo.
-            IconCache.SetFromPage(IconCache.KeyFor(_app), bytes);
-
-            // El ícono de la barra de título de este panel también se actualiza al vuelo.
-            var img = IconCache.TryGetCached(IconCache.KeyFor(_app));
-            if (img != null) TitleIcon.Source = img;
+            // Guarda en memoria y disco (en segundo plano, porque descarga la URI original)
+            // y avisa por IconUpdated cuando el ícono realmente mejoró.
+            IconCache.SetFromPage(IconCache.KeyFor(_app), uri, bytes);
         }
         catch { /* el favicon es cosmético: si falla, queda el aproximado remoto */ }
+    }
+
+    /// <summary>Refresca el ícono de la barra de título cuando la captura da un ícono mejor.</summary>
+    private void OnIconUpdated(string key)
+    {
+        if (key != IconCache.KeyFor(_app)) return;
+        Dispatcher.BeginInvoke(() =>
+        {
+            var img = IconCache.TryGetCached(key);
+            if (img != null) TitleIcon.Source = img;
+        });
     }
 
     private bool _hidden;
@@ -766,6 +788,9 @@ public partial class AppHostWindow : Window
             return;
         }
         try { _suspendTimer?.Stop(); } catch { }
+        // El evento es estático y hay un panel por app abierta: sin esto, cada panel
+        // cerrado quedaría vivo por siempre colgado del caché de íconos.
+        try { IconCache.IconUpdated -= OnIconUpdated; } catch { }
         try { Web.Dispose(); } catch { }
         base.OnClosing(e);
     }
