@@ -60,8 +60,27 @@ public partial class DockBarWindow : Window
         _proximityTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(180) };
         _proximityTimer.Tick += (_, _) => UpdateProximity();
         _proximityTimer.Start();
-        Closed += (_, _) => _proximityTimer.Stop();
+
+        // Cuando un panel captura el favicon real de su página, el ícono que el dock ya
+        // dibujó (el aproximado remoto) queda viejo: redibujar. Llega desde otro hilo.
+        IconCache.IconUpdated += OnIconUpdated;
+
+        Closed += (_, _) =>
+        {
+            _proximityTimer.Stop();
+            // Imprescindible: el evento es estático y hay un dock por ventana de navegador,
+            // que además se recrean en RebuildOverlays. Sin esto quedan vivos para siempre.
+            IconCache.IconUpdated -= OnIconUpdated;
+        };
     }
+
+    private void OnIconUpdated(string key) =>
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (!IsLoaded) return;
+            if (SettingsService.Current.Apps.Any(a => IconCache.KeyFor(a) == key))
+                RebuildApps();
+        });
 
     // ── Anclaje de la barra (en DIPs de pantalla), para anclar paneles a su izquierda ──
 

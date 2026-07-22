@@ -831,6 +831,12 @@ public partial class ManageAppsWindow : Window
     {
         try
         {
+            // Caché primero: para las apps ya abiertas alguna vez, este es el favicon real
+            // de la página, el mismo que muestran el dock y el panel. Sin esto, esta lista
+            // sería el único lugar que sigue mostrando el aproximado remoto.
+            var cached = IconCache.TryGetCached(IconCache.KeyFor(app));
+            if (cached != null) return cached;
+
             var bmp = new BitmapImage();
             bmp.BeginInit();
             bmp.UriSource   = app.HasCustomIcon

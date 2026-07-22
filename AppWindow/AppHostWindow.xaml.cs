@@ -281,6 +281,10 @@ public partial class AppHostWindow : Window
                 UpdateUnread(t);
             };
 
+            // Favicon real de la página (el mismo que el navegador dibuja en la pestaña).
+            // Reemplaza al aproximado que trajimos de un servicio remoto al agregar la app.
+            Web.CoreWebView2.FaviconChanged += OnFaviconChanged;
+
             // Historial: registrar cada navegación de nivel superior.
             Web.CoreWebView2.SourceChanged += (_, _) =>
             {
@@ -314,6 +318,13 @@ public partial class AppHostWindow : Window
     {
         try
         {
+            // Caché primero (memoria o disco): si la app ya se abrió alguna vez, acá ya
+            // está el favicon real de la página. TryGetCached no toca la red, así que no
+            // puede bloquear el hilo de UI durante la construcción de la ventana.
+            var cached = IconCache.TryGetCached(IconCache.KeyFor(_app));
+            if (cached != null) { TitleIcon.Source = cached; return; }
+
+            // Sin respaldo todavía: aproximado remoto, cargado de forma asíncrona por WPF.
             var url = string.IsNullOrEmpty(_app.Favicon) ? AppEntry.FaviconFor(_app.Url) : _app.Favicon;
             if (string.IsNullOrEmpty(url)) return;
             var img = new BitmapImage();
@@ -324,6 +335,55 @@ public partial class AppHostWindow : Window
             TitleIcon.Source = img;
         }
         catch { }
+    }
+
+    /// <summary>True una vez capturado el favicon de la página en esta sesión del panel.</summary>
+    private bool _faviconCaptured;
+
+    /// <summary>
+    /// Captura el favicon que declara la página y lo promueve a ícono definitivo de la app.
+    ///
+    /// Se toma SOLO el primer favicon válido de cada apertura del panel y después se deja
+    /// de escuchar: muchos sitios (Gmail es el caso típico) reescriben el favicon para
+    /// meterle el punto/número de no leídos, y persistir uno de esos dejaría guardado para
+    /// siempre el ícono "con notificación" en vez del limpio. Los no leídos ya se muestran
+    /// aparte, con el badge que sale de UpdateUnread.
+    ///
+    /// Se recaptura en cada apertura del panel (no una única vez en la vida de la app):
+    /// es una llamada trivial y hace que el ícono se corrija solo si el sitio cambia de
+    /// imagen o si el caché de disco se borra.
+    /// </summary>
+    private async void OnFaviconChanged(object? sender, object e)
+    {
+        if (_faviconCaptured) return;
+
+        // Un ícono elegido a mano por el usuario tiene prioridad sobre el del sitio.
+        if (_app.HasCustomIcon) { _faviconCaptured = true; return; }
+
+        try
+        {
+            var core = Web.CoreWebView2;
+            if (core == null) return;
+
+            using var stream = await core.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png);
+            if (stream == null) return;
+
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+            if (bytes.Length == 0) return; // página sin favicon declarado: seguir con el remoto
+
+            _faviconCaptured = true;
+            core.FaviconChanged -= OnFaviconChanged;
+
+            // Guarda en memoria y disco, y avisa al dock para que refresque el ícono viejo.
+            IconCache.SetFromPage(IconCache.KeyFor(_app), bytes);
+
+            // El ícono de la barra de título de este panel también se actualiza al vuelo.
+            var img = IconCache.TryGetCached(IconCache.KeyFor(_app));
+            if (img != null) TitleIcon.Source = img;
+        }
+        catch { /* el favicon es cosmético: si falla, queda el aproximado remoto */ }
     }
 
     private bool _hidden;
