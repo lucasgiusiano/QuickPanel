@@ -26,6 +26,12 @@ BundleArtifacts/
 # Misc
 *.log
 
+# Claude Code local config (hardcodes machine-specific absolute paths)
+.claude/
+
+# graphify knowledge graph (generated/regenerable, embeds machine-specific paths)
+graphify-out/
+
 # Cloud Sync secrets (no versionar; ver CloudSyncSecrets.example.cs)
 Services/CloudSync/CloudSyncSecrets.cs
 
