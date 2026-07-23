@@ -85,6 +85,31 @@
                                           Visibility="Collapsed" VerticalAlignment="Center"
                                           Click="TglKeepAlive_Click"
                                           ToolTip="{loc:Loc AppHost_KeepAliveTip}"/>
+                            <!-- Fija el panel para que no se autooculte al perder foco (cambiar
+                                 de ventana o de monitor). Silueta clásica de "push pin" (cabeza +
+                                 punta), inclinada y gris = sin fijar; recta y con la cabeza en
+                                 rojo = fijada. El RenderTransformOrigin va al centro del Viewbox
+                                 (no de la punta) para que el giro no desplace el ícono del centro
+                                 del botón. No afecta a minimizar/cerrar ni al hotkey de ocultar:
+                                 solo al autooculte de OnDeactivated(). -->
+                            <Button x:Name="BtnPin" Click="BtnPin_Click"
+                                    Style="{StaticResource TitleBtn}" Width="30"
+                                    ToolTip="{loc:Loc AppHost_Pin}">
+                                <Viewbox Width="14" Height="14" RenderTransformOrigin="0.5,0.5">
+                                    <Viewbox.RenderTransform>
+                                        <RotateTransform x:Name="PinRotate" Angle="-38"/>
+                                    </Viewbox.RenderTransform>
+                                    <Grid Width="24" Height="24">
+                                        <Path x:Name="PinHead"
+                                              Data="M7,2 L17,2 L17,4 L16,4 L16,12 L18,14 L18,16 L6,16 L6,14 L8,12 L8,4 L7,4 Z"
+                                              Fill="{DynamicResource Md3OnSurfaceVariant}"/>
+                                        <Path x:Name="PinPoint"
+                                              Data="M11.2,16 L12.8,16 L12.8,22 L11.2,22 Z"
+                                              Fill="{DynamicResource Md3OnSurfaceVariant}"/>
+                                    </Grid>
+                                </Viewbox>
+                            </Button>
+
                             <!-- Vínculo del tamaño de ESTE panel con el tamaño estándar de
                                  Configuración. Ventana + candado leen como una sola unidad.
                                  Candado cerrado gris = vinculado (sin acción al click).

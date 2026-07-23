@@ -21,6 +21,7 @@ public partial class AppHostWindow : Window
     private readonly Func<double, PanelGeometry.Rect> _computeBounds; // width -> geometría
     private readonly Func<double> _maxWidth;
     private bool _forceClose;
+    private bool _pinned;
 
     /// <summary>Id de la app que hostea esta ventana.</summary>
     public string AppId => _app.Id;
@@ -53,6 +54,7 @@ public partial class AppHostWindow : Window
         LoadIcon();
         ConfigureGripSide();
         UpdateSizeLock();
+        UpdatePinButton();
 
         SourceInitialized += OnSourceInitialized;
         Loaded += async (_, _) =>
@@ -228,6 +230,30 @@ public partial class AppHostWindow : Window
 
         UpdateSizeLock();
         AnchorToEdge();
+    }
+
+    // ── Fijar panel (no autoocultar al perder foco) ──
+
+    /// <summary>Refleja en el botón si el panel está fijado: pin recto con la cabeza
+    /// en rojo cuando está fijado, inclinado y gris cuando no (mismo lenguaje que el
+    /// candado, que también usa Md3Error para señalar el estado no-default).</summary>
+    private void UpdatePinButton()
+    {
+        PinRotate.Angle = _pinned ? 0 : -38;
+        PinHead.SetResourceReference(System.Windows.Shapes.Shape.FillProperty,
+            _pinned ? "Md3Error" : "Md3OnSurfaceVariant");
+
+        BtnPin.ToolTip = Loc.T(_pinned ? "AppHost_Pinned" : "AppHost_Pin");
+    }
+
+    /// <summary>
+    /// Alterna el fijado. Solo afecta al autooculte de OnDeactivated() (cambio de
+    /// ventana/monitor); minimizar, cerrar y el hotkey de ocultar siguen intactos.
+    /// </summary>
+    private void BtnPin_Click(object sender, RoutedEventArgs e)
+    {
+        _pinned = !_pinned;
+        UpdatePinButton();
     }
 
     private async Task InitWebViewAsync()
@@ -608,7 +634,7 @@ public partial class AppHostWindow : Window
         // (el botón flotante, el menú, otro panel), no ocultamos.
         Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
         {
-            if (_forceClose || _hidden) return;
+            if (_forceClose || _hidden || _pinned) return;
             var active = System.Windows.Application.Current.Windows
                 .OfType<Window>()
                 .FirstOrDefault(w => w.IsActive);
