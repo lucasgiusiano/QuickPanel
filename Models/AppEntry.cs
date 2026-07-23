@@ -53,28 +53,23 @@ public class AppEntry
     public bool HasCustomIcon =>
         !string.IsNullOrEmpty(IconPath) && System.IO.File.Exists(IconPath);
 
+    /// <summary>
+    /// Favicon del host EXACTO de la app, sin generalizar a dominio raíz: un subdominio
+    /// suele tener su propio ícono, distinto al del dominio padre (ej. mail.google.com
+    /// no es el logo de Google, es el sobre de Gmail). Generalizar de más fue la causa
+    /// de íconos incorrectos en el pasado.
+    ///
+    /// Si esta URL no responde, <see cref="Services.IconCache"/> prueba fuentes
+    /// alternativas en orden (ver FaviconSources); esta es solo la primera candidata
+    /// y también la clave de caché.
+    /// </summary>
     public static string FaviconFor(string url)
     {
         try
         {
             var host = new Uri(url).Host;
-
-            // Para subdominios de apps conocidas, usar el dominio raíz da un
-            // favicon más confiable (ej. web.whatsapp.com -> whatsapp.com).
-            host = NormalizeHost(host);
-
-            return $"https://www.google.com/s2/favicons?sz=64&domain={host}";
+            return $"https://{host}/favicon.ico";
         }
         catch { return ""; }
-    }
-
-    private static string NormalizeHost(string host)
-    {
-        // Quitar subdominios comunes que rompen el favicon
-        string[] strip = { "web.", "app.", "mail.", "open.", "accounts." };
-        foreach (var p in strip)
-            if (host.StartsWith(p, StringComparison.OrdinalIgnoreCase))
-                return host[p.Length..];
-        return host;
     }
 }

@@ -8,7 +8,7 @@ using QuickPanel.Models;
 namespace QuickPanel.Services;
 
 /// <summary>
-/// Caché de íconos de apps, en memoria y en disco.
+/// Caché de favicons de apps, en memoria y en disco.
 ///
 /// Antes cada apertura del menú creaba un BitmapImage nuevo con UriSource remoto,
 /// disparando una descarga HTTP por ícono cada vez. Eso causaba el retraso visible
@@ -18,44 +18,21 @@ namespace QuickPanel.Services;
 /// El caché en memoria se respalda en disco (<c>%AppData%\QuickPanel\IconCache</c>),
 /// así que la descarga remota ocurre UNA vez en la vida de la app y no en cada arranque.
 ///
-/// Hay dos procedencias posibles para un ícono, y no valen lo mismo:
+/// La clave (<see cref="AppEntry.FaviconFor"/>) es el favicon.ico del host EXACTO de la
+/// app, sin generalizar a dominio raíz: generalizar rompe apps cuyo ícono vive en el
+/// subdominio (mail.google.com no es el logo de Google, es el de Gmail). Si esa URL no
+/// responde, <see cref="FaviconSources"/> prueba otras fuentes en orden antes de
+/// resignarse a la inicial del nombre en el círculo.
 ///
-///   .page → el favicon REAL que declara la página, capturado del WebView2 la primera
-///           vez que se abre su panel. Es el mismo que el navegador dibuja en la pestaña.
-///   .net  → el que devuelve un servicio remoto de favicons (Google, DuckDuckGo, o el
-///           /favicon.ico del sitio). Es una aproximación: se usa mientras la app
-///           todavía no se abrió nunca.
-///
-/// El de la página SIEMPRE gana: al leer de disco se prefiere <c>.page</c>, y una vez
-/// que una clave tiene ícono de página ninguna descarga remota puede pisarlo (importa
-/// porque Preload corre en segundo plano y podría terminar DESPUÉS de que el panel ya
-/// capturó el ícono bueno).
-///
-/// La procedencia vive en el nombre del archivo de caché, no en <see cref="AppEntry"/>,
-/// a propósito: el caché es local y NO se sincroniza a la nube, así que un flag dentro
-/// del modelo sincronizado diría "tengo ícono de la página" también en la otra PC, donde
-/// el archivo no existe.
-///
-/// Si la primera descarga falla (red lenta, timeout, fuente caída), no se cachea el
-/// fallo: se reintenta en segundo plano con fuentes alternativas (DuckDuckGo y el
-/// favicon directo del sitio), de modo que el ícono aparezca en la próxima apertura
-/// sin congelar la UI.
-///
-/// Además, Preload() dispara la carga de todos los íconos configurados en segundo
-/// plano, para que ya estén listos antes del primer click en el botón.
+/// Antes se probaba además capturar el favicon real desde el WebView2 de cada panel
+/// (evento FaviconChanged). Se sacó: la calidad terminaba siendo peor que pedir el
+/// favicon.ico directo del host (WebView2 entrega el ícono ya reducido al tamaño de
+/// pestaña), y agregaba una segunda procedencia de ícono que había que arbitrar.
 /// </summary>
 public static class IconCache
 {
     private static readonly Dictionary<string, BitmapImage> _cache = new();
     private static readonly HashSet<string> _retrying = new();
-
-    /// <summary>Claves cuyo ícono en memoria vino de la página (no se pisan con descargas).</summary>
-    private static readonly HashSet<string> _fromPage = new();
-
-    /// <summary>Lado mayor en píxeles del ícono de página guardado por clave. Es lo que
-    /// permite quedarse con el de mejor resolución entre los varios que declara un sitio.</summary>
-    private static readonly Dictionary<string, int> _pageSizePx = new();
-
     private static readonly object _lock = new();
     private static bool _preloaded;
 
@@ -63,10 +40,10 @@ public static class IconCache
     private const int MaxAttemptsPerSource = 2;
 
     /// <summary>
-    /// Se dispara con la clave del ícono cuando este cambia después de haberse mostrado
-    /// (hoy: al capturar el favicon real de la página). Permite que el dock refresque el
-    /// ícono ya dibujado sin esperar a la próxima apertura. Puede llegar en cualquier
-    /// hilo: quien se suscriba debe marshalear al de UI.
+    /// Se dispara con la clave del ícono cuando termina de descargarse en segundo plano
+    /// (el intento rápido inicial había fallado). Permite que un dock/panel ya abierto
+    /// reemplace la inicial de respaldo sin esperar a la próxima apertura. Puede llegar
+    /// en cualquier hilo: quien se suscriba debe marshalear al de UI.
     /// </summary>
     public static event Action<string>? IconUpdated;
 
@@ -74,8 +51,7 @@ public static class IconCache
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "QuickPanel", "IconCache");
 
-    private const string PageExt = ".page"; // favicon real de la página (prioritario)
-    private const string NetExt  = ".net";  // favicon de una fuente remota (aproximado)
+    private const string CacheExt = ".ico";
 
     /// <summary>Devuelve la clave de ícono de una app (ruta custom o URL de favicon).</summary>
     public static string KeyFor(AppEntry app) =>
@@ -91,7 +67,7 @@ public static class IconCache
         var cached = TryGetCached(key);
         if (cached != null) return cached;
 
-        // Intento rápido (una sola descarga) para no bloquear el hilo de UI más de lo
+        // Intento rápido (una sola fuente) para no bloquear el hilo de UI más de lo
         // estrictamente necesario.
         var img = Load(key, allowFallback: false, out var bytes);
         if (img != null)
@@ -116,122 +92,23 @@ public static class IconCache
             if (_cache.TryGetValue(key, out var cached)) return cached;
         }
 
-        // No está en memoria: probar el respaldo en disco (preferencia por .page).
-        var (bytes, fromPage) = ReadFromDisk(key);
+        var bytes = ReadFromDisk(key);
         if (bytes == null) return null;
 
         var img = DecodeFrozen(bytes);
         if (img == null) return null;
 
-        lock (_lock)
-        {
-            // Otro hilo puede haber llegado primero: no pisar un ícono de página.
-            if (_cache.TryGetValue(key, out var raced) && _fromPage.Contains(key))
-                return raced;
-
-            _cache[key] = img;
-            if (fromPage)
-            {
-                _fromPage.Add(key);
-                // Recuperar la resolución del respaldo: sin esto, tras reiniciar la app
-                // cualquier captura posterior de menor calidad podría pisar a esta.
-                _pageSizePx[key] = Math.Max(img.PixelWidth, img.PixelHeight);
-            }
-        }
+        lock (_lock) { _cache[key] = img; }
         return img;
-    }
-
-    /// <summary>
-    /// Registra el favicon REAL de la página, capturado del WebView2 del panel.
-    ///
-    /// Recibe DOS candidatos y se queda con el de mayor resolución:
-    ///   faviconUri     → la URL del archivo que declara la página. Se descarga acá para
-    ///                    obtenerlo en su tamaño ORIGINAL. Es el bueno: WebView2 entrega
-    ///                    el favicon ya reducido al tamaño de pestaña (~16px), que se ve
-    ///                    borroso en los círculos del dock.
-    ///   webViewBytes   → lo que devolvió GetFaviconAsync. Sirve de respaldo cuando la URL
-    ///                    no se puede descargar (data: URI, requiere sesión, 404…).
-    ///
-    /// El trabajo va a un hilo de fondo porque incluye una descarga: la llamada retorna
-    /// enseguida y el aviso llega después por <see cref="IconUpdated"/>.
-    /// </summary>
-    public static void SetFromPage(string? key, string? faviconUri, byte[]? webViewBytes)
-    {
-        if (string.IsNullOrEmpty(key)) return;
-        Task.Run(() => ApplyPageIcon(key, faviconUri, webViewBytes));
-    }
-
-    /// <summary>
-    /// Aplica el mejor candidato de la página, si supera a lo que ya había.
-    ///
-    /// La regla es "gana el más grande, y ante empate gana el primero". No es un detalle
-    /// menor: el favicon de una página cambia varias veces por documento (primero el
-    /// /favicon.ico por defecto, después el declarado en el HTML, y más tarde el que
-    /// escribe el JS con el punto de no leídos). Quedarse con el de mayor resolución
-    /// descarta el primero, y el desempate por orden evita que la variante "con
-    /// notificación" —que suele venir al mismo tamaño que la limpia— pise a la buena.
-    /// </summary>
-    private static void ApplyPageIcon(string key, string? faviconUri, byte[]? webViewBytes)
-    {
-        byte[]? best = null;
-        int bestPx = 0;
-
-        // Orden: primero el original descargado, después el de WebView2. Con la regla de
-        // desempate por orden, ante igual resolución gana el original.
-        foreach (var candidate in new[] { DownloadPageFavicon(faviconUri), webViewBytes })
-        {
-            if (candidate is not { Length: > 0 }) continue;
-            var probe = DecodeFrozen(candidate);
-            if (probe == null) continue;
-
-            int px = Math.Max(probe.PixelWidth, probe.PixelHeight);
-            if (px > bestPx) { best = candidate; bestPx = px; }
-        }
-
-        if (best == null) return;
-
-        var img = DecodeFrozen(best);
-        if (img == null) return;
-
-        lock (_lock)
-        {
-            // Ya hay uno de la página igual o mejor: no tocar nada (ni disco, ni evento).
-            if (_fromPage.Contains(key) && bestPx <= _pageSizePx.GetValueOrDefault(key))
-                return;
-
-            _cache[key]     = img;
-            _pageSizePx[key] = bestPx;
-            _fromPage.Add(key);
-            _retrying.Remove(key); // si había un reintento en vuelo, ya no hace falta
-        }
-
-        WriteToDisk(key, best, fromPage: true);
-
-        // Fuera del lock: los suscriptores hacen trabajo de UI.
-        IconUpdated?.Invoke(key);
-    }
-
-    /// <summary>Descarga el archivo de favicon que declara la página, en su tamaño original.
-    /// Devuelve null para URIs no descargables (vacías, <c>data:</c>, o si falla la red):
-    /// en esos casos se usa el respaldo que dio GetFaviconAsync.</summary>
-    private static byte[]? DownloadPageFavicon(string? faviconUri)
-    {
-        if (string.IsNullOrEmpty(faviconUri) || !IsHttp(faviconUri)) return null;
-        return DownloadOnce(faviconUri);
     }
 
     private static readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(10) };
 
-    /// <summary>Guarda en memoria y disco un ícono venido de una fuente REMOTA. No hace
-    /// nada si esa clave ya tiene el ícono de la página, que tiene prioridad.</summary>
+    /// <summary>Guarda en memoria y disco un ícono descargado.</summary>
     private static void StoreRemote(string key, BitmapImage img, byte[]? bytes)
     {
-        lock (_lock)
-        {
-            if (_fromPage.Contains(key)) return; // el de la página manda
-            _cache[key] = img;
-        }
-        if (bytes is { Length: > 0 }) WriteToDisk(key, bytes, fromPage: false);
+        lock (_lock) { _cache[key] = img; }
+        if (bytes is { Length: > 0 }) WriteToDisk(key, bytes);
     }
 
     /// <summary>Lanza (una sola vez por clave) un reintento en segundo plano con la
@@ -247,13 +124,17 @@ public static class IconCache
         Task.Run(() =>
         {
             var img = Load(key, allowFallback: true, out var bytes);
-            if (img != null) StoreRemote(key, img, bytes);
+            if (img != null)
+            {
+                StoreRemote(key, img, bytes);
+                IconUpdated?.Invoke(key); // el panel ya podría estar mostrando la inicial de respaldo
+            }
             lock (_lock) { _retrying.Remove(key); }
         });
     }
 
     /// <param name="allowFallback">Si es true, recorre fuentes alternativas y reintenta
-    /// ante errores transitorios. Si es false, hace una sola descarga de la clave.</param>
+    /// ante errores transitorios. Si es false, prueba una sola fuente.</param>
     /// <param name="raw">Bytes crudos de la imagen, para poder respaldarla en disco.</param>
     private static BitmapImage? Load(string key, bool allowFallback, out byte[]? raw)
     {
@@ -285,49 +166,39 @@ public static class IconCache
 
     /// <summary>Ruta del archivo de caché para una clave. La clave puede ser una URL o
     /// una ruta de archivo, así que se hashea para obtener un nombre válido y estable.</summary>
-    private static string CachePath(string key, string ext)
+    private static string CachePath(string key)
     {
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key)));
-        return Path.Combine(CacheDir, hash[..32] + ext);
+        return Path.Combine(CacheDir, hash[..32] + CacheExt);
     }
 
-    /// <summary>Lee el ícono respaldado en disco. Prefiere el de la página sobre el remoto.
-    /// Devuelve (null, false) si no hay respaldo o no se puede leer.</summary>
-    private static (byte[]? bytes, bool fromPage) ReadFromDisk(string key)
+    /// <summary>Lee el ícono respaldado en disco. Devuelve null si no hay respaldo o no
+    /// se puede leer.</summary>
+    private static byte[]? ReadFromDisk(string key)
     {
-        foreach (var (ext, fromPage) in new[] { (PageExt, true), (NetExt, false) })
+        try
         {
-            try
-            {
-                var path = CachePath(key, ext);
-                if (!File.Exists(path)) continue;
-                var bytes = File.ReadAllBytes(path);
-                if (bytes.Length > 0) return (bytes, fromPage);
-            }
-            catch { /* archivo bloqueado o corrupto: probar la siguiente procedencia */ }
+            var path = CachePath(key);
+            if (!File.Exists(path)) return null;
+            var bytes = File.ReadAllBytes(path);
+            return bytes.Length > 0 ? bytes : null;
         }
-        return (null, false);
+        catch { return null; } // archivo bloqueado o corrupto
     }
 
     /// <summary>Respalda el ícono en disco. Escribe a un temporal y lo mueve, para que un
     /// lector concurrente nunca vea un archivo a medio escribir.</summary>
-    private static void WriteToDisk(string key, byte[] bytes, bool fromPage)
+    private static void WriteToDisk(string key, byte[] bytes)
     {
         try
         {
             Directory.CreateDirectory(CacheDir);
 
-            var dest = CachePath(key, fromPage ? PageExt : NetExt);
+            var dest = CachePath(key);
             var tmp  = dest + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
 
             File.WriteAllBytes(tmp, bytes);
             File.Move(tmp, dest, overwrite: true);
-
-            // Al llegar el ícono real de la página, el aproximado ya no sirve para nada.
-            if (fromPage)
-            {
-                try { File.Delete(CachePath(key, NetExt)); } catch { }
-            }
         }
         catch { /* el caché de disco es una optimización: si falla, se sigue con memoria */ }
     }
@@ -384,36 +255,48 @@ public static class IconCache
         return null;
     }
 
-    /// <summary>Fuentes de favicon a probar en orden: la original (Google), y luego
-    /// alternativas derivadas del host para tolerar que una fuente esté caída/bloqueada.</summary>
+    /// <summary>
+    /// Fuentes de favicon a probar en orden, de más a menos específica:
+    ///
+    ///   1. favicon.ico del host EXACTO (la clave misma) — el que declara la propia app.
+    ///      Es la fuente más confiable cuando existe: es el archivo real del sitio.
+    ///   2. DuckDuckGo sobre el host exacto — conoce el ícono de sitios que no sirven
+    ///      favicon.ico en la raíz (ej. subdominios de Google como gemini.google.com o
+    ///      home.google.com). A diferencia de Google Favicons, responde 404 cuando no
+    ///      tiene nada, así que no tapa un mejor resultado más adelante en la cadena.
+    ///   3 y 4. Lo mismo, pero sobre el dominio raíz (sin subdominio): red de seguridad
+    ///      para hosts cuyo ícono en realidad vive en el dominio padre.
+    ///   5. Google s2favicons sobre el dominio raíz, al final: casi siempre devuelve algo
+    ///      (200) aunque sea un ícono genérico — mejor eso que la inicial del nombre.
+    /// </summary>
     private static IEnumerable<string> FaviconSources(string primaryUrl)
     {
         yield return primaryUrl;
 
-        var host = HostFromFaviconUrl(primaryUrl);
-        if (!string.IsNullOrEmpty(host))
+        string host;
+        try { host = new Uri(primaryUrl).Host; }
+        catch { yield break; }
+        if (string.IsNullOrEmpty(host)) yield break;
+
+        yield return $"https://icons.duckduckgo.com/ip3/{host}.ico";
+
+        var root = RootDomain(host);
+        if (root != host)
         {
-            yield return $"https://icons.duckduckgo.com/ip3/{host}.ico";
-            yield return $"https://{host}/favicon.ico";
+            yield return $"https://{root}/favicon.ico";
+            yield return $"https://icons.duckduckgo.com/ip3/{root}.ico";
         }
+
+        yield return $"https://www.google.com/s2/favicons?sz=128&domain={root}";
     }
 
-    /// <summary>Extrae el host del parámetro <c>domain=</c> de una URL de Google favicons;
-    /// si no lo encuentra, usa el host de la propia URL.</summary>
-    private static string HostFromFaviconUrl(string url)
+    /// <summary>Aproxima el dominio raíz quedándose con las últimas dos etiquetas
+    /// (ej. mail.google.com -> google.com). No es exacto para TLDs compuestos
+    /// (co.uk, com.ar…), pero acá solo se usa como red de seguridad final.</summary>
+    private static string RootDomain(string host)
     {
-        try
-        {
-            var uri = new Uri(url);
-            foreach (var part in uri.Query.TrimStart('?').Split('&'))
-            {
-                var kv = part.Split('=', 2);
-                if (kv.Length == 2 && kv[0].Equals("domain", StringComparison.OrdinalIgnoreCase))
-                    return Uri.UnescapeDataString(kv[1]);
-            }
-            return uri.Host;
-        }
-        catch { return ""; }
+        var parts = host.Split('.');
+        return parts.Length > 2 ? string.Join('.', parts[^2..]) : host;
     }
 
     private static bool IsHttp(string s) =>

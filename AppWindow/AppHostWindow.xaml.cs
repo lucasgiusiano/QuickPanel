@@ -281,10 +281,8 @@ public partial class AppHostWindow : Window
                 UpdateUnread(t);
             };
 
-            // Favicon real de la página (el mismo que el navegador dibuja en la pestaña).
-            // Reemplaza al aproximado que trajimos de un servicio remoto al agregar la app.
-            _faviconDeadlineUtc = DateTime.UtcNow + FaviconCaptureWindow;
-            Web.CoreWebView2.FaviconChanged += OnFaviconChanged;
+            // Si el favicon todavía no estaba cacheado, IconCache lo reintenta en
+            // segundo plano; esto refresca el ícono de la barra de título cuando llegue.
             IconCache.IconUpdated += OnIconUpdated;
 
             // Historial: registrar cada navegación de nivel superior.
@@ -320,9 +318,9 @@ public partial class AppHostWindow : Window
     {
         try
         {
-            // Caché primero (memoria o disco): si la app ya se abrió alguna vez, acá ya
-            // está el favicon real de la página. TryGetCached no toca la red, así que no
-            // puede bloquear el hilo de UI durante la construcción de la ventana.
+            // Caché primero (memoria o disco): si el favicon ya se descargó alguna vez,
+            // acá está. TryGetCached no toca la red, así que no puede bloquear el hilo
+            // de UI durante la construcción de la ventana.
             var cached = IconCache.TryGetCached(IconCache.KeyFor(_app));
             if (cached != null) { TitleIcon.Source = cached; return; }
 
@@ -339,65 +337,8 @@ public partial class AppHostWindow : Window
         catch { }
     }
 
-    /// <summary>
-    /// Cuánto tiempo después de la navegación inicial se siguen atendiendo cambios de
-    /// favicon. Acotarlo evita quedarse con el ícono que un sitio escribe por JS mucho
-    /// más tarde (típicamente el que lleva el punto de no leídos).
-    /// </summary>
-    private static readonly TimeSpan FaviconCaptureWindow = TimeSpan.FromSeconds(30);
-
-    /// <summary>Momento hasta el que se atienden cambios de favicon. Se fija al navegar.</summary>
-    private DateTime _faviconDeadlineUtc = DateTime.MinValue;
-
-    /// <summary>
-    /// Captura el favicon que declara la página y lo promueve a ícono de la app.
-    ///
-    /// NO se puede tomar el primer disparo: la documentación de WebView2 aclara que el
-    /// evento se lanza al empezar a cargar el documento, ANTES de parsear el HTML — o sea,
-    /// con el /favicon.ico por defecto y no con el que la página declara — y se vuelve a
-    /// lanzar cuando aparece el declarado o cuando un script lo cambia. Por eso se escuchan
-    /// todos los cambios de la ventana de captura y es IconCache el que decide con cuál
-    /// quedarse (gana el de mayor resolución; ante empate, el primero).
-    ///
-    /// Se le pasan los dos candidatos: la URI del favicon (para bajarlo en tamaño original)
-    /// y los bytes de GetFaviconAsync como respaldo, porque este último entrega la imagen
-    /// ya reducida al tamaño de pestaña y se ve borrosa en los círculos del dock.
-    /// </summary>
-    private async void OnFaviconChanged(object? sender, object e)
-    {
-        // Un ícono elegido a mano por el usuario tiene prioridad sobre el del sitio.
-        if (_app.HasCustomIcon) return;
-        if (DateTime.UtcNow > _faviconDeadlineUtc) return;
-
-        try
-        {
-            var core = Web.CoreWebView2;
-            if (core == null) return;
-
-            var uri = core.FaviconUri; // "" si la página no tiene favicon
-
-            byte[]? bytes = null;
-            using (var stream = await core.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png))
-            {
-                if (stream != null)
-                {
-                    using var ms = new MemoryStream();
-                    await stream.CopyToAsync(ms);
-                    bytes = ms.ToArray();
-                }
-            }
-
-            // Sin ninguno de los dos no hay nada que hacer: queda el aproximado remoto.
-            if (string.IsNullOrEmpty(uri) && bytes is not { Length: > 0 }) return;
-
-            // Guarda en memoria y disco (en segundo plano, porque descarga la URI original)
-            // y avisa por IconUpdated cuando el ícono realmente mejoró.
-            IconCache.SetFromPage(IconCache.KeyFor(_app), uri, bytes);
-        }
-        catch { /* el favicon es cosmético: si falla, queda el aproximado remoto */ }
-    }
-
-    /// <summary>Refresca el ícono de la barra de título cuando la captura da un ícono mejor.</summary>
+    /// <summary>Refresca el ícono de la barra de título cuando un reintento en segundo
+    /// plano de IconCache consigue el favicon después de todo.</summary>
     private void OnIconUpdated(string key)
     {
         if (key != IconCache.KeyFor(_app)) return;
