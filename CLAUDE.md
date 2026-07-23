@@ -3,18 +3,32 @@
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
 
 Rules:
+
 - For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 
 ## Confirmations — MANDATORY, do not skip
+
 Before running ANY bash command, editing a file, or requesting approval of
 any kind: explain in 1-2 lines what you're about to do and on which exact
 path/file it acts. This applies always, without exception, even for trivial
 or test commands. Do not show the approval prompt without this explanation
 first.
 
+## Approach — MANDATORY, do not skip
+
+- Think before acting. Read existing files before writing code.
+- Be concise in output but thorough in reasoning.
+- Prefer editing over rewriting whole files.
+- Do not re-read files you have already read unless the file may have changed.
+- Test your code before declaring done.
+- No sycophantic openers or closing fluff.
+- Keep solutions simple and direct.
+- User instructions always override this file.
+
 # graphify
+
 - **graphify** (`.claude/skills/graphify/SKILL.md`) - any input to knowledge graph. Trigger: `/graphify`
-When the user types `/graphify`, use the installed graphify skill or instructions before doing anything else.
+  When the user types `/graphify`, use the installed graphify skill or instructions before doing anything else.
