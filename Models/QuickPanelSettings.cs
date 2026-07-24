@@ -5,9 +5,9 @@ namespace QuickPanel.Models;
 /// <summary>Estilo del menú de apps.</summary>
 public enum MenuMode
 {
-    /// <summary>Botón flotante redondo + menú radial (Material Design). Default.</summary>
+    /// <summary>Botón flotante redondo + menú radial (Material Design).</summary>
     Material,
-    /// <summary>Barra lateral auto-ocultable anclada al borde derecho del navegador.</summary>
+    /// <summary>Barra lateral auto-ocultable anclada al borde derecho del navegador. Default.</summary>
     Dock
 }
 
@@ -26,8 +26,8 @@ public class QuickPanelSettings
     /// <summary>Diámetro de los círculos del menú flotante en DIPs.</summary>
     public double MenuItemSize { get; set; } = 48;
 
-    /// <summary>Estilo del menú: botón flotante Material (default) o barra Dock lateral.</summary>
-    public MenuMode MenuMode { get; set; } = MenuMode.Material;
+    /// <summary>Estilo del menú: botón flotante Material o barra Dock lateral (default).</summary>
+    public MenuMode MenuMode { get; set; } = MenuMode.Dock;
 
     /// <summary>Idioma de la interfaz. null = automático (seguir el idioma de Windows).</summary>
     public Lang? Language { get; set; } = null;

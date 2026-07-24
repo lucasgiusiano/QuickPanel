@@ -334,6 +334,11 @@ public partial class AppHostWindow : Window
         }
         catch (Exception ex)
         {
+            // E_ABORT: el panel se cerró (por la app que lo abrió, o por el usuario)
+            // antes de que WebView2 terminara de inicializar. No es un error real —
+            // asumimos que el panel simplemente no llegó a abrirse, sin avisar nada.
+            if ((uint)ex.HResult == 0x80004004) { ForceClose(); return; }
+
             MessageBox.Show(string.Format(Loc.T("AppHost_WebView2Failed"), ex.Message),
                 "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Error);
             ForceClose();
@@ -655,6 +660,13 @@ public partial class AppHostWindow : Window
             // (que depende de reconocer el proceso/clase exactos), esto cubre
             // cualquier popup que aparezca visualmente sobre o pegado al panel.
             if (ForegroundOverlapsThisPanel()) return;
+
+            // Solo ocultamos si el foco fue específicamente a la ventana del
+            // navegador a la que este panel está anclado (click en la página, una
+            // pestaña, la barra de direcciones, etc.). Si se fue a cualquier otra
+            // ventana/app —incluido minimizar el navegador o cambiar a otra
+            // ventana de Edge distinta— el panel se queda abierto.
+            if (Win32.GetForegroundWindow() != _edgeHwnd) return;
 
             HidePanel();
         });
