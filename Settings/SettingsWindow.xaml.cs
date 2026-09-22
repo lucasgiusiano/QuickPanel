@@ -274,6 +274,7 @@ public partial class SettingsWindow : Window
             nameof(NavGeneral)       => SecGeneral,
             nameof(NavApps)          => SecApps,
             nameof(NavFloatingMenu)  => SecFloatingMenu,
+            nameof(NavDock)          => SecDock,
             nameof(NavTheme)         => SecTheme,
             nameof(NavNotifications) => SecNotifications,
             nameof(NavPerformance)   => SecPerformance,
@@ -286,7 +287,7 @@ public partial class SettingsWindow : Window
 
     private void ShowSection(StackPanel target)
     {
-        foreach (var sec in new[] { SecGeneral, SecApps, SecFloatingMenu, SecTheme,
+        foreach (var sec in new[] { SecGeneral, SecApps, SecFloatingMenu, SecDock, SecTheme,
                                      SecNotifications, SecPerformance, SecHotkeys, SecBackup })
             sec.Visibility = sec == target ? Visibility.Visible : Visibility.Collapsed;
     }
@@ -300,9 +301,13 @@ public partial class SettingsWindow : Window
     private void UpdateFloatingMenuAvailability()
     {
         bool isDock = SettingsService.Current.MenuMode == MenuMode.Dock;
+        // Cada modo tiene su propia sección con todas sus opciones: "Menú flotante" en
+        // Material, "Dock" en Dock. Solo se muestra la del modo activo.
         NavFloatingMenu.Visibility = isDock ? Visibility.Collapsed : Visibility.Visible;
+        NavDock.Visibility         = isDock ? Visibility.Visible : Visibility.Collapsed;
 
-        if (isDock && SecFloatingMenu.Visibility == Visibility.Visible)
+        if ((isDock && SecFloatingMenu.Visibility == Visibility.Visible) ||
+            (!isDock && SecDock.Visibility == Visibility.Visible))
         {
             NavGeneral.IsChecked = true;
             ShowSection(SecGeneral);
@@ -435,7 +440,6 @@ public partial class SettingsWindow : Window
     private void UpdateDockOptions()
     {
         var s = SettingsService.Current;
-        DockOptions.Visibility = s.MenuMode == MenuMode.Dock ? Visibility.Visible : Visibility.Collapsed;
         ChkHideHandle.IsEnabled = !s.DockClickToOpen;
         ChkDockClick.IsEnabled  = !s.HideDockHandle;
     }

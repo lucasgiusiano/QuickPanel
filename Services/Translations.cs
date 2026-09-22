@@ -192,6 +192,7 @@ internal static class Translations
         ["Edge_Bottom"] = "Bottom",
         ["Edge_Top"] = "Top",
         ["Settings_MoveHandle"] = "Move tab (drag it)",
+        ["Settings_NavDock"] = "Dock",
     };
 
     private static readonly Dictionary<string, string> Es = new()
@@ -365,6 +366,7 @@ internal static class Translations
         ["Edge_Bottom"] = "Abajo",
         ["Edge_Top"] = "Arriba",
         ["Settings_MoveHandle"] = "Mover pestaña (arrastrala)",
+        ["Settings_NavDock"] = "Dock",
     };
 
     private static readonly Dictionary<string, string> De = new()
@@ -538,6 +540,7 @@ internal static class Translations
         ["Edge_Bottom"] = "Unten",
         ["Edge_Top"] = "Oben",
         ["Settings_MoveHandle"] = "Reiter verschieben (ziehen)",
+        ["Settings_NavDock"] = "Dock",
     };
 
     private static readonly Dictionary<string, string> Fr = new()
@@ -711,6 +714,7 @@ internal static class Translations
         ["Edge_Bottom"] = "Bas",
         ["Edge_Top"] = "Haut",
         ["Settings_MoveHandle"] = "Déplacer l'onglet (faites-le glisser)",
+        ["Settings_NavDock"] = "Dock",
     };
 
     private static readonly Dictionary<string, string> It = new()
@@ -884,6 +888,7 @@ internal static class Translations
         ["Edge_Bottom"] = "In basso",
         ["Edge_Top"] = "In alto",
         ["Settings_MoveHandle"] = "Sposta linguetta (trascinala)",
+        ["Settings_NavDock"] = "Dock",
     };
 
     private static readonly Dictionary<string, string> Pt = new()
@@ -1057,6 +1062,7 @@ internal static class Translations
         ["Edge_Bottom"] = "Embaixo",
         ["Edge_Top"] = "Em cima",
         ["Settings_MoveHandle"] = "Mover aba (arraste)",
+        ["Settings_NavDock"] = "Dock",
     };
 
     private static readonly Dictionary<string, string> Ja = new()
@@ -1230,6 +1236,7 @@ internal static class Translations
         ["Edge_Bottom"] = "下",
         ["Edge_Top"] = "上",
         ["Settings_MoveHandle"] = "タブを移動（ドラッグ）",
+        ["Settings_NavDock"] = "ドック",
     };
 
     private static readonly Dictionary<string, string> ZhHans = new()
@@ -1403,6 +1410,7 @@ internal static class Translations
         ["Edge_Bottom"] = "下",
         ["Edge_Top"] = "上",
         ["Settings_MoveHandle"] = "移动标签（拖动）",
+        ["Settings_NavDock"] = "停靠栏",
     };
 
     private static readonly Dictionary<string, string> ZhHant = new()
@@ -1576,5 +1584,6 @@ internal static class Translations
         ["Edge_Bottom"] = "下",
         ["Edge_Top"] = "上",
         ["Settings_MoveHandle"] = "移動標籤（拖曳）",
+        ["Settings_NavDock"] = "停駐列",
     };
 }

@@ -233,11 +233,14 @@ public partial class DockBarWindow : Window
         AppsScroll.VerticalScrollBarVisibility   = h ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Hidden;
         AppsScroll.HorizontalScrollBarVisibility = h ? ScrollBarVisibility.Hidden : ScrollBarVisibility.Disabled;
         AppsList.Orientation = h ? Orientation.Horizontal : Orientation.Vertical;
-        // Eje perpendicular al scroll: centrado (igual que siempre en los laterales).
-        // Eje del scroll: arranca en el inicio y crece hacia el otro extremo — arriba→abajo
-        // en los laterales (como siempre fue), izquierda→derecha arriba/abajo.
-        AppsList.HorizontalAlignment = h ? HorizontalAlignment.Left : HorizontalAlignment.Center;
-        AppsList.VerticalAlignment   = h ? VerticalAlignment.Center : VerticalAlignment.Top;
+        // Laterales: igual que siempre, apps de arriba hacia abajo.
+        // Arriba/abajo: apps centradas a lo largo de la barra. Un ScrollViewer le da ancho
+        // infinito a su contenido, así que centrar la lista adentro no alcanza: se centra el
+        // propio ScrollViewer (toma el ancho de las apps y se centra en el hueco entre "+" y
+        // ⚙). Si las apps no entran, ocupa todo el hueco y se desplaza con la rueda.
+        AppsScroll.HorizontalAlignment = h ? HorizontalAlignment.Center : HorizontalAlignment.Stretch;
+        AppsList.HorizontalAlignment   = HorizontalAlignment.Center;
+        AppsList.VerticalAlignment     = h ? VerticalAlignment.Center : VerticalAlignment.Top;
     }
 
     private double _tabOverflow;
@@ -446,7 +449,7 @@ public partial class DockBarWindow : Window
             // barra, al desplegarse el cursor quedaba en ese hueco y se generaba un
             // parpadeo abrir/cerrar.
             bool insideKeepZone =
-                depth <= BarMarginEdge + BarThick + 12 && depth >= -20 &&
+                depth <= BarMarginEdge + BarThick + 12 && depth >= -(20 + OutsideGap()) &&
                 along >= -8 && along <= len + 8;
 
             // Histéresis: colapsar recién tras 2 ticks consecutivos afuera, para que un
@@ -475,6 +478,38 @@ public partial class DockBarWindow : Window
         DockEdge.Top    => (cx - Left, cy - Top,               Width),
         _               => (cy - Top,  (Left + Width) - cx,    Height)
     };
+
+    /// <summary>
+    /// Espacio (DIPs) entre el borde exterior del dock y el borde físico del monitor, del
+    /// lado del dock. Típicamente la barra de tareas: con el dock abajo (o en el lado donde
+    /// esté la barra de tareas) el cursor pasa por ella al ir hacia el borde, y sin contarla
+    /// el dock se cerraba y volvía a abrir. Solo extiende la zona que MANTIENE abierto el
+    /// dock, no la que lo abre: pasar por la barra de tareas no despliega nada.
+    /// Tope de 120 para que una ventana de navegador no maximizada no deje una zona enorme.
+    /// </summary>
+    private double OutsideGap()
+    {
+        try
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd == IntPtr.Zero) return 0;
+            var mon = Win32.MonitorFromWindow(hwnd, Win32.MONITOR_DEFAULTTONEAREST);
+            var mi = new Win32.MONITORINFO { cbSize = System.Runtime.InteropServices.Marshal.SizeOf<Win32.MONITORINFO>() };
+            if (mon == IntPtr.Zero || !Win32.GetMonitorInfo(mon, ref mi)) return 0;
+
+            double sc = VisualTreeHelper.GetDpi(this).DpiScaleX;
+            var m = mi.rcMonitor;
+            double gap = _edge switch
+            {
+                DockEdge.Left   => Left - m.Left / sc,
+                DockEdge.Top    => Top - m.Top / sc,
+                DockEdge.Bottom => m.Bottom / sc - (Top + Height),
+                _               => m.Right / sc - (Left + Width)
+            };
+            return Math.Clamp(gap, 0, 120);
+        }
+        catch { return 0; }
+    }
 
     /// <summary>Desplazamiento que deja la barra fuera de la vista (hacia su borde).</summary>
     private double HiddenOffset => (BarThick + BarMarginEdge) *
