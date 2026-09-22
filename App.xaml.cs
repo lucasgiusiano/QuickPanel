@@ -55,7 +55,9 @@ public partial class App : Application
             });
         }
 
-        if (!_monitor.HasCompatibleBrowser)
+        // En modo escritorio el navegador no importa: la app funciona igual sin uno compatible.
+        bool desktop = SettingsService.Current.AnchorMode == Models.AnchorMode.Desktop;
+        if (!_monitor.HasCompatibleBrowser && !desktop)
         {
             System.Windows.MessageBox.Show(
                 Loc.T("App_ChangeBrowser"),
@@ -87,6 +89,11 @@ public partial class App : Application
     /// Usado al cambiarle la URL: se vuelve a crear con la nueva al abrirla.</summary>
     public static void CloseAppPanels(string appId) =>
         (Current as App)?._monitor?.CloseAppPanels(appId);
+
+    /// <summary>Overlay activo (ventana de navegador en foco, o monitor bajo el cursor en
+    /// modo escritorio). Null si no hay ninguno.</summary>
+    public static Core.OverlayManager? ActiveOverlay =>
+        (Current as App)?._monitor?.ActiveOverlay;
 
     /// <summary>Recrea los overlays (ej. tras cambiar el modo de menú en Configuración).</summary>
     public static void RebuildOverlays() =>

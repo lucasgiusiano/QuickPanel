@@ -99,6 +99,8 @@ public partial class FloatingButtonWindow : Window
     public void SetEdgeOwner(IntPtr edgeHwnd)
     {
         _edgeOwner = edgeHwnd;
+        // Modo escritorio (sin navegador dueño): siempre visible sobre las demás ventanas.
+        Topmost = edgeHwnd == IntPtr.Zero;
         if (IsLoaded) ApplyEdgeOwner();
     }
 

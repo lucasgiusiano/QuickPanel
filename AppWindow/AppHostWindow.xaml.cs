@@ -20,6 +20,7 @@ public partial class AppHostWindow : Window
     private readonly double _originRelY;
     private readonly Func<double, PanelGeometry.Rect> _computeBounds; // width -> geometría
     private readonly Func<double> _maxWidth;
+    private readonly Func<bool> _isAnchorAlive;
     private bool _forceClose;
     private bool _pinned;
 
@@ -40,9 +41,11 @@ public partial class AppHostWindow : Window
 
     public AppHostWindow(
         AppEntry app, IntPtr edgeHwnd, PanelSide side, double originRelY,
-        Func<double, PanelGeometry.Rect> computeBounds, Func<double> maxWidth)
+        Func<double, PanelGeometry.Rect> computeBounds, Func<double> maxWidth,
+        Func<bool> isAnchorAlive)
     {
         _app = app;
+        _isAnchorAlive = isAnchorAlive;
         _edgeHwnd = edgeHwnd;
         _side = side;
         _originRelY = Math.Clamp(originRelY, 0.05, 0.95);
@@ -140,7 +143,8 @@ public partial class AppHostWindow : Window
 
     public void AnchorToEdge()
     {
-        if (!Win32.IsWindow(_edgeHwnd)) return;
+        // _edgeHwnd es Zero en modo escritorio: el ancla es el monitor.
+        if (!_isAnchorAlive()) return;
         double w = EffectiveWidth;
         var g = _computeBounds(w);
         Width = g.Width;
@@ -661,12 +665,15 @@ public partial class AppHostWindow : Window
             // cualquier popup que aparezca visualmente sobre o pegado al panel.
             if (ForegroundOverlapsThisPanel()) return;
 
-            // Solo ocultamos si el foco fue específicamente a la ventana del
-            // navegador a la que este panel está anclado (click en la página, una
+            // Modo navegador: solo ocultamos si el foco fue específicamente a la ventana
+            // del navegador a la que este panel está anclado (click en la página, una
             // pestaña, la barra de direcciones, etc.). Si se fue a cualquier otra
             // ventana/app —incluido minimizar el navegador o cambiar a otra
             // ventana de Edge distinta— el panel se queda abierto.
-            if (Win32.GetForegroundWindow() != _edgeHwnd) return;
+            // Modo escritorio (_edgeHwnd Zero): el "fondo" es todo lo demás, así que un
+            // click en cualquier otra ventana o en el escritorio lo oculta, como un flyout.
+            // Para dejarlo abierto mientras se usa otra app está el pin.
+            if (_edgeHwnd != IntPtr.Zero && Win32.GetForegroundWindow() != _edgeHwnd) return;
 
             HidePanel();
         });

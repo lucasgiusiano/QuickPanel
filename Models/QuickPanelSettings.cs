@@ -11,6 +11,43 @@ public enum MenuMode
     Dock
 }
 
+/// <summary>A qué se ancla QuickPanel.</summary>
+public enum AnchorMode
+{
+    /// <summary>Un dock/botón por cada ventana del navegador (comportamiento clásico). Default.</summary>
+    Browser,
+    /// <summary>Anclado al escritorio (área de trabajo del monitor), sin depender del navegador.
+    /// Excluyente con Browser: en este modo ningún navegador genera su propio dock.</summary>
+    Desktop
+}
+
+/// <summary>En qué monitor(es) vive QuickPanel en modo escritorio.</summary>
+public enum DesktopMonitors
+{
+    Primary,
+    /// <summary>El primer monitor no principal. Si hay uno solo, cae al principal.</summary>
+    Secondary,
+    /// <summary>Uno independiente por monitor (como hoy con varias ventanas de navegador).</summary>
+    All
+}
+
+/// <summary>Borde en el que se ancla el dock.</summary>
+public enum DockEdge
+{
+    Right,
+    Left,
+    Bottom,
+    /// <summary>Solo en modo escritorio: en modo navegador taparía pestañas y barra de direcciones.</summary>
+    Top
+}
+
+/// <summary>Posición relativa (0..1) del botón flotante dentro de su área de referencia.</summary>
+public class RelPoint
+{
+    public double X { get; set; } = 0.97;
+    public double Y { get; set; } = 0.92;
+}
+
 public class QuickPanelSettings
 {
     /// <summary>Color semilla del esquema MD3 (hex).</summary>
@@ -37,6 +74,34 @@ public class QuickPanelSettings
     public double ButtonRelY { get; set; } = 0.92;
 
     public bool RunAtStartup { get; set; } = true;
+
+    // ── Modo escritorio y posición del dock ────────────────────────
+
+    /// <summary>Anclaje: al navegador (default) o al escritorio.</summary>
+    public AnchorMode AnchorMode { get; set; } = AnchorMode.Browser;
+
+    /// <summary>Monitor(es) en modo escritorio. Default: el principal.</summary>
+    public DesktopMonitors DesktopMonitors { get; set; } = DesktopMonitors.Primary;
+
+    /// <summary>Borde del dock en modo navegador (Right/Left/Bottom; Top no aplica).</summary>
+    public DockEdge DockEdge { get; set; } = DockEdge.Right;
+
+    /// <summary>Borde del dock en modo escritorio (los 4 bordes). Separado del de navegador
+    /// para que cambiar de modo no pierda la elección de cada uno.</summary>
+    public DockEdge DesktopDockEdge { get; set; } = DockEdge.Right;
+
+    /// <summary>
+    /// Posición de la pestaña del dock a lo largo de su borde (0 = inicio, 1 = fin, 0.5 = centro).
+    /// Clave "{ancla}|{borde}": ancla = "browser" (todas las ventanas del navegador) o el
+    /// nombre de dispositivo del monitor en modo escritorio, así cada monitor recuerda la suya.
+    /// Dato de esta PC: no se sincroniza.
+    /// </summary>
+    public Dictionary<string, double> DockHandlePositions { get; set; } = new();
+
+    /// <summary>Posición del botón flotante por monitor en modo escritorio (clave = nombre de
+    /// dispositivo). En modo navegador se usan <see cref="ButtonRelX"/>/<see cref="ButtonRelY"/>.
+    /// Dato de esta PC: no se sincroniza.</summary>
+    public Dictionary<string, RelPoint> DesktopButtonPositions { get; set; } = new();
 
     /// <summary>Id de la app a abrir automáticamente al iniciar. Vacío = ninguna.</summary>
     public string StartAppId { get; set; } = "";

@@ -74,23 +74,19 @@ public partial class MenuWindow : Window
         Width  = wa.Width  / sc;
         Height = wa.Height / sc;
 
-        // Rect de Edge en coords locales del canvas
-        double edgeTopLocal, edgeBottomLocal;
-        if (Win32.IsWindow(_manager.EdgeHwnd))
-        {
-            Win32.GetWindowRect(_manager.EdgeHwnd, out var er);
-            double escale = Win32.DpiScaleOf(_manager.EdgeHwnd);
-            edgeTopLocal    = er.Top    / escale - Top;
-            edgeBottomLocal = er.Bottom / escale - Top;
-        }
-        else
-        {
-            edgeTopLocal = 0;
-            edgeBottomLocal = Height;
-        }
-
+        // Rect de referencia (ventana del navegador o área de trabajo del monitor en modo
+        // escritorio) en coords locales del canvas.
+        var (edgeTopLocal, edgeBottomLocal) = ReferenceVerticalLocal();
         BuildLayout(edgeTopLocal, edgeBottomLocal);
         Activate();
+    }
+
+    /// <summary>Tope y base del rect de referencia en coords locales del canvas.</summary>
+    private (double top, double bottom) ReferenceVerticalLocal()
+    {
+        if (!_manager.Anchor.IsAlive) return (0, Height);
+        var b = _manager.Anchor.BoundsDip;
+        return (b.Top - Top, b.Bottom - Top);
     }
 
     private void BuildLayout(double edgeTop, double edgeBottom)
@@ -106,7 +102,7 @@ public partial class MenuWindow : Window
 
         // Dirección horizontal: si el botón está en la mitad izquierda de Edge, el menú
         // (gear y columnas de overflow) se despliega hacia la DERECHA para no salirse.
-        _rightward = SettingsService.Current.ButtonRelX < 0.5;
+        _rightward = _manager.Anchor.ButtonRel.X < 0.5;
         double hstep = (Item / 2 + Gap + Item / 2);
 
         // Botón + (siempre arriba del FAB)
@@ -372,15 +368,7 @@ public partial class MenuWindow : Window
         Root.Children.Clear();
         var bx = _button.Left - Left + 32;
         var by = _button.Top  - Top  + 32;
-        double edgeTopLocal, edgeBottomLocal;
-        if (Win32.IsWindow(_manager.EdgeHwnd))
-        {
-            Win32.GetWindowRect(_manager.EdgeHwnd, out var er);
-            double escale = Win32.DpiScaleOf(_manager.EdgeHwnd);
-            edgeTopLocal    = er.Top    / escale - Top;
-            edgeBottomLocal = er.Bottom / escale - Top;
-        }
-        else { edgeTopLocal = 0; edgeBottomLocal = Height; }
+        var (edgeTopLocal, edgeBottomLocal) = ReferenceVerticalLocal();
         BuildLayout(edgeTopLocal, edgeBottomLocal);
 
         // Restaurar el modo normal: la próxima apertura del menú anima todo.

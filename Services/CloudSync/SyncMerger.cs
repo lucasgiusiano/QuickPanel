@@ -57,6 +57,9 @@ public static class SyncMerger
         result.CloudProvider = local.CloudProvider;
         result.CloudAccount  = local.CloudAccount;
         result.SyncInterval  = local.SyncInterval;
+        // Posiciones por monitor: dependen del hardware de cada PC.
+        result.DockHandlePositions    = local.DockHandlePositions;
+        result.DesktopButtonPositions = local.DesktopButtonPositions;
 
         return new MergeResult(result, conflicts);
     }
@@ -81,6 +84,10 @@ public static class SyncMerger
         dst.DockClickToOpen  = src.DockClickToOpen;
         dst.HideDockHandle   = src.HideDockHandle;
         dst.HideInFullscreen = src.HideInFullscreen;
+        dst.AnchorMode       = src.AnchorMode;
+        dst.DesktopMonitors  = src.DesktopMonitors;
+        dst.DockEdge         = src.DockEdge;
+        dst.DesktopDockEdge  = src.DesktopDockEdge;
     }
 
     private static List<T> MergeById<T>(

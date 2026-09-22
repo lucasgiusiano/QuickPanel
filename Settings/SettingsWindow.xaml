@@ -150,6 +150,38 @@
 
                     <!-- ═══ General ═══ -->
                     <StackPanel x:Name="SecGeneral">
+                        <!-- Anclaje: al navegador (un dock por ventana) o al escritorio (por monitor). -->
+                        <TextBlock Text="{loc:Loc Settings_Anchor}" Style="{StaticResource SettingLabel}"/>
+                        <TextBlock Text="{loc:Loc Settings_AnchorDesc}"
+                                   FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+                        <Border Style="{StaticResource Md3SegmentTrack}" Margin="0,0,0,16">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="AnchorBrowser" Content="{loc:Loc Anchor_Browser}" GroupName="anchor"
+                                             Style="{StaticResource Md3Segment}" Click="Anchor_Click"/>
+                                <RadioButton x:Name="AnchorDesktop" Content="{loc:Loc Anchor_Desktop}" GroupName="anchor"
+                                             Style="{StaticResource Md3Segment}" Click="Anchor_Click"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Monitores (solo modo escritorio). -->
+                        <StackPanel x:Name="DesktopOptions" Margin="0,0,0,4">
+                            <TextBlock Text="{loc:Loc Settings_Monitors}" Style="{StaticResource SettingLabel}"/>
+                            <TextBlock Text="{loc:Loc Settings_MonitorsDesc}"
+                                       FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
+                                       Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+                            <Border Style="{StaticResource Md3SegmentTrack}" Margin="0,0,0,16">
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton x:Name="MonPrimary" Content="{loc:Loc Monitors_Primary}" GroupName="monitors"
+                                                 Style="{StaticResource Md3Segment}" Click="Monitors_Click"/>
+                                    <RadioButton x:Name="MonSecondary" Content="{loc:Loc Monitors_Secondary}" GroupName="monitors"
+                                                 Style="{StaticResource Md3Segment}" Click="Monitors_Click"/>
+                                    <RadioButton x:Name="MonAll" Content="{loc:Loc Monitors_All}" GroupName="monitors"
+                                                 Style="{StaticResource Md3Segment}" Click="Monitors_Click"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
                         <TextBlock Text="{loc:Loc Settings_MenuStyle}" Style="{StaticResource SettingLabel}"/>
                         <TextBlock Text="{loc:Loc Settings_MenuStyleDesc}"
                                    FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
@@ -166,6 +198,24 @@
                         <!-- Opciones del Dock (solo visibles en modo Dock). "Solo clic" y "Ocultar
                              pestaña" son excluyentes: sin pestaña no habría cómo abrir el dock. -->
                         <StackPanel x:Name="DockOptions" Margin="0,0,0,4">
+                            <!-- Borde del dock. "Arriba" solo aparece en modo escritorio: en el
+                                 navegador taparía las pestañas y la barra de direcciones. -->
+                            <TextBlock Text="{loc:Loc Settings_DockEdge}" Style="{StaticResource SettingLabel}"/>
+                            <Border Style="{StaticResource Md3SegmentTrack}" Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton x:Name="EdgeLeft" Content="{loc:Loc Edge_Left}" GroupName="dockedge"
+                                                 Style="{StaticResource Md3Segment}" Click="Edge_Click" Tag="Left"/>
+                                    <RadioButton x:Name="EdgeRight" Content="{loc:Loc Edge_Right}" GroupName="dockedge"
+                                                 Style="{StaticResource Md3Segment}" Click="Edge_Click" Tag="Right"/>
+                                    <RadioButton x:Name="EdgeBottom" Content="{loc:Loc Edge_Bottom}" GroupName="dockedge"
+                                                 Style="{StaticResource Md3Segment}" Click="Edge_Click" Tag="Bottom"/>
+                                    <RadioButton x:Name="EdgeTop" Content="{loc:Loc Edge_Top}" GroupName="dockedge"
+                                                 Style="{StaticResource Md3Segment}" Click="Edge_Click" Tag="Top"/>
+                                </StackPanel>
+                            </Border>
+                            <Button Content="{loc:Loc Settings_MoveHandle}" Click="Move_Click"
+                                    Style="{StaticResource Md3TextButton}" HorizontalAlignment="Left" Margin="0,0,0,16"/>
+
                             <CheckBox x:Name="ChkDockClick" Content="{loc:Loc Settings_DockClickOnly}"
                                       Style="{StaticResource Md3Switch}" Click="DockClick_Click"/>
                             <TextBlock Text="{loc:Loc Settings_DockClickOnlyDesc}"

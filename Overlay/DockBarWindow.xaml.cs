@@ -14,10 +14,12 @@ using QuickPanel.Services;
 namespace QuickPanel.Overlay;
 
 /// <summary>
-/// Modo "Dock clásico": barra vertical auto-ocultable anclada al borde derecho de la
-/// ventana del navegador. Colapsada muestra una pestaña "‹"; al acercar el cursor se
-/// despliega deslizándose. Se mantiene abierta mientras haya un panel abierto.
-/// Reemplaza por completo al botón flotante en este modo.
+/// Modo Dock: barra auto-ocultable anclada a un borde (derecho, izquierdo, inferior o,
+/// solo en modo escritorio, superior) de su referencia: la ventana del navegador o el área
+/// de trabajo del monitor. Colapsada muestra una pestaña; al acercar el cursor se despliega
+/// deslizándose. Se mantiene abierta mientras haya un panel abierto. En los bordes
+/// superior/inferior la barra es horizontal. La pestaña se puede mover a lo largo de su
+/// borde desde el "modo mover" (Configuración o atajo), igual que el botón flotante.
 /// </summary>
 public partial class DockBarWindow : Window
 {
@@ -42,19 +44,36 @@ public partial class DockBarWindow : Window
     // El navegador está en pantalla completa (video/F11): lo informa el OverlayManager.
     private bool _fullscreen;
 
-    private const double BarWidth = 64;
-    private const double BarMarginRight = 14;   // separación de la barra respecto al borde del navegador
-    private const double TopInset = 46;         // deja libre la franja de botones de la ventana (cerrar/min/max)
-    private const double BottomInset = 14;
-    private const double HotZoneInner = 16;     // cuánto entra (hacia la izquierda del borde) la franja que
+    private const double BarThick = 64;         // grosor de la barra (ancho si es vertical, alto si horizontal)
+    private const double BarMarginEdge = 14;    // separación de la barra respecto al borde de la referencia
+    private const double BarMarginAlong = 16;   // margen en los extremos de la barra
+    private const double WinThick = 220;        // profundidad de la ventana (más que la barra: pestaña + cápsula)
+    private const double BrowserCaptionInset = 46; // navegador, bordes laterales: franja de botones cerrar/min/max
+    private const double BrowserInset = 14;     // navegador: resto de extremos
+    private const double DesktopInset = 8;      // escritorio: sin chrome que esquivar
+    private const double TabLong = 64, TabShort = 18;
+    private const double HotZoneInner = 16;     // cuánto entra (desde el borde hacia adentro) la franja que
                                                 // dispara el despliegue. Pegada al borde, pero lo bastante ancha
                                                 // para seguir siendo alcanzable bajo el ~8px de desborde que
                                                 // Windows agrega a las ventanas maximizadas.
 
+    // Borde fijo durante la vida de esta ventana: cambiarlo en Configuración recrea los overlays.
+    private readonly DockEdge _edge;
+
+    /// <summary>True si la barra es horizontal (dock arriba o abajo).</summary>
+    public bool IsHorizontal => _edge is DockEdge.Top or DockEdge.Bottom;
+
+    // Modo mover la pestaña a lo largo del borde.
+    private bool _moveMode;
+    private bool _tabDragging;
+    private double _moveFrac;
+
     public DockBarWindow(OverlayManager manager)
     {
         _manager = manager;
+        _edge = manager.Anchor.DockEdge;
         InitializeComponent();
+        ApplyEdgeLayout();
 
         _drag = new IconDragReorder(this, DraggableIcons, (src, dst) =>
         {
@@ -102,18 +121,148 @@ public partial class DockBarWindow : Window
     // ── Anclaje de la barra (en DIPs de pantalla), para anclar paneles a su izquierda ──
 
     /// <summary>Rect del cuerpo de la barra en DIPs de pantalla (no de la ventana completa).
-    /// Los paneles de app se anclan a la IZQUIERDA de este rect.</summary>
+    /// Los paneles de app se anclan a su costado (vertical) o encima/debajo (horizontal).</summary>
     public PanelGeometry.Rect BarRect()
     {
-        double left = Left + (Width - BarMarginRight - BarWidth);
-        return new PanelGeometry.Rect(left, Top + 16, BarWidth, Math.Max(1, Height - 32));
+        double along = Math.Max(1, (IsHorizontal ? Width : Height) - 2 * BarMarginAlong);
+        return _edge switch
+        {
+            DockEdge.Left   => new(Left + BarMarginEdge, Top + BarMarginAlong, BarThick, along),
+            DockEdge.Bottom => new(Left + BarMarginAlong, Top + Height - BarMarginEdge - BarThick, along, BarThick),
+            DockEdge.Top    => new(Left + BarMarginAlong, Top + BarMarginEdge, along, BarThick),
+            _               => new(Left + Width - BarMarginEdge - BarThick, Top + BarMarginAlong, BarThick, along)
+        };
     }
 
     public void SetEdgeOwner(IntPtr edgeHwnd)
     {
         _edgeOwner = edgeHwnd;
+        // Modo escritorio (sin navegador dueño): siempre visible sobre las demás ventanas.
+        Topmost = edgeHwnd == IntPtr.Zero;
         if (IsLoaded) ApplyEdgeOwner();
     }
+
+    // ── Layout según el borde ──
+
+    /// <summary>
+    /// Aplica alineaciones, márgenes, tamaños y orientación de la pestaña, la barra y la
+    /// lista de apps para el borde elegido. El XAML trae los valores del borde derecho.
+    /// </summary>
+    private void ApplyEdgeLayout()
+    {
+        bool h = IsHorizontal;
+        double overflow = _manager.Anchor.EdgeOverflow;
+
+        // Pestaña: pegada al borde (con el margen del desborde invisible de DWM en el
+        // navegador); su posición a lo largo del borde la pone ApplyTabPosition.
+        Tab.Width  = h ? TabLong : TabShort;
+        Tab.Height = h ? TabShort : TabLong;
+        switch (_edge)
+        {
+            case DockEdge.Left:
+                Tab.HorizontalAlignment = HorizontalAlignment.Left;
+                Tab.VerticalAlignment   = VerticalAlignment.Top;
+                Tab.CornerRadius = new CornerRadius(0, 8, 8, 0);
+                TabRotate.Angle = 180;
+                break;
+            case DockEdge.Bottom:
+                Tab.HorizontalAlignment = HorizontalAlignment.Left;
+                Tab.VerticalAlignment   = VerticalAlignment.Bottom;
+                Tab.CornerRadius = new CornerRadius(8, 8, 0, 0);
+                TabRotate.Angle = 90;
+                break;
+            case DockEdge.Top:
+                Tab.HorizontalAlignment = HorizontalAlignment.Left;
+                Tab.VerticalAlignment   = VerticalAlignment.Top;
+                Tab.CornerRadius = new CornerRadius(0, 0, 8, 8);
+                TabRotate.Angle = -90;
+                break;
+            default:
+                Tab.HorizontalAlignment = HorizontalAlignment.Right;
+                Tab.VerticalAlignment   = VerticalAlignment.Top;
+                Tab.CornerRadius = new CornerRadius(8, 0, 0, 8);
+                TabRotate.Angle = 0;
+                break;
+        }
+        _tabOverflow = overflow;
+
+        // Barra.
+        if (h)
+        {
+            Bar.Width = double.NaN;
+            Bar.Height = BarThick;
+            Bar.HorizontalAlignment = HorizontalAlignment.Stretch;
+            Bar.VerticalAlignment = _edge == DockEdge.Top ? VerticalAlignment.Top : VerticalAlignment.Bottom;
+            Bar.Margin = _edge == DockEdge.Top
+                ? new Thickness(BarMarginAlong, BarMarginEdge, BarMarginAlong, 0)
+                : new Thickness(BarMarginAlong, 0, BarMarginAlong, BarMarginEdge);
+            BarDock.Margin = new Thickness(12, 0, 12, 0);
+        }
+        else
+        {
+            Bar.Width = BarThick;
+            Bar.Height = double.NaN;
+            Bar.VerticalAlignment = VerticalAlignment.Stretch;
+            Bar.HorizontalAlignment = _edge == DockEdge.Left ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+            Bar.Margin = _edge == DockEdge.Left
+                ? new Thickness(BarMarginEdge, BarMarginAlong, 0, BarMarginAlong)
+                : new Thickness(0, BarMarginAlong, BarMarginEdge, BarMarginAlong);
+            BarDock.Margin = new Thickness(0, 12, 0, 12);
+        }
+
+        // Contenido de la barra: logo y "+" al inicio, ⚙ y separador al final, apps en el medio.
+        var start = h ? Dock.Left : Dock.Top;
+        var end   = h ? Dock.Right : Dock.Bottom;
+        DockPanel.SetDock(LogoBtn, start);
+        DockPanel.SetDock(AddBtn, start);
+        DockPanel.SetDock(GearBtn, end);
+        DockPanel.SetDock(Separator, end);
+        LogoBtn.Margin = h ? new Thickness(0, 0, 8, 0) : new Thickness(0, 0, 0, 8);
+        AddBtn.Margin  = h ? new Thickness(0, 0, 6, 0) : new Thickness(0, 0, 0, 6);
+        GearBtn.Margin = h ? new Thickness(6, 0, 0, 0) : new Thickness(0, 6, 0, 0);
+        foreach (var b in new FrameworkElement[] { LogoBtn, AddBtn, GearBtn })
+        {
+            b.HorizontalAlignment = HorizontalAlignment.Center;
+            b.VerticalAlignment = VerticalAlignment.Center;
+        }
+        Separator.Width  = h ? 2 : 28;
+        Separator.Height = h ? 28 : 2;
+        Separator.Margin = h ? new Thickness(6, 0, 2, 0) : new Thickness(0, 6, 0, 2);
+        Separator.VerticalAlignment = VerticalAlignment.Center;
+
+        AppsScroll.VerticalScrollBarVisibility   = h ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Hidden;
+        AppsScroll.HorizontalScrollBarVisibility = h ? ScrollBarVisibility.Hidden : ScrollBarVisibility.Disabled;
+        AppsList.Orientation = h ? Orientation.Horizontal : Orientation.Vertical;
+        // Eje perpendicular al scroll: centrado (igual que siempre en los laterales).
+        // Eje del scroll: arranca en el inicio y crece hacia el otro extremo — arriba→abajo
+        // en los laterales (como siempre fue), izquierda→derecha arriba/abajo.
+        AppsList.HorizontalAlignment = h ? HorizontalAlignment.Left : HorizontalAlignment.Center;
+        AppsList.VerticalAlignment   = h ? VerticalAlignment.Center : VerticalAlignment.Top;
+    }
+
+    private double _tabOverflow;
+
+    /// <summary>Coloca la pestaña a lo largo de su borde según la posición guardada (o la
+    /// que se está arrastrando en modo mover). 0.5 = centrada, el comportamiento clásico.</summary>
+    private void ApplyTabPosition()
+    {
+        double frac = _moveMode ? _moveFrac : _manager.Anchor.HandlePosition;
+        bool h = IsHorizontal;
+        double len = h ? ActualWidthOr(Width) : ActualHeightOr(Height);
+        double off = Math.Max(0, frac * (len - TabLong));
+        double o = _tabOverflow;
+        var m = _edge switch
+        {
+            DockEdge.Left   => new Thickness(o, off, 0, 0),
+            DockEdge.Bottom => new Thickness(off, 0, 0, o),
+            DockEdge.Top    => new Thickness(off, o, 0, 0),
+            _               => new Thickness(0, off, o, 0)
+        };
+        if (Tab.Margin != m) Tab.Margin = m;
+    }
+
+    private static double ActualWidthOr(double w) => double.IsNaN(w) ? 0 : w;
+    private static double ActualHeightOr(double h) => double.IsNaN(h) ? 0 : h;
 
     private void ApplyEdgeOwner()
     {
@@ -131,27 +280,40 @@ public partial class DockBarWindow : Window
             new IntPtr(ex | Win32.WS_EX_TOOLWINDOW | Win32.WS_EX_NOACTIVATE));
     }
 
-    /// <summary>Reposiciona la ventana sobre el borde derecho del navegador, dejando libre
-    /// la franja superior (botones de cerrar/min/max) y un margen inferior. Queda anclada
-    /// abajo-derecha. La pestaña/barra se alinean a la derecha vía el layout XAML.</summary>
-    public void Reanchor(IntPtr edgeHwnd)
+    /// <summary>
+    /// Reposiciona la ventana sobre su borde de la referencia (ventana del navegador o área
+    /// de trabajo del monitor). En el navegador, los bordes laterales dejan libre la franja
+    /// superior de botones (cerrar/min/max); en escritorio no hay nada que esquivar.
+    /// </summary>
+    public void Reanchor()
     {
-        if (!Win32.IsWindow(edgeHwnd) || Win32.IsIconic(edgeHwnd)) return;
+        var anchor = _manager.Anchor;
+        if (!anchor.IsAlive || anchor.IsMinimized) return;
 
-        Win32.GetWindowRect(edgeHwnd, out var r);
-        double scale = Win32.DpiScaleOf(edgeHwnd);
+        var b = anchor.BoundsDip;
+        bool desktop = anchor.IsDesktop;
 
-        double rightDip = r.Right / scale;
-        double topDip = r.Top / scale;
-        double hDip = r.Height / scale;
-
-        Width = 220;
-        Top = topDip + TopInset;
-        Height = Math.Max(120, hDip - TopInset - BottomInset);
-        // El borde derecho de la ventana coincide con el del navegador: la pestaña "‹"
-        // (alineada a la derecha) queda pegada al borde. En ventanas maximizadas el
-        // ~8px de desborde la recorta contra el borde de pantalla, lo que la deja a ras.
-        Left = rightDip - Width;
+        if (IsHorizontal)
+        {
+            double inset = desktop ? DesktopInset : BrowserInset;
+            Width  = Math.Max(120, b.Width - 2 * inset);
+            Height = WinThick;
+            Left   = b.Left + inset;
+            Top    = _edge == DockEdge.Top ? b.Top : b.Bottom - WinThick;
+        }
+        else
+        {
+            double startInset = desktop ? DesktopInset : BrowserCaptionInset;
+            double endInset   = desktop ? DesktopInset : BrowserInset;
+            Width  = WinThick;
+            Height = Math.Max(120, b.Height - startInset - endInset);
+            Top    = b.Top + startInset;
+            // El borde exterior de la ventana coincide con el de la referencia: la pestaña
+            // queda pegada al borde (en un navegador maximizado el ~8px de desborde la recorta
+            // contra el borde de pantalla, lo que la deja a ras).
+            Left   = _edge == DockEdge.Left ? b.Left : b.Right - WinThick;
+        }
+        ApplyTabPosition();
     }
 
     // ── Despliegue / colapso ──
@@ -161,7 +323,68 @@ public partial class DockBarWindow : Window
     // mueve por debajo del cursor quieto y dispara MouseEnter→MouseLeave espurios,
     // lo que provocaba un colapso+reexpansión (la animación corría dos veces).
 
-    private void Tab_Click(object sender, MouseButtonEventArgs e) => Expand();
+    // ── Pestaña: clic para desplegar, o arrastre en modo mover ──
+
+    private void Tab_Down(object sender, MouseButtonEventArgs e)
+    {
+        if (!_moveMode) return;
+        _tabDragging = true;
+        Tab.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void Tab_Move(object sender, MouseEventArgs e)
+    {
+        if (!_tabDragging) return;
+        // Proyectado sobre UN eje: el del borde (vertical en laterales, horizontal arriba/abajo).
+        var p = e.GetPosition(this);
+        double along = IsHorizontal ? p.X : p.Y;
+        double len = IsHorizontal ? Width : Height;
+        _moveFrac = Math.Clamp((along - TabLong / 2) / Math.Max(1, len - TabLong), 0, 1);
+        ApplyTabPosition();
+    }
+
+    private void Tab_Up(object sender, MouseButtonEventArgs e)
+    {
+        if (_moveMode)
+        {
+            if (_tabDragging) { _tabDragging = false; Tab.ReleaseMouseCapture(); }
+            ExitMoveMode();
+            e.Handled = true;
+            return;
+        }
+        Expand();
+    }
+
+    /// <summary>
+    /// Modo mover: la pestaña queda resaltada y visible (aunque esté configurada como
+    /// oculta) y se arrastra a lo largo de su borde; soltar guarda la posición (por monitor
+    /// en modo escritorio) y sale. Mientras dura, el despliegue por proximidad está apagado
+    /// para que no compita con el arrastre.
+    /// </summary>
+    public void EnterMoveMode()
+    {
+        if (_expanded) Collapse();
+        _moveMode = true;
+        _moveFrac = _manager.Anchor.HandlePosition;
+        Tab.SetResourceReference(Border.BackgroundProperty, "Md3Primary");
+        TabGlyph.SetResourceReference(TextBlock.ForegroundProperty, "Md3OnPrimary");
+        Tab.Cursor = IsHorizontal ? Cursors.SizeWE : Cursors.SizeNS;
+        ApplyTabVisibility();
+        ApplyTabPosition();
+    }
+
+    private void ExitMoveMode()
+    {
+        _manager.Anchor.HandlePosition = _moveFrac;
+        SettingsService.Save();
+        _moveMode = false;
+        Tab.SetResourceReference(Border.BackgroundProperty, "Md3PrimaryContainer");
+        TabGlyph.SetResourceReference(TextBlock.ForegroundProperty, "Md3OnPrimaryContainer");
+        Tab.Cursor = Cursors.Hand;
+        ApplyTabVisibility();
+        ApplyTabPosition();
+    }
 
     /// <summary>Informado por el OverlayManager en cada cambio de geometría del navegador.</summary>
     public void SetFullscreen(bool fullscreen)
@@ -181,8 +404,9 @@ public partial class DockBarWindow : Window
     {
         if (_expanded || _animating) return; // durante/tras el despliegue la maneja Expand/Collapse
         var s = SettingsService.Current;
-        bool hide = (s.HideDockHandle && !s.DockClickToOpen)
-                 || (_fullscreen && s.HideInFullscreen);
+        bool hide = !_moveMode &&
+                    ((s.HideDockHandle && !s.DockClickToOpen)
+                     || (_fullscreen && s.HideInFullscreen));
         var v = hide ? Visibility.Collapsed : Visibility.Visible;
         if (Tab.Visibility != v) Tab.Visibility = v;
     }
@@ -195,38 +419,35 @@ public partial class DockBarWindow : Window
         if (_animating) return;
         if (_drag.IsDragging) return; // arrastrando un ícono: no colapsar bajo el cursor
         ApplyTabVisibility();          // aplica en caliente los cambios de Configuración
+        ApplyTabPosition();            // y la posición de la pestaña (movida en otra ventana)
+        if (_moveMode) return;         // modo mover: sin despliegue por proximidad
         if (!Win32.GetCursorPos(out var p)) return;
 
         var src = PresentationSource.FromVisual(this);
         double scale = src?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
-        double cx = p.X / scale, cy = p.Y / scale;
-
-        bool withinV = cy >= Top && cy <= Top + Height;
-        double rightEdge = Left + Width;
+        var (along, depth, len) = EdgeLocal(p.X / scale, p.Y / scale);
 
         if (!_expanded)
         {
-            // Franja caliente angosta pegada al borde derecho del navegador. Solo abarca
-            // los últimos HotZoneInner px (más un pequeño margen externo), así que el
-            // cursor solo dispara el despliegue al ir DECIDIDAMENTE al borde, y no al
-            // tocar controles del contenido que están unos px hacia adentro.
-            // En modo "solo clic" el despliegue lo hace únicamente Tab_Click.
+            // Franja caliente angosta pegada al borde. Solo abarca los últimos
+            // HotZoneInner px (más un pequeño margen externo), así que el cursor solo
+            // dispara el despliegue al ir DECIDIDAMENTE al borde, y no al tocar controles
+            // del contenido que están unos px hacia adentro.
+            // En modo "solo clic" el despliegue lo hace únicamente la pestaña (Tab_Up).
             if (SettingsService.Current.DockClickToOpen) return;
-            bool nearEdge = withinV && cx >= rightEdge - HotZoneInner && cx <= rightEdge + 4;
+            bool nearEdge = along >= 0 && along <= len && depth <= HotZoneInner && depth >= -4;
             if (nearEdge) Expand();
         }
         else
         {
-            // Mantener abierta mientras el cursor esté entre el panel (a la izquierda
-            // de la barra) y el borde derecho del navegador. La zona llega hasta
-            // 'rightEdge + 8' —NO solo hasta el cuerpo de la barra— para cubrir el hueco
-            // de separación (BarMarginRight): si terminara en el borde de la barra, al
-            // desplegarse el cursor quedaba en ese hueco y se generaba un parpadeo
-            // abrir/cerrar.
-            var bar = BarRect();
+            // Mantener abierta mientras el cursor esté entre el borde y un poco más allá
+            // de la barra. La zona se extiende también FUERA del borde (depth negativo) y
+            // cubre el hueco de separación (BarMarginEdge): si terminara en el cuerpo de la
+            // barra, al desplegarse el cursor quedaba en ese hueco y se generaba un
+            // parpadeo abrir/cerrar.
             bool insideKeepZone =
-                cx >= bar.Left - 12 && cx <= rightEdge + 20 &&
-                cy >= Top - 8 && cy <= Top + Height + 8;
+                depth <= BarMarginEdge + BarThick + 12 && depth >= -20 &&
+                along >= -8 && along <= len + 8;
 
             // Histéresis: colapsar recién tras 2 ticks consecutivos afuera, para que un
             // único frame en el límite no dispare un colapso (y el consiguiente rebote).
@@ -242,6 +463,26 @@ public partial class DockBarWindow : Window
         }
     }
 
+    /// <summary>
+    /// Coordenadas del cursor relativas al borde del dock: <c>along</c> = posición a lo largo
+    /// del borde (desde el inicio de la ventana), <c>depth</c> = distancia desde el borde
+    /// exterior hacia adentro. Así la lógica de proximidad es la misma para los 4 bordes.
+    /// </summary>
+    private (double along, double depth, double len) EdgeLocal(double cx, double cy) => _edge switch
+    {
+        DockEdge.Left   => (cy - Top,  cx - Left,              Height),
+        DockEdge.Bottom => (cx - Left, (Top + Height) - cy,    Width),
+        DockEdge.Top    => (cx - Left, cy - Top,               Width),
+        _               => (cy - Top,  (Left + Width) - cx,    Height)
+    };
+
+    /// <summary>Desplazamiento que deja la barra fuera de la vista (hacia su borde).</summary>
+    private double HiddenOffset => (BarThick + BarMarginEdge) *
+        (_edge is DockEdge.Left or DockEdge.Top ? -1 : 1);
+
+    private DependencyProperty SlideProperty =>
+        IsHorizontal ? TranslateTransform.YProperty : TranslateTransform.XProperty;
+
     private void Expand()
     {
         if (_expanded) return;
@@ -252,14 +493,13 @@ public partial class DockBarWindow : Window
         Tab.Visibility = Visibility.Collapsed;
         Bar.Visibility = Visibility.Visible;
 
-        // Desliza desde fuera de pantalla (a la derecha) hacia su lugar.
-        SlideTransform.X = BarWidth + BarMarginRight;
-        var anim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(220))
+        // Desliza desde fuera de pantalla (del lado de su borde) hacia su lugar.
+        var anim = new DoubleAnimation(HiddenOffset, 0, TimeSpan.FromMilliseconds(220))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };
         anim.Completed += (_, _) => _animating = false;
-        SlideTransform.BeginAnimation(TranslateTransform.XProperty, anim);
+        SlideTransform.BeginAnimation(SlideProperty, anim);
     }
 
     private void Collapse()
@@ -268,7 +508,8 @@ public partial class DockBarWindow : Window
         _expanded = false;
         _animating = true;
 
-        var anim = new DoubleAnimation(BarWidth + BarMarginRight, TimeSpan.FromMilliseconds(200))
+        var prop = SlideProperty;
+        var anim = new DoubleAnimation(HiddenOffset, TimeSpan.FromMilliseconds(200))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
         };
@@ -278,12 +519,13 @@ public partial class DockBarWindow : Window
             if (!_expanded)
             {
                 Bar.Visibility = Visibility.Collapsed;
-                SlideTransform.BeginAnimation(TranslateTransform.XProperty, null);
+                SlideTransform.BeginAnimation(prop, null);
                 SlideTransform.X = 0;
+                SlideTransform.Y = 0;
                 ApplyTabVisibility();
             }
         };
-        SlideTransform.BeginAnimation(TranslateTransform.XProperty, anim);
+        SlideTransform.BeginAnimation(prop, anim);
     }
 
     /// <summary>Cierra la barra si está abierta (ej. al abrir un panel desde un click).
@@ -325,15 +567,22 @@ public partial class DockBarWindow : Window
 
                 if (_expandedGroupId == group.Id)
                 {
+                    bool h = IsHorizontal;
                     var pill = new Border
                     {
                         CornerRadius        = new CornerRadius(26),
                         Background          = GroupTint(group, 46),   // color de la carpeta, tenue
-                        Margin              = new Thickness(0, 3, 0, 3),
-                        Padding             = new Thickness(0, 4, 0, 4),
-                        HorizontalAlignment = HorizontalAlignment.Center
+                        Margin              = h ? new Thickness(3, 0, 3, 0) : new Thickness(0, 3, 0, 3),
+                        Padding             = h ? new Thickness(4, 0, 4, 0) : new Thickness(0, 4, 0, 4),
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment   = VerticalAlignment.Center
                     };
-                    var inner = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+                    var inner = new StackPanel
+                    {
+                        Orientation = h ? Orientation.Horizontal : Orientation.Vertical,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment   = VerticalAlignment.Center
+                    };
                     inner.Children.Add(MakeFolderButton(group));
 
                     int ci = 0;
@@ -428,7 +677,7 @@ public partial class DockBarWindow : Window
         }
         border.ToolTip = app.Name;
         // Clic = abrir; arrastrar = reordenar / meter o sacar de una carpeta.
-        _drag.Attach(border, "app:" + app.Id, () => _manager.OpenApp(app, 0.5));
+        _drag.Attach(border, "app:" + app.Id, () => _manager.OpenApp(app, 0.5, IconRectDip(border)));
         border.MouseRightButtonUp += (_, e) =>
         {
             e.Handled = true;
@@ -486,12 +735,34 @@ public partial class DockBarWindow : Window
         Cursor = Cursors.Hand
     };
 
-    /// <summary>Envuelve el círculo en un contenedor con margen vertical para el stack.</summary>
-    private static FrameworkElement Wrap(Border b)
+    /// <summary>Envuelve el círculo con el margen de separación a lo largo de la barra.</summary>
+    private FrameworkElement Wrap(Border b)
     {
-        b.Margin = new Thickness(0, 3, 0, 3);
+        b.Margin = IsHorizontal ? new Thickness(3, 0, 3, 0) : new Thickness(0, 3, 0, 3);
         b.HorizontalAlignment = HorizontalAlignment.Center;
+        b.VerticalAlignment = VerticalAlignment.Center;
         return b;
+    }
+
+    /// <summary>Rect del ícono en DIPs de pantalla (misma escala que Left/Top de esta
+    /// ventana): en el dock horizontal el panel se alinea con el ícono que lo abrió.</summary>
+    private PanelGeometry.Rect? IconRectDip(FrameworkElement el)
+    {
+        try
+        {
+            var px = el.PointToScreen(new Point(0, 0));
+            double sc = VisualTreeHelper.GetDpi(this).DpiScaleX;
+            return new PanelGeometry.Rect(px.X / sc, px.Y / sc, el.ActualWidth, el.ActualHeight);
+        }
+        catch { return null; }
+    }
+
+    /// <summary>Dock horizontal: la rueda del mouse desplaza la lista de apps a lo ancho.</summary>
+    private void AppsScroll_Wheel(object sender, MouseWheelEventArgs e)
+    {
+        if (!IsHorizontal) return;
+        AppsScroll.ScrollToHorizontalOffset(AppsScroll.HorizontalOffset - e.Delta / 2.0);
+        e.Handled = true;
     }
 
     private static void AddBadge(Border host, string text, Brush bg, Brush fg)

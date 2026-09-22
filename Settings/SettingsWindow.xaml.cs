@@ -239,6 +239,14 @@ public partial class SettingsWindow : Window
         ChkHideHandle.IsChecked = s.HideDockHandle;
         ChkFullscreen.IsChecked = s.HideInFullscreen;
         (s.MenuMode == MenuMode.Dock ? ModeDock : ModeMaterial).IsChecked = true;
+        (s.AnchorMode == AnchorMode.Desktop ? AnchorDesktop : AnchorBrowser).IsChecked = true;
+        (s.DesktopMonitors switch
+        {
+            DesktopMonitors.Secondary => MonSecondary,
+            DesktopMonitors.All       => MonAll,
+            _                         => MonPrimary
+        }).IsChecked = true;
+        UpdateAnchorOptions();
         UpdateDockOptions();
         PopulateStartAppCombo();
         PopulateLanguageCombo();
@@ -358,13 +366,16 @@ public partial class SettingsWindow : Window
 
     private void Move_Click(object sender, RoutedEventArgs e)
     {
-        if (_manager == null)
+        // Sirve para el botón flotante y para la pestaña del dock. Si los overlays se
+        // recrearon (cambio de anclaje/borde), el que abrió esta ventana ya no existe.
+        var mgr = (_overlaysRebuilt ? null : _manager) ?? App.ActiveOverlay;
+        if (mgr == null)
         {
             MessageBox.Show(Loc.T("Settings_MoveFromButton"),
                 "QuickPanel", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        _manager.EnterMoveMode();
+        mgr.EnterMoveMode();
         Close();
     }
 
@@ -408,6 +419,7 @@ public partial class SettingsWindow : Window
         SettingsService.Save();
         // Cambia el tipo de ventana de control: hay que recrear los overlays.
         App.RebuildOverlays();
+        _overlaysRebuilt = true;
         // El botón flotante y su menú de puntos no existen en modo Dock: ocultar esa
         // sección y quitar el atajo "Mover botón" (no aplica) de la lista de Atajos.
         UpdateFloatingMenuAvailability();
@@ -426,6 +438,83 @@ public partial class SettingsWindow : Window
         DockOptions.Visibility = s.MenuMode == MenuMode.Dock ? Visibility.Visible : Visibility.Collapsed;
         ChkHideHandle.IsEnabled = !s.DockClickToOpen;
         ChkDockClick.IsEnabled  = !s.HideDockHandle;
+    }
+
+    // ── Anclaje (navegador / escritorio), monitores y borde del dock ──
+
+    /// <summary>Tras recrear los overlays, el que abrió esta ventana ya no existe: las
+    /// acciones que lo necesitan (mover) usan el overlay activo actual.</summary>
+    private bool _overlaysRebuilt;
+
+    private void RebuildOverlaysFromSettings()
+    {
+        SettingsService.Save();
+        App.RebuildOverlays();
+        _overlaysRebuilt = true;
+    }
+
+    /// <summary>
+    /// Opciones que dependen del anclaje: monitores (solo escritorio) y el borde del dock
+    /// ("Arriba" solo en escritorio; en el navegador taparía pestañas y barra de direcciones).
+    /// "Secundario"/"Todos" requieren más de un monitor.
+    /// </summary>
+    private void UpdateAnchorOptions()
+    {
+        var s = SettingsService.Current;
+        bool desktop = s.AnchorMode == AnchorMode.Desktop;
+        DesktopOptions.Visibility = desktop ? Visibility.Visible : Visibility.Collapsed;
+
+        bool multi = MonitorAnchor.MonitorCount > 1;
+        MonSecondary.IsEnabled = multi;
+        MonAll.IsEnabled = multi;
+
+        EdgeTop.Visibility = desktop ? Visibility.Visible : Visibility.Collapsed;
+        var edge = desktop ? s.DesktopDockEdge : (s.DockEdge == DockEdge.Top ? DockEdge.Right : s.DockEdge);
+        (edge switch
+        {
+            DockEdge.Left   => EdgeLeft,
+            DockEdge.Bottom => EdgeBottom,
+            DockEdge.Top    => EdgeTop,
+            _               => EdgeRight
+        }).IsChecked = true;
+    }
+
+    private void Anchor_Click(object sender, RoutedEventArgs e)
+    {
+        var mode = AnchorDesktop.IsChecked == true ? AnchorMode.Desktop : AnchorMode.Browser;
+        if (SettingsService.Current.AnchorMode == mode) return;
+        SettingsService.Current.AnchorMode = mode;
+        UpdateAnchorOptions();
+        RebuildOverlaysFromSettings(); // escritorio y navegador son excluyentes
+    }
+
+    private void Monitors_Click(object sender, RoutedEventArgs e)
+    {
+        var pref = MonAll.IsChecked == true       ? DesktopMonitors.All
+                 : MonSecondary.IsChecked == true ? DesktopMonitors.Secondary
+                 :                                  DesktopMonitors.Primary;
+        if (SettingsService.Current.DesktopMonitors == pref) return;
+        SettingsService.Current.DesktopMonitors = pref;
+        RebuildOverlaysFromSettings();
+    }
+
+    private void Edge_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton rb || rb.Tag is not string tag
+            || !Enum.TryParse<DockEdge>(tag, out var edge)) return;
+
+        var s = SettingsService.Current;
+        if (s.AnchorMode == AnchorMode.Desktop)
+        {
+            if (s.DesktopDockEdge == edge) return;
+            s.DesktopDockEdge = edge;
+        }
+        else
+        {
+            if (edge == DockEdge.Top || s.DockEdge == edge) return; // Top no aplica al navegador
+            s.DockEdge = edge;
+        }
+        RebuildOverlaysFromSettings(); // la barra cambia de forma: se recrean los docks
     }
 
     private void DockClick_Click(object sender, RoutedEventArgs e)

@@ -139,6 +139,27 @@ public const uint DWMWA_COLOR_NONE  = 0xFFFFFFFE;
     public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
 
     [DllImport("user32.dll")]
+    public static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
+
+    public const int MDT_EFFECTIVE_DPI = 0;
+
+    [DllImport("shcore.dll")]
+    public static extern int GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
+
+    /// <summary>Escala DPI (1.0 = 96dpi) del monitor que contiene el punto (px físicos).</summary>
+    public static double DpiScaleOfPoint(int x, int y)
+    {
+        try
+        {
+            var mon = MonitorFromPoint(new POINT { X = x, Y = y }, MONITOR_DEFAULTTONEAREST);
+            if (mon != IntPtr.Zero && GetDpiForMonitor(mon, MDT_EFFECTIVE_DPI, out var dx, out _) == 0 && dx > 0)
+                return dx / 96.0;
+        }
+        catch { /* shcore no disponible: 100% */ }
+        return 1.0;
+    }
+
+    [DllImport("user32.dll")]
     public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
 
     /// <summary>

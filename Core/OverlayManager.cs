@@ -9,11 +9,16 @@ using QuickPanel.Settings;
 namespace QuickPanel.Core;
 
 /// <summary>
-/// Una instancia por ventana de Edge: botón flotante, menú radial y ventanas de apps.
+/// Una instancia por ancla: cada ventana del navegador (modo clásico) o cada monitor
+/// (modo escritorio). Maneja el dock o el botón flotante, el menú radial y los paneles.
 /// </summary>
 public sealed class OverlayManager : IDisposable
 {
-    public IntPtr EdgeHwnd { get; }
+    /// <summary>A qué está anclado este overlay (ventana del navegador o monitor).</summary>
+    public OverlayAnchor Anchor { get; }
+
+    /// <summary>Ventana del navegador dueña (Zero en modo escritorio).</summary>
+    public IntPtr EdgeHwnd => Anchor.OwnerHwnd;
 
     private readonly FloatingButtonWindow? _button;
     private readonly DockBarWindow? _dock;
@@ -31,22 +36,22 @@ public sealed class OverlayManager : IDisposable
 
     private static bool _startAppLaunched;
 
-    public OverlayManager(IntPtr edgeHwnd)
+    public OverlayManager(OverlayAnchor anchor)
     {
-        EdgeHwnd = edgeHwnd;
+        Anchor = anchor;
         _dockMode = SettingsService.Current.MenuMode == MenuMode.Dock;
 
         if (_dockMode)
         {
             _dock = new DockBarWindow(this);
-            _dock.SetEdgeOwner(edgeHwnd);
+            _dock.SetEdgeOwner(anchor.OwnerHwnd);   // Zero en escritorio: sin dueño, topmost
             _dock.Show();
         }
         else
         {
             _button = new FloatingButtonWindow(this);
             // El owner nativo (Edge) se asigna dentro del botón en SourceInitialized.
-            _button.SetEdgeOwner(edgeHwnd);
+            _button.SetEdgeOwner(anchor.OwnerHwnd);
             _button.Show();
         }
 
@@ -76,23 +81,19 @@ public sealed class OverlayManager : IDisposable
 
     public void Reposition()
     {
-        if (_disposed || !Win32.IsWindow(EdgeHwnd)) return;
+        if (_disposed || !Anchor.IsAlive) return;
 
-        if (Win32.IsIconic(EdgeHwnd))
+        if (Anchor.IsMinimized)
         {
             CloseMenu();
             return; // owned window: Windows ya la oculta junto al owner
         }
 
-        // Pantalla completa (video/F11): ocultar pestaña del dock o botón flotante.
-        bool fullscreen = Win32.IsFullscreen(EdgeHwnd);
-        _dock?.SetFullscreen(fullscreen);
-        _button?.SetFullscreen(fullscreen);
-        if (fullscreen) CloseMenu();
+        UpdateFullscreen();
 
         if (_dockMode)
         {
-            _dock!.Reanchor(EdgeHwnd);
+            _dock!.Reanchor();
             foreach (var w in _appWindows.Values)
             {
                 try { w.Reanchor(); } catch { }
@@ -100,16 +101,10 @@ public sealed class OverlayManager : IDisposable
             return;
         }
 
-        Win32.GetWindowRect(EdgeHwnd, out var r);
-        double scale = Win32.DpiScaleOf(EdgeHwnd);
-        var s = SettingsService.Current;
-
-        double btnPx = ButtonSizeDip * scale;
-        double pxX = r.Left + s.ButtonRelX * (r.Width - btnPx);
-        double pxY = r.Top + s.ButtonRelY * (r.Height - btnPx);
-
-        _button!.Left = pxX / scale;
-        _button!.Top = pxY / scale;
+        var b = Anchor.BoundsDip;
+        var (rx, ry) = Anchor.ButtonRel;
+        _button!.Left = b.Left + rx * Math.Max(0, b.Width - ButtonSizeDip);
+        _button!.Top  = b.Top  + ry * Math.Max(0, b.Height - ButtonSizeDip);
 
         // Re-anclar paneles abiertos al nuevo rect de Edge
         foreach (var w in _appWindows.Values)
@@ -118,6 +113,37 @@ public sealed class OverlayManager : IDisposable
         }
 
         CloseMenu(); // si Edge se mueve, el menú queda desfasado: se cierra
+    }
+
+    private bool _lastFullscreen;
+
+    /// <summary>Pantalla completa (video/F11) sobre el ancla: ocultar pestaña del dock o botón.</summary>
+    private void UpdateFullscreen()
+    {
+        bool fullscreen = Anchor.IsFullscreen;
+        _dock?.SetFullscreen(fullscreen);
+        _button?.SetFullscreen(fullscreen);
+        if (fullscreen && !_lastFullscreen) CloseMenu();
+        _lastFullscreen = fullscreen;
+    }
+
+    private PanelGeometry.Rect _lastBounds;
+
+    /// <summary>
+    /// Tick periódico del modo escritorio (no hay ventana de navegador que avise con
+    /// LOCATIONCHANGE): detecta pantalla completa de la app en primer plano y cambios del
+    /// área de trabajo (barra de tareas movida/redimensionada, resolución).
+    /// </summary>
+    public void DesktopTick()
+    {
+        if (_disposed || !Anchor.IsAlive) return;
+        UpdateFullscreen();
+        var b = Anchor.BoundsDip;
+        if (b != _lastBounds)
+        {
+            _lastBounds = b;
+            Reposition();
+        }
     }
 
     /// <summary>Re-ancla los paneles de app abiertos (sin reposicionar el botón
@@ -130,23 +156,22 @@ public sealed class OverlayManager : IDisposable
         }
     }
 
-    /// <summary>Guarda la posición actual del botón como fracción del rect de Edge.</summary>
+    /// <summary>Guarda la posición actual del botón como fracción del rect de referencia
+    /// (ventana del navegador, o monitor en modo escritorio — uno por monitor).</summary>
     public void SaveButtonPositionFromCurrent()
     {
-        if (_dockMode || _button == null) return; // el dock no se arrastra
+        if (_dockMode || _button == null) return;
 
-        Win32.GetWindowRect(EdgeHwnd, out var r);
-        double scale = Win32.DpiScaleOf(EdgeHwnd);
-        double btnPx = ButtonSizeDip * scale;
-
-        double pxX = _button.Left * scale;
-        double pxY = _button.Top * scale;
-
-        var s = SettingsService.Current;
-        s.ButtonRelX = Math.Clamp((pxX - r.Left) / Math.Max(1, r.Width - btnPx), 0, 1);
-        s.ButtonRelY = Math.Clamp((pxY - r.Top) / Math.Max(1, r.Height - btnPx), 0, 1);
+        var b = Anchor.BoundsDip;
+        Anchor.ButtonRel = (
+            Math.Clamp((_button.Left - b.Left) / Math.Max(1, b.Width - ButtonSizeDip), 0, 1),
+            Math.Clamp((_button.Top  - b.Top)  / Math.Max(1, b.Height - ButtonSizeDip), 0, 1));
         SettingsService.Save();
     }
+
+    /// <summary>Lado hacia el que se despliegan los paneles del botón flotante: el opuesto a
+    /// la mitad de la referencia en la que está el botón.</summary>
+    public PanelSide ButtonSide => PanelGeometry.SideFor(Anchor.ButtonRel.X);
 
     // ── Menú ──
 
@@ -182,9 +207,25 @@ public sealed class OverlayManager : IDisposable
 
     // ── Apps ──
 
-    public void OpenApp(AppEntry app, double originRelY)
+    /// <summary>
+    /// Dock horizontal: centro del ícono de cada app medido desde el inicio de la barra.
+    /// Relativo (no absoluto) para que el panel siga al ícono si la ventana se mueve.
+    /// </summary>
+    private readonly Dictionary<string, double> _iconOffsets = new();
+
+    /// <summary>Abre una app. <paramref name="iconRectDip"/> es el rect del ícono que la abrió
+    /// (dock horizontal: el panel se alinea con él); null = centro de la barra.</summary>
+    public void OpenApp(AppEntry app, double originRelY, PanelGeometry.Rect? iconRectDip = null)
     {
         CloseMenu();
+
+        if (_dockMode && _dock!.IsHorizontal)
+        {
+            var bar = _dock.BarRect();
+            _iconOffsets[app.Id] = iconRectDip is { } ir
+                ? ir.CenterX - bar.Left
+                : _iconOffsets.TryGetValue(app.Id, out var prev) ? prev : bar.Width / 2;
+        }
 
         // Un solo panel visible a la vez: ocultar los demás (sin destruirlos,
         // así conservan su caché/sesión de WebView2).
@@ -195,7 +236,7 @@ public sealed class OverlayManager : IDisposable
         if (_appWindows.TryGetValue(app.Id, out var existing))
         {
             // Recalcular el lado por si el botón se movió desde la última apertura.
-            existing.UpdateSide(PanelGeometry.SideFor(SettingsService.Current.ButtonRelX));
+            existing.UpdateSide(CurrentSideFor(app.Id));
             existing.ShowAndFocus();
             TouchLru(app.Id);
             return;
@@ -207,22 +248,12 @@ public sealed class OverlayManager : IDisposable
 
         // Callbacks: capturan el rect ACTUAL del botón/barra y el lado ACTUAL en cada
         // llamada, así el panel se re-ancla bien aunque Edge/el botón se muevan.
-        PanelGeometry.Rect ButtonRect()
-        {
-            if (_dockMode) return _dock!.BarRect();
-            const double winSize = 64; // ventana del botón (FAB 56 + halo)
-            return new PanelGeometry.Rect(_button!.Left, _button!.Top, winSize, winSize);
-        }
-
-        // En modo dock el panel siempre va a la izquierda de la barra (lado derecho).
-        PanelSide CurrentSide() => _dockMode
-            ? PanelSide.Right
-            : PanelGeometry.SideFor(SettingsService.Current.ButtonRelX);
-
+        string id = app.Id;
         var win = new AppHostWindow(
-            app, EdgeHwnd, CurrentSide(), originRelY,
-            computeBounds: w => PanelGeometry.Compute(EdgeHwnd, CurrentSide(), w, ButtonRect()),
-            maxWidth: () => PanelGeometry.MaxWidth(EdgeHwnd, CurrentSide(), ButtonRect()));
+            app, Anchor.OwnerHwnd, CurrentSideFor(id), originRelY,
+            computeBounds: w => PanelGeometry.Compute(Anchor.BoundsDip, Placement, CurrentSideFor(id), w, AnchorRectFor(id)),
+            maxWidth: () => PanelGeometry.MaxWidth(Anchor.BoundsDip, Placement, CurrentSideFor(id), AnchorRectFor(id)),
+            isAnchorAlive: () => Anchor.IsAlive);
 
         win.Closed += (_, _) =>
         {
@@ -239,6 +270,48 @@ public sealed class OverlayManager : IDisposable
         _appWindows[app.Id] = win;
         TouchLru(app.Id);
         win.Show();
+    }
+
+    // ── Geometría de paneles según dock/botón ──
+    // Se evalúan en cada llamada (no al crear el panel), así el panel se re-ancla bien
+    // aunque el navegador, el botón o la barra se muevan.
+
+    private PanelPlacement Placement => !_dockMode ? PanelPlacement.Beside : Anchor.DockEdge switch
+    {
+        DockEdge.Bottom => PanelPlacement.Above,
+        DockEdge.Top    => PanelPlacement.Below,
+        _               => PanelPlacement.Beside
+    };
+
+    private PanelGeometry.Rect AnchorRectFor(string appId)
+    {
+        if (!_dockMode)
+        {
+            const double winSize = 64; // ventana del botón (FAB 56 + halo)
+            return new PanelGeometry.Rect(_button!.Left, _button!.Top, winSize, winSize);
+        }
+
+        var bar = _dock!.BarRect();
+        if (!_dock.IsHorizontal) return bar;
+
+        // Dock horizontal: el ícono de la app proyectado sobre la barra.
+        double c = bar.Left + (_iconOffsets.TryGetValue(appId, out var off) ? off : bar.Width / 2);
+        const double half = 22;
+        return new PanelGeometry.Rect(c - half, bar.Top, half * 2, bar.Height);
+    }
+
+    private PanelSide CurrentSideFor(string appId)
+    {
+        if (!_dockMode) return ButtonSide;
+        switch (Anchor.DockEdge)
+        {
+            case DockEdge.Left:  return PanelSide.Left;   // panel a la derecha de la barra
+            case DockEdge.Right: return PanelSide.Right;  // panel a la izquierda de la barra
+            default:
+                // Horizontal: el borde fijo queda del lado del ícono más cercano al centro.
+                var a = AnchorRectFor(appId);
+                return a.CenterX >= Anchor.BoundsDip.CenterX ? PanelSide.Right : PanelSide.Left;
+        }
     }
 
     // ── Modo Lite: límite de paneles vivos (LRU) ──
@@ -367,7 +440,24 @@ public sealed class OverlayManager : IDisposable
         _settingsWin.Show();
     }
 
-    public void EnterMoveMode() => _button?.EnterMoveMode();
+    /// <summary>Modo mover: arrastrar el botón flotante (Material) o la pestaña del dock
+    /// a lo largo de su borde.</summary>
+    public void EnterMoveMode()
+    {
+        if (_dockMode) _dock?.EnterMoveMode();
+        else _button?.EnterMoveMode();
+    }
+
+    /// <summary>True si el cursor está sobre el área de referencia de este overlay (en
+    /// escritorio con varios monitores decide a qué overlay van los atajos).</summary>
+    public bool ContainsCursor()
+    {
+        if (!Win32.GetCursorPos(out var p)) return false;
+        var b = Anchor.BoundsDip;
+        double sc = Anchor is MonitorAnchor m ? m.Scale : Win32.DpiScaleOf(Anchor.OwnerHwnd);
+        double x = p.X / sc, y = p.Y / sc;
+        return x >= b.Left && x <= b.Right && y >= b.Top && y <= b.Bottom;
+    }
 
     // ── Acciones para hotkeys ──
 

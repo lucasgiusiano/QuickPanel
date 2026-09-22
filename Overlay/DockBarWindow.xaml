@@ -11,9 +11,12 @@
         ShowActivated="False"
         ResizeMode="NoResize">
 
-    <!-- El contenido se traslada en X para deslizar dentro/fuera de pantalla.
-         La ventana es más ancha que la barra para alojar la pestaña "<" y la
-         cápsula de carpeta que sobresale a la izquierda. -->
+    <!-- El contenido se traslada (en X para bordes laterales, en Y para arriba/abajo)
+         para deslizar dentro/fuera de pantalla. La ventana es más profunda que la barra
+         para alojar la pestaña y la cápsula de carpeta.
+         Alineaciones, márgenes, tamaños y orientación de la pestaña, la barra y la lista
+         de apps los asigna DockBarWindow.ApplyEdgeLayout según el borde elegido
+         (derecha, izquierda, abajo o arriba): los valores de acá son los del borde derecho. -->
     <Grid x:Name="RootGrid">
         <Grid.RenderTransform>
             <TranslateTransform x:Name="SlideTransform"
@@ -38,19 +41,26 @@
                 CornerRadius="8,0,0,8"
                 Background="{DynamicResource Md3PrimaryContainer}"
                 Cursor="Hand"
-                MouseLeftButtonUp="Tab_Click">
+                MouseLeftButtonDown="Tab_Down"
+                MouseMove="Tab_Move"
+                MouseLeftButtonUp="Tab_Up">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="10"
                         ShadowDepth="-2"
                         Opacity="0.35"
                         Color="#000000"/>
             </Border.Effect>
-            <TextBlock Text="‹"
+            <TextBlock x:Name="TabGlyph"
+                    Text="‹"
                     FontSize="20"
                     FontWeight="Bold"
                        Foreground="{DynamicResource Md3OnPrimaryContainer}"
                        HorizontalAlignment="Center"
-                    VerticalAlignment="Center"/>
+                    VerticalAlignment="Center">
+                <TextBlock.LayoutTransform>
+                    <RotateTransform x:Name="TabRotate" Angle="0"/>
+                </TextBlock.LayoutTransform>
+            </TextBlock>
         </Border>
 
         <!-- Barra desplegada -->
@@ -69,13 +79,15 @@
                         Color="#000000"/>
             </Border.Effect>
 
-            <DockPanel LastChildFill="True"
+            <DockPanel x:Name="BarDock"
+                    LastChildFill="True"
                     Margin="0,12,0,12">
                 <!-- Logo (fijo, arriba) — mismo icono que el Store/favicon:
                      marco redondeado con la píldora del panel lateral a la derecha.
                      Se dibuja con Md3OnPrimary, así sigue cambiando de color con el
                      tema exactamente igual que el logo anterior. -->
-                <Border DockPanel.Dock="Top"
+                <Border x:Name="LogoBtn"
+                        DockPanel.Dock="Top"
                         Width="44"
                         Height="44"
                         Margin="0,0,0,8"
@@ -135,7 +147,8 @@
                 </Border>
 
                 <!-- ⚙ Configuración (fijo, abajo de todo) -->
-                <Border DockPanel.Dock="Bottom"
+                <Border x:Name="GearBtn"
+                        DockPanel.Dock="Bottom"
                         Width="44"
                         Height="44"
                         Margin="0,6,0,0"
@@ -152,7 +165,8 @@
                 </Border>
 
                 <!-- Separador visible "_" entre apps y configuración (fijo) -->
-                <Border DockPanel.Dock="Bottom"
+                <Border x:Name="Separator"
+                        DockPanel.Dock="Bottom"
                         Width="28"
                         Height="2"
                         Margin="0,6,0,2"
@@ -162,8 +176,10 @@
                         HorizontalAlignment="Center"/>
 
                 <!-- Zona scrolleable de apps + carpetas (orden invertido vs Material) -->
-                <ScrollViewer VerticalScrollBarVisibility="Hidden"
-                              HorizontalScrollBarVisibility="Disabled">
+                <ScrollViewer x:Name="AppsScroll"
+                              VerticalScrollBarVisibility="Hidden"
+                              HorizontalScrollBarVisibility="Disabled"
+                              PreviewMouseWheel="AppsScroll_Wheel">
                     <StackPanel x:Name="AppsList"
                             HorizontalAlignment="Center"/>
                 </ScrollViewer>
