@@ -27,6 +27,8 @@ public partial class ManageAppsWindow : Window
         _manager = manager;
         InitializeComponent();
         BuildRows();
+        // Íconos, colores, nombres y carpetas editados acá: reflejarlos en docks/menús.
+        Closed += (_, _) => App.RefreshAppLists();
     }
 
     private void BuildRows()
@@ -163,6 +165,7 @@ public partial class ManageAppsWindow : Window
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
+        actions.Children.Add(IconButton("✎", Loc.T("Manage_EditApp"), () => EditApp(app)));
         actions.Children.Add(IconButton("⌨", HotkeyTip(app), () => AssignHotkey(app)));
         actions.Children.Add(IconButton("📁", GroupTip(app), b => PickGroup(app, b)));   // se mantiene el botón de asignar
         actions.Children.Add(IconButton("🖼", Loc.T("Manage_CustomIcon"), () => PickIcon(app)));
@@ -352,111 +355,23 @@ public partial class ManageAppsWindow : Window
 
             object? src = _dragSource.Tag;
             object? dst = target.Tag;
-            var apps = SettingsService.Current.Apps;
 
-            if (src is AppEntry dragApp)
+            // Misma lógica que el drag & drop del Dock y del menú Material.
+            string? KeyOf(object? o) => o switch
             {
-                if (dst is AppGroup dstGroup)
-                {
-                    // Soltar una app sobre una tarjeta de carpeta → asignarla a esa carpeta.
-                    AssignAppToGroup(dragApp, dstGroup);
-                }
-                else if (dst is AppEntry dstApp)
-                {
-                    // Soltar una app sobre otra → misma carpeta que la destino (o suelta) y esa posición.
-                    apps.Remove(dragApp);
-                    int ti = apps.IndexOf(dstApp);
-                    if (ti < 0) ti = apps.Count;
-                    dragApp.GroupId = dstApp.GroupId;
-                    apps.Insert(ti, dragApp);
-                }
-                else return;
-            }
-            else if (src is AppGroup dragGroup)
-            {
-                // Mover la carpeta entera (bloque de sus miembros) a la posición del destino.
-                int ti;
-                if (dst is AppEntry da) ti = apps.IndexOf(da);
-                else if (dst is AppGroup dg) ti = FirstMemberIndex(dg);
-                else return;
-                MoveGroupBlock(dragGroup, ti);
-            }
-            else return;
+                AppEntry a => "app:" + a.Id,
+                AppGroup g => "group:" + g.Id,
+                _          => null
+            };
+            var sk = KeyOf(src); var dk = KeyOf(dst);
+            if (sk == null || dk == null) return;
+            if (!AppOrdering.ApplyDrop(sk, dk)) return;
 
-            ReassignPositionalHotkeys();
-            SettingsService.Save();
-            App.ReloadHotkeys();
+            AppOrdering.Commit();
+            App.RefreshAppLists();
             BuildRows();
         };
     }
-
-    /// <summary>Asigna una app a una carpeta y la reubica junto al resto de sus miembros.</summary>
-    private void AssignAppToGroup(AppEntry app, AppGroup g)
-    {
-        var apps = SettingsService.Current.Apps;
-        apps.Remove(app);
-        app.GroupId = g.Id;
-        int last = -1;
-        for (int i = 0; i < apps.Count; i++) if (apps[i].GroupId == g.Id) last = i;
-        if (last >= 0) apps.Insert(last + 1, app); else apps.Add(app);
-    }
-
-    private int FirstMemberIndex(AppGroup g)
-    {
-        var apps = SettingsService.Current.Apps;
-        for (int i = 0; i < apps.Count; i++) if (apps[i].GroupId == g.Id) return i;
-        return apps.Count;
-    }
-
-    /// <summary>Reubica el bloque completo de miembros de una carpeta ante el índice destino.</summary>
-    private void MoveGroupBlock(AppGroup g, int targetIndex)
-    {
-        var apps = SettingsService.Current.Apps;
-        var members = apps.Where(a => a.GroupId == g.Id).ToList();
-        if (members.Count == 0) return;
-
-        // Ancla: la app en la posición destino (si no es del propio grupo), para recalcular
-        // el índice tras remover los miembros.
-        AppEntry? anchor = (targetIndex >= 0 && targetIndex < apps.Count) ? apps[targetIndex] : null;
-        if (anchor != null && anchor.GroupId == g.Id) anchor = null;
-
-        foreach (var m in members) apps.Remove(m);
-
-        int ins = anchor != null ? apps.IndexOf(anchor) : apps.Count;
-        if (ins < 0) ins = apps.Count;
-        apps.InsertRange(ins, members);
-    }
-
-    /// <summary>
-    /// Reasigna Ctrl+Alt+[1..0] a las primeras 10 apps según su nueva posición,
-    /// pero solo a las que ya tenían un atajo posicional (Ctrl+Alt+dígito).
-    /// Los atajos personalizados por el usuario se respetan y no se tocan.
-    /// </summary>
-    private static void ReassignPositionalHotkeys()
-    {
-        var apps = SettingsService.Current.Apps;
-
-        // Detectar qué apps usan un atajo "posicional" (Ctrl+Alt+ y un dígito).
-        bool IsPositional(Hotkey h) =>
-            h.IsSet && h.Ctrl && h.Alt && !h.Shift && !h.Win && IsDigit(h.Key);
-
-        // Liberar los atajos posicionales actuales para reasignarlos por orden.
-        foreach (var a in apps)
-            if (IsPositional(a.Hotkey)) a.Hotkey = new Hotkey();
-
-        for (int i = 0; i < apps.Count && i < 10; i++)
-        {
-            // Solo asignar si esa posición no quedó con un atajo custom ya puesto.
-            if (apps[i].Hotkey.IsSet) continue;
-            var key = i < 9 ? Key.D1 + i : Key.D0;
-            var hk  = new Hotkey { Ctrl = true, Alt = true, Key = key };
-            if (!apps.Any(a => a.Hotkey.IsSet && a.Hotkey.ToString() == hk.ToString()))
-                apps[i].Hotkey = hk;
-        }
-    }
-
-    private static bool IsDigit(Key k) =>
-        (k >= Key.D0 && k <= Key.D9) || (k >= Key.NumPad0 && k <= Key.NumPad9);
 
     // ── Acciones ──
 
@@ -753,6 +668,11 @@ public partial class ManageAppsWindow : Window
         popup.IsOpen = true;
     }
 
+    private void EditApp(AppEntry app)
+    {
+        if (AppEditing.Edit(app, this)) BuildRows();
+    }
+
     private void Remove(AppEntry app)
     {
         if (MessageBox.Show(string.Format(Loc.T("Common_RemoveApp"), app.Name), "QuickPanel",
@@ -764,6 +684,7 @@ public partial class ManageAppsWindow : Window
         {
             SettingsService.Current.Apps.RemoveAll(a => a.Id == app.Id);
             SettingsService.Save();
+            App.RefreshAppLists();
         }
         BuildRows();
     }
@@ -777,6 +698,7 @@ public partial class ManageAppsWindow : Window
             SettingsService.Current.Apps.Add(dlg.Result);
             SettingsService.Save();
             App.ReloadHotkeys();
+            App.RefreshAppLists();
             BuildRows();
         }
     }

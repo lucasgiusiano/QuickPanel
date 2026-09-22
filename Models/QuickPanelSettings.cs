@@ -44,6 +44,17 @@ public class QuickPanelSettings
     /// <summary>Auto-ocultar el botón flotante cuando el mouse está lejos.</summary>
     public bool AutoHide { get; set; } = false;
 
+    /// <summary>Dock: abrir solo al hacer clic en la pestaña (sin despliegue por proximidad).
+    /// Excluyente con <see cref="HideDockHandle"/>: sin pestaña no habría forma de abrirlo.</summary>
+    public bool DockClickToOpen { get; set; } = false;
+
+    /// <summary>Dock: ocultar la pestaña "‹". El dock sigue desplegándose por proximidad.</summary>
+    public bool HideDockHandle { get; set; } = false;
+
+    /// <summary>Ocultar la pestaña del dock / el botón flotante mientras el navegador está en
+    /// pantalla completa (ej. un video de YouTube a pantalla completa).</summary>
+    public bool HideInFullscreen { get; set; } = true;
+
     /// <summary>Mostrar contadores de no leídos. Desactivable.</summary>
     public bool ShowBadges { get; set; } = true;
 

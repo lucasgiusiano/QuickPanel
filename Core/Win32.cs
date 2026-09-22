@@ -122,4 +122,43 @@ public const uint DWMWA_COLOR_NONE  = 0xFFFFFFFE;
 
     [DllImport("user32.dll")]
     public static extern IntPtr GetForegroundWindow();
+
+    // ── Pantalla completa ──
+    public const uint MONITOR_DEFAULTTONEAREST = 2;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MONITORINFO
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+    }
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+    [DllImport("user32.dll")]
+    public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+    /// <summary>
+    /// True si la ventana cubre EXACTAMENTE su monitor completo: es lo que hace Chromium al
+    /// entrar en pantalla completa (F11 o el botón de pantalla completa de un video). Una
+    /// ventana maximizada NO coincide: Windows la desborda ~8px por lado y además respeta
+    /// la barra de tareas (rcWork), así que nunca es igual a rcMonitor.
+    /// </summary>
+    public static bool IsFullscreen(IntPtr hwnd)
+    {
+        if (!IsWindow(hwnd) || IsIconic(hwnd)) return false;
+        if (!GetWindowRect(hwnd, out var r)) return false;
+
+        var mon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        if (mon == IntPtr.Zero) return false;
+
+        var mi = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+        if (!GetMonitorInfo(mon, ref mi)) return false;
+
+        var m = mi.rcMonitor;
+        return r.Left == m.Left && r.Top == m.Top && r.Right == m.Right && r.Bottom == m.Bottom;
+    }
 }

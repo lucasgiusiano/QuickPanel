@@ -72,6 +72,16 @@ public partial class App : Application
     public static void ReanchorAllPanels() =>
         (Current as App)?._monitor?.ReanchorAllPanels();
 
+    /// <summary>Redibuja la lista de apps de todos los docks/menús abiertos (tras reordenar,
+    /// editar, agregar o quitar apps), en todas las ventanas de navegador.</summary>
+    public static void RefreshAppLists() =>
+        (Current as App)?._monitor?.RefreshAppLists();
+
+    /// <summary>Cierra (destruye) el panel de una app en todas las ventanas de navegador.
+    /// Usado al cambiarle la URL: se vuelve a crear con la nueva al abrirla.</summary>
+    public static void CloseAppPanels(string appId) =>
+        (Current as App)?._monitor?.CloseAppPanels(appId);
+
     /// <summary>Recrea los overlays (ej. tras cambiar el modo de menú en Configuración).</summary>
     public static void RebuildOverlays() =>
         (Current as App)?._monitor?.RebuildOverlays();

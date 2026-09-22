@@ -36,6 +36,12 @@ public partial class DockBarWindow : Window
     // True por un único RebuildApps: anima la entrada de las hijas al abrir la carpeta.
     private bool _animateChildrenOnce;
 
+    // Reordenar íconos arrastrándolos (clic vs arrastre por umbral de movimiento).
+    private readonly IconDragReorder _drag;
+
+    // El navegador está en pantalla completa (video/F11): lo informa el OverlayManager.
+    private bool _fullscreen;
+
     private const double BarWidth = 64;
     private const double BarMarginRight = 14;   // separación de la barra respecto al borde del navegador
     private const double TopInset = 46;         // deja libre la franja de botones de la ventana (cerrar/min/max)
@@ -50,12 +56,23 @@ public partial class DockBarWindow : Window
         _manager = manager;
         InitializeComponent();
 
+        _drag = new IconDragReorder(this, DraggableIcons, (src, dst) =>
+        {
+            if (!AppOrdering.ApplyDrop(src, dst)) return;
+            AppOrdering.Commit();
+            App.RefreshAppLists(); // este dock y los de las demás ventanas
+        });
+
         SourceInitialized += (_, _) =>
         {
             MakeToolWindow();
             ApplyEdgeOwner();
         };
-        Loaded += (_, _) => RebuildApps();
+        Loaded += (_, _) =>
+        {
+            RebuildApps();
+            ApplyTabVisibility(); // sin esperar al primer tick: evita un parpadeo de la pestaña
+        };
 
         _proximityTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(180) };
         _proximityTimer.Tick += (_, _) => UpdateProximity();
@@ -146,12 +163,38 @@ public partial class DockBarWindow : Window
 
     private void Tab_Click(object sender, MouseButtonEventArgs e) => Expand();
 
+    /// <summary>Informado por el OverlayManager en cada cambio de geometría del navegador.</summary>
+    public void SetFullscreen(bool fullscreen)
+    {
+        if (_fullscreen == fullscreen) return;
+        _fullscreen = fullscreen;
+        ApplyTabVisibility();
+    }
+
+    /// <summary>
+    /// La pestaña "‹" se oculta si el usuario lo eligió o si el navegador está en pantalla
+    /// completa. "Ocultar pestaña" se ignora en modo "solo clic": sin pestaña no habría forma
+    /// de abrir el dock (Configuración ya impide esa combinación; esto es la red de seguridad).
+    /// El despliegue por proximidad no depende de la pestaña: sigue funcionando sin ella.
+    /// </summary>
+    private void ApplyTabVisibility()
+    {
+        if (_expanded || _animating) return; // durante/tras el despliegue la maneja Expand/Collapse
+        var s = SettingsService.Current;
+        bool hide = (s.HideDockHandle && !s.DockClickToOpen)
+                 || (_fullscreen && s.HideInFullscreen);
+        var v = hide ? Visibility.Collapsed : Visibility.Visible;
+        if (Tab.Visibility != v) Tab.Visibility = v;
+    }
+
     /// <summary>Timer de proximidad: despliega al acercar el cursor al borde derecho;
     /// colapsa cuando el cursor se aleja y no hay panel abierto. Reusa el mismo enfoque
     /// que el auto-hide del botón flotante.</summary>
     private void UpdateProximity()
     {
         if (_animating) return;
+        if (_drag.IsDragging) return; // arrastrando un ícono: no colapsar bajo el cursor
+        ApplyTabVisibility();          // aplica en caliente los cambios de Configuración
         if (!Win32.GetCursorPos(out var p)) return;
 
         var src = PresentationSource.FromVisual(this);
@@ -167,6 +210,8 @@ public partial class DockBarWindow : Window
             // los últimos HotZoneInner px (más un pequeño margen externo), así que el
             // cursor solo dispara el despliegue al ir DECIDIDAMENTE al borde, y no al
             // tocar controles del contenido que están unos px hacia adentro.
+            // En modo "solo clic" el despliegue lo hace únicamente Tab_Click.
+            if (SettingsService.Current.DockClickToOpen) return;
             bool nearEdge = withinV && cx >= rightEdge - HotZoneInner && cx <= rightEdge + 4;
             if (nearEdge) Expand();
         }
@@ -185,7 +230,7 @@ public partial class DockBarWindow : Window
 
             // Histéresis: colapsar recién tras 2 ticks consecutivos afuera, para que un
             // único frame en el límite no dispare un colapso (y el consiguiente rebote).
-            if (insideKeepZone || _manager.IsAnyPanelOpen)
+            if (insideKeepZone || _manager.IsAnyPanelOpen || AppContextMenu.IsOpen)
             {
                 _outsideTicks = 0;
             }
@@ -233,9 +278,9 @@ public partial class DockBarWindow : Window
             if (!_expanded)
             {
                 Bar.Visibility = Visibility.Collapsed;
-                Tab.Visibility = Visibility.Visible;
                 SlideTransform.BeginAnimation(TranslateTransform.XProperty, null);
                 SlideTransform.X = 0;
+                ApplyTabVisibility();
             }
         };
         SlideTransform.BeginAnimation(TranslateTransform.XProperty, anim);
@@ -332,13 +377,13 @@ public partial class DockBarWindow : Window
             VerticalAlignment = VerticalAlignment.Center
         };
         border.ToolTip = group.Name;
-        border.MouseLeftButtonUp += (_, _) =>
+        _drag.Attach(border, "group:" + group.Id, () =>
         {
             bool opening = _expandedGroupId != group.Id;
             _expandedGroupId = opening ? group.Id : null;
             _animateChildrenOnce = opening; // animar solo al abrir
             RebuildApps();
-        };
+        });
 
         int count = SettingsService.Current.Apps.Count(a => a.GroupId == group.Id);
         if (count > 0) AddBadge(border, count.ToString(),
@@ -382,12 +427,12 @@ public partial class DockBarWindow : Window
             };
         }
         border.ToolTip = app.Name;
-        border.MouseLeftButtonUp += (_, _) => _manager.OpenApp(app, 0.5);
-        border.MouseRightButtonUp += (_, _) =>
+        // Clic = abrir; arrastrar = reordenar / meter o sacar de una carpeta.
+        _drag.Attach(border, "app:" + app.Id, () => _manager.OpenApp(app, 0.5));
+        border.MouseRightButtonUp += (_, e) =>
         {
-            if (MessageBox.Show(string.Format(Loc.T("Common_RemoveApp"), app.Name), "QuickPanel",
-                    MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-                _manager.RemoveApp(app);
+            e.Handled = true;
+            AppContextMenu.Show(border, app, _manager);
         };
 
         bool showBadges = SettingsService.Current.ShowBadges;
@@ -415,6 +460,19 @@ public partial class DockBarWindow : Window
         };
         st.BeginAnimation(ScaleTransform.ScaleXProperty, anim);
         st.BeginAnimation(ScaleTransform.ScaleYProperty, anim);
+    }
+
+    /// <summary>Íconos que aceptan un drop: apps y carpetas sueltas, más las hijas de la
+    /// carpeta abierta (que viven dentro de la "pill").</summary>
+    private IEnumerable<FrameworkElement> DraggableIcons()
+    {
+        foreach (var child in AppsList.Children.OfType<FrameworkElement>())
+        {
+            if (child.Tag is string) yield return child;
+            else if (child is Border { Child: Panel inner })
+                foreach (var c in inner.Children.OfType<FrameworkElement>())
+                    if (c.Tag is string) yield return c;
+        }
     }
 
     // ── Helpers visuales ──

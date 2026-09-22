@@ -29,11 +29,24 @@ public partial class MenuWindow : Window
     private double Gap    => Item * 0.25;
     private double ColGap => Item * 0.25;
 
+    // Reordenar íconos arrastrándolos (clic vs arrastre por umbral de movimiento).
+    private readonly IconDragReorder _drag;
+
     public MenuWindow(OverlayManager manager, FloatingButtonWindow button)
     {
         _manager = manager;
         _button  = button;
         InitializeComponent();
+
+        _drag = new IconDragReorder(Root,
+            () => Root.Children.OfType<FrameworkElement>()
+                      .Where(el => el.Tag is string k && (k.StartsWith("app:") || k.StartsWith("group:"))),
+            (src, dst) =>
+            {
+                if (!AppOrdering.ApplyDrop(src, dst)) return;
+                AppOrdering.Commit();
+                App.RefreshAppLists(); // re-layout de este menú (con deslizamiento FLIP)
+            });
         Loaded           += OnLoaded;
         SourceInitialized += (_, _) => MakeToolWindow();
     }
@@ -287,11 +300,13 @@ public partial class MenuWindow : Window
     private Grid MakeFolderCircle(AppGroup group)
     {
         var grid = MakeCircle("📁", null,
-            () => ToggleFolder(group.Id),
+            null,
             (Brush)FindResource("Md3SurfaceContainerHigh"),
             (Brush)FindResource("Md3OnSurface"));
 
         grid.ToolTip = group.Name;
+        // Clic = abrir/cerrar la carpeta; arrastrar = mover la carpeta entera.
+        _drag.Attach(grid, "group:" + group.Id, () => ToggleFolder(group.Id));
 
         // Badge de cantidad de apps en la carpeta.
         int count = SettingsService.Current.Apps.Count(a => a.GroupId == group.Id);
@@ -325,6 +340,15 @@ public partial class MenuWindow : Window
         // se abre esta (cerrando cualquier otra). El estado vive en el manager.
         bool opening = _manager.ExpandedGroupId != groupId;
         _manager.ExpandedGroupId = opening ? groupId : null;
+        Relayout();
+    }
+
+    /// <summary>Recalcula el layout con el estado actual (carpeta abierta, orden de apps),
+    /// deslizando los íconos que ya existían desde su posición anterior (FLIP). Lo usan
+    /// abrir/cerrar carpeta y el reordenamiento por arrastre.</summary>
+    public void Relayout()
+    {
+        if (!IsLoaded) return;
 
         // FLIP: capturar la posición actual de cada elemento (por su Key) ANTES de
         // limpiar, para luego deslizarlos desde ahí a su lugar nuevo.
@@ -332,7 +356,15 @@ public partial class MenuWindow : Window
         foreach (var child in Root.Children.OfType<FrameworkElement>())
         {
             if (child.Tag is string key)
-                _prevPositions[key] = (Canvas.GetLeft(child), Canvas.GetTop(child));
+            {
+                // Posición VISUAL: incluye el desplazamiento en curso (un ícono recién
+                // soltado tras arrastrarlo, o uno a mitad de un deslizamiento FLIP), así
+                // arranca desde donde se lo ve y no desde su casillero anterior.
+                var (dx, dy) = child.RenderTransform is TransformGroup g
+                               && g.Children.OfType<TranslateTransform>().FirstOrDefault() is { } t
+                    ? (t.X, t.Y) : (0.0, 0.0);
+                _prevPositions[key] = (Canvas.GetLeft(child) + dx, Canvas.GetTop(child) + dy);
+            }
         }
         _slideExisting = true;
 
@@ -365,7 +397,7 @@ public partial class MenuWindow : Window
 
     // ── Helpers ──
 
-    private Grid MakeCircle(string glyph, BitmapImage? img, Action onClick, Brush bg, Brush fg, double? sizeOverride = null)
+    private Grid MakeCircle(string glyph, BitmapImage? img, Action? onClick, Brush bg, Brush fg, double? sizeOverride = null)
     {
         double sz = sizeOverride ?? Item;
         var border = new Border
@@ -410,7 +442,8 @@ public partial class MenuWindow : Window
         };
         grid.RenderTransform = new ScaleTransform(0, 0);
         grid.Children.Add(border);
-        border.MouseLeftButtonUp += (_, _) => onClick();
+        // Apps y carpetas pasan null: su clic lo resuelve IconDragReorder (clic vs arrastre).
+        if (onClick != null) border.MouseLeftButtonUp += (_, _) => onClick();
         return grid;
     }
 
@@ -429,16 +462,18 @@ public partial class MenuWindow : Window
         var grid = MakeCircle(
             img == null ? (app.Name.Length > 0 ? app.Name[..1].ToUpper() : "?") : "",
             img,
-            () => _manager.OpenApp(app, originRelY),
+            null,
             bg,
             (Brush)FindResource("Md3OnSurface"),
             size);
 
-        grid.MouseRightButtonUp += (_, _) =>
+        // Clic = abrir; arrastrar = reordenar / meter o sacar de una carpeta.
+        _drag.Attach(grid, "app:" + app.Id, () => _manager.OpenApp(app, originRelY));
+
+        grid.MouseRightButtonUp += (_, e) =>
         {
-            if (MessageBox.Show(string.Format(Loc.T("Common_RemoveApp"), app.Name), "QuickPanel",
-                    MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-                _manager.RemoveApp(app);
+            e.Handled = true;
+            AppContextMenu.Show(grid, app, _manager);
         };
 
         grid.ToolTip = app.Name;

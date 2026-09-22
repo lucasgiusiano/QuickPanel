@@ -297,5 +297,181 @@
             </Setter>
         </Style>
 
+        <!-- ═══ Switch MD3 ═══
+             Reemplaza al CheckBox nativo manteniendo la misma API (IsChecked / Click), así el
+             code-behind no cambia. Texto a la izquierda, switch a la derecha (fila de ajuste).
+             Track 52×32. Apagado: thumb 16px con contorno; encendido: thumb 24px con ✓ sobre
+             el color primario. El thumb se desliza y crece con una animación; el halo es la
+             "state layer" de hover. -->
+        <Style x:Key="Md3Switch" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource Md3OnSurface}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid x:Name="RootGrid" Background="Transparent">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <ContentPresenter Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0"
+                                              RecognizesAccessKey="False">
+                                <ContentPresenter.Resources>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                    </Style>
+                                </ContentPresenter.Resources>
+                            </ContentPresenter>
+
+                            <Grid Grid.Column="1" Width="52" Height="32" Margin="0,4" VerticalAlignment="Center">
+                                <Border x:Name="Track" CornerRadius="16" BorderThickness="2"
+                                        Background="{DynamicResource Md3SurfaceContainerHigh}"
+                                        BorderBrush="{DynamicResource Md3Outline}"/>
+
+                                <!-- Knob: halo + thumb + ✓, se traslada en X (centro 16 → 36). -->
+                                <Grid x:Name="Knob" Width="40" Height="40" HorizontalAlignment="Left"
+                                      VerticalAlignment="Center" Margin="-4,-4,0,-4">
+                                    <Grid.RenderTransform>
+                                        <TranslateTransform X="0"/>
+                                    </Grid.RenderTransform>
+                                    <Ellipse x:Name="Halo" Fill="{DynamicResource Md3OnSurface}" Opacity="0"/>
+                                    <Ellipse x:Name="Thumb" Width="24" Height="24"
+                                             Fill="{DynamicResource Md3OnSurfaceVariant}"
+                                             RenderTransformOrigin="0.5,0.5">
+                                        <Ellipse.RenderTransform>
+                                            <ScaleTransform ScaleX="0.667" ScaleY="0.667"/>
+                                        </Ellipse.RenderTransform>
+                                    </Ellipse>
+                                    <TextBlock x:Name="Check" Text="✓" FontSize="13" FontWeight="Bold"
+                                               Foreground="{DynamicResource Md3Primary}" Opacity="0"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Track" Property="Background" Value="{DynamicResource Md3Primary}"/>
+                                <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource Md3Primary}"/>
+                                <Setter TargetName="Thumb" Property="Fill" Value="{DynamicResource Md3OnPrimary}"/>
+                                <Setter TargetName="Halo" Property="Fill" Value="{DynamicResource Md3Primary}"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Knob"
+                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                                             To="20" Duration="0:0:0.2">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="Thumb"
+                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                             To="1" Duration="0:0:0.2">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <BackEase EasingMode="EaseOut" Amplitude="0.4"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="Thumb"
+                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                             To="1" Duration="0:0:0.2">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <BackEase EasingMode="EaseOut" Amplitude="0.4"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="Check"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="1" BeginTime="0:0:0.08" Duration="0:0:0.12"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Knob"
+                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                                             To="0" Duration="0:0:0.2">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="Thumb"
+                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                             To="0.667" Duration="0:0:0.2"/>
+                                            <DoubleAnimation Storyboard.TargetName="Thumb"
+                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                             To="0.667" Duration="0:0:0.2"/>
+                                            <DoubleAnimation Storyboard.TargetName="Check"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="0:0:0.08"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Halo" Property="Opacity" Value="0.10"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Halo" Property="Opacity" Value="0.18"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="RootGrid" Property="Opacity" Value="0.38"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ═══ Selector segmentado MD3 ═══
+             Para opciones excluyentes con nombre (Material/Dock, tema): RadioButtons del mismo
+             GroupName dentro de un contenedor "Md3SegmentTrack". La opción activa se ve como
+             una píldora rellena con el color primario. Misma API que un RadioButton. -->
+        <Style x:Key="Md3SegmentTrack" TargetType="Border">
+            <Setter Property="CornerRadius" Value="20"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Background" Value="{DynamicResource Md3SurfaceContainer}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Md3Outline}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+
+        <Style x:Key="Md3Segment" TargetType="RadioButton">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource Md3OnSurfaceVariant}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Pill" CornerRadius="16" Padding="16,7" MinWidth="84"
+                                Background="Transparent">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock x:Name="Tick" Text="✓ " FontWeight="Bold" Visibility="Collapsed"
+                                           Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center"/>
+                                <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="False"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Pill" Property="Background" Value="{DynamicResource Md3SurfaceContainerHigh}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Pill" Property="Background" Value="{DynamicResource Md3Primary}"/>
+                                <Setter TargetName="Tick" Property="Visibility" Value="Visible"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Md3OnPrimary}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Application.Resources>
 </Application>

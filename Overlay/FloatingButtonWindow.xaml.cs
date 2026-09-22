@@ -21,6 +21,9 @@ public partial class FloatingButtonWindow : Window
     private readonly DispatcherTimer _autoHideTimer;
     private bool _faded;
 
+    // El navegador está en pantalla completa (video/F11): lo informa el OverlayManager.
+    private bool _fullscreen;
+
     public FloatingButtonWindow(OverlayManager manager)
     {
         _manager = manager;
@@ -43,6 +46,7 @@ public partial class FloatingButtonWindow : Window
     /// </summary>
     private void UpdateAutoHide()
     {
+        ApplyFullscreenVisibility(); // aplica en caliente el switch de Configuración
         if (!SettingsService.Current.AutoHide || _moveMode || _dragging || _manager.IsMenuOpen)
         {
             if (_faded) FadeTo(1.0);
@@ -72,6 +76,24 @@ public partial class FloatingButtonWindow : Window
         BeginAnimation(OpacityProperty,
             new DoubleAnimation(target, TimeSpan.FromMilliseconds(250))
             { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+    }
+
+    public void SetFullscreen(bool fullscreen)
+    {
+        if (_fullscreen == fullscreen) return;
+        _fullscreen = fullscreen;
+        ApplyFullscreenVisibility();
+    }
+
+    /// <summary>Oculta el FAB en pantalla completa. Se oculta el CONTENIDO (no la ventana):
+    /// volver a mostrar una ventana puede robarle el foco al navegador, y una ventana
+    /// transparente sin contenido deja pasar los clics.</summary>
+    private void ApplyFullscreenVisibility()
+    {
+        if (Content is not UIElement root) return;
+        bool hide = _fullscreen && SettingsService.Current.HideInFullscreen && !_moveMode;
+        var v = hide ? Visibility.Collapsed : Visibility.Visible;
+        if (root.Visibility != v) root.Visibility = v;
     }
 
     public void SetEdgeOwner(IntPtr edgeHwnd)

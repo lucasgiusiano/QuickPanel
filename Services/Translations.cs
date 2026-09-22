@@ -161,6 +161,18 @@ internal static class Translations
         ["Settings_NavBackup"] = "Backup",
         ["Common_Assign"] = "Assign",
         ["Common_None"] = "None",
+        ["Settings_DockClickOnly"] = "Open the dock only by clicking its tab",
+        ["Settings_DockClickOnlyDesc"] = "Turns off opening the dock automatically when the cursor reaches the edge.",
+        ["Settings_HideDockHandle"] = "Hide the dock tab",
+        ["Settings_HideDockHandleDesc"] = "The dock still opens when you move the cursor to the right edge. Not available with “Open only by clicking”.",
+        ["Settings_HideInFullscreen"] = "Hide in full screen",
+        ["Settings_HideInFullscreenDesc"] = "Hides the dock tab or the floating button while the browser is in full screen (e.g. a video).",
+        ["Common_Edit"] = "Edit",
+        ["Common_Save"] = "Save",
+        ["EditApp_Title"] = "Edit app",
+        ["EditApp_Name"] = "Name",
+        ["EditApp_UrlHint"] = "Changing the URL reloads the app's panel.",
+        ["Manage_EditApp"] = "Edit name and URL",
     };
 
     private static readonly Dictionary<string, string> Es = new()
@@ -303,6 +315,18 @@ internal static class Translations
         ["Settings_NavBackup"] = "Copia de seguridad",
         ["Common_Assign"] = "Asignar",
         ["Common_None"] = "Ninguna",
+        ["Settings_DockClickOnly"] = "Abrir el dock solo al hacer clic en la pestaña",
+        ["Settings_DockClickOnlyDesc"] = "Desactiva la apertura automática del dock al llevar el cursor al borde.",
+        ["Settings_HideDockHandle"] = "Ocultar la pestaña del dock",
+        ["Settings_HideDockHandleDesc"] = "El dock se sigue abriendo al llevar el cursor al borde derecho. No disponible con «Abrir solo al hacer clic».",
+        ["Settings_HideInFullscreen"] = "Ocultar en pantalla completa",
+        ["Settings_HideInFullscreenDesc"] = "Oculta la pestaña del dock o el botón flotante mientras el navegador está en pantalla completa (ej. un video).",
+        ["Common_Edit"] = "Editar",
+        ["Common_Save"] = "Guardar",
+        ["EditApp_Title"] = "Editar app",
+        ["EditApp_Name"] = "Nombre",
+        ["EditApp_UrlHint"] = "Cambiar la URL recarga el panel de la app.",
+        ["Manage_EditApp"] = "Editar nombre y URL",
     };
 
     private static readonly Dictionary<string, string> De = new()
@@ -445,6 +469,18 @@ internal static class Translations
         ["Settings_NavBackup"] = "Sicherung",
         ["Common_Assign"] = "Zuweisen",
         ["Common_None"] = "Keine",
+        ["Settings_DockClickOnly"] = "Dock nur per Klick auf den Reiter öffnen",
+        ["Settings_DockClickOnlyDesc"] = "Deaktiviert das automatische Öffnen, wenn der Mauszeiger den Rand erreicht.",
+        ["Settings_HideDockHandle"] = "Dock-Reiter ausblenden",
+        ["Settings_HideDockHandleDesc"] = "Das Dock öffnet sich weiterhin, wenn du den Mauszeiger an den rechten Rand bewegst. Nicht verfügbar mit „Nur per Klick öffnen“.",
+        ["Settings_HideInFullscreen"] = "Im Vollbild ausblenden",
+        ["Settings_HideInFullscreenDesc"] = "Blendet den Dock-Reiter oder die schwebende Schaltfläche aus, solange der Browser im Vollbild ist (z. B. bei einem Video).",
+        ["Common_Edit"] = "Bearbeiten",
+        ["Common_Save"] = "Speichern",
+        ["EditApp_Title"] = "App bearbeiten",
+        ["EditApp_Name"] = "Name",
+        ["EditApp_UrlHint"] = "Eine Änderung der URL lädt das Panel der App neu.",
+        ["Manage_EditApp"] = "Name und URL bearbeiten",
     };
 
     private static readonly Dictionary<string, string> Fr = new()
@@ -587,6 +623,18 @@ internal static class Translations
         ["Settings_NavBackup"] = "Sauvegarde",
         ["Common_Assign"] = "Affecter",
         ["Common_None"] = "Aucune",
+        ["Settings_DockClickOnly"] = "Ouvrir le dock uniquement en cliquant sur son onglet",
+        ["Settings_DockClickOnlyDesc"] = "Désactive l'ouverture automatique lorsque le curseur atteint le bord.",
+        ["Settings_HideDockHandle"] = "Masquer l'onglet du dock",
+        ["Settings_HideDockHandleDesc"] = "Le dock s'ouvre toujours en amenant le curseur au bord droit. Indisponible avec « Ouvrir uniquement par clic ».",
+        ["Settings_HideInFullscreen"] = "Masquer en plein écran",
+        ["Settings_HideInFullscreenDesc"] = "Masque l'onglet du dock ou le bouton flottant lorsque le navigateur est en plein écran (ex. une vidéo).",
+        ["Common_Edit"] = "Modifier",
+        ["Common_Save"] = "Enregistrer",
+        ["EditApp_Title"] = "Modifier l'app",
+        ["EditApp_Name"] = "Nom",
+        ["EditApp_UrlHint"] = "Modifier l'URL recharge le panneau de l'app.",
+        ["Manage_EditApp"] = "Modifier le nom et l'URL",
     };
 
     private static readonly Dictionary<string, string> It = new()
@@ -729,6 +777,18 @@ internal static class Translations
         ["Settings_NavBackup"] = "Backup",
         ["Common_Assign"] = "Assegna",
         ["Common_None"] = "Nessuna",
+        ["Settings_DockClickOnly"] = "Apri il dock solo facendo clic sulla linguetta",
+        ["Settings_DockClickOnlyDesc"] = "Disattiva l'apertura automatica quando il cursore raggiunge il bordo.",
+        ["Settings_HideDockHandle"] = "Nascondi la linguetta del dock",
+        ["Settings_HideDockHandleDesc"] = "Il dock si apre comunque portando il cursore sul bordo destro. Non disponibile con «Apri solo con un clic».",
+        ["Settings_HideInFullscreen"] = "Nascondi a schermo intero",
+        ["Settings_HideInFullscreenDesc"] = "Nasconde la linguetta del dock o il pulsante flottante mentre il browser è a schermo intero (es. un video).",
+        ["Common_Edit"] = "Modifica",
+        ["Common_Save"] = "Salva",
+        ["EditApp_Title"] = "Modifica app",
+        ["EditApp_Name"] = "Nome",
+        ["EditApp_UrlHint"] = "Cambiare l'URL ricarica il pannello dell'app.",
+        ["Manage_EditApp"] = "Modifica nome e URL",
     };
 
     private static readonly Dictionary<string, string> Pt = new()
@@ -871,6 +931,18 @@ internal static class Translations
         ["Settings_NavBackup"] = "Backup",
         ["Common_Assign"] = "Atribuir",
         ["Common_None"] = "Nenhuma",
+        ["Settings_DockClickOnly"] = "Abrir o dock apenas clicando na aba",
+        ["Settings_DockClickOnlyDesc"] = "Desativa a abertura automática quando o cursor chega à borda.",
+        ["Settings_HideDockHandle"] = "Ocultar a aba do dock",
+        ["Settings_HideDockHandleDesc"] = "O dock continua abrindo ao levar o cursor à borda direita. Indisponível com “Abrir apenas clicando”.",
+        ["Settings_HideInFullscreen"] = "Ocultar em tela cheia",
+        ["Settings_HideInFullscreenDesc"] = "Oculta a aba do dock ou o botão flutuante enquanto o navegador está em tela cheia (ex.: um vídeo).",
+        ["Common_Edit"] = "Editar",
+        ["Common_Save"] = "Salvar",
+        ["EditApp_Title"] = "Editar app",
+        ["EditApp_Name"] = "Nome",
+        ["EditApp_UrlHint"] = "Alterar a URL recarrega o painel do app.",
+        ["Manage_EditApp"] = "Editar nome e URL",
     };
 
     private static readonly Dictionary<string, string> Ja = new()
@@ -1013,6 +1085,18 @@ internal static class Translations
         ["Settings_NavBackup"] = "バックアップ",
         ["Common_Assign"] = "割り当て",
         ["Common_None"] = "なし",
+        ["Settings_DockClickOnly"] = "タブをクリックしたときだけドックを開く",
+        ["Settings_DockClickOnlyDesc"] = "カーソルを端に近づけたときの自動表示をオフにします。",
+        ["Settings_HideDockHandle"] = "ドックのタブを隠す",
+        ["Settings_HideDockHandleDesc"] = "カーソルを右端に動かすとドックは引き続き開きます。「クリックでのみ開く」とは併用できません。",
+        ["Settings_HideInFullscreen"] = "全画面表示中は隠す",
+        ["Settings_HideInFullscreenDesc"] = "ブラウザーが全画面表示の間（動画など）、ドックのタブまたはフローティングボタンを隠します。",
+        ["Common_Edit"] = "編集",
+        ["Common_Save"] = "保存",
+        ["EditApp_Title"] = "アプリを編集",
+        ["EditApp_Name"] = "名前",
+        ["EditApp_UrlHint"] = "URL を変更するとアプリのパネルが再読み込みされます。",
+        ["Manage_EditApp"] = "名前と URL を編集",
     };
 
     private static readonly Dictionary<string, string> ZhHans = new()
@@ -1155,6 +1239,18 @@ internal static class Translations
         ["Settings_NavBackup"] = "备份",
         ["Common_Assign"] = "分配",
         ["Common_None"] = "无",
+        ["Settings_DockClickOnly"] = "仅在点击标签时打开停靠栏",
+        ["Settings_DockClickOnlyDesc"] = "关闭光标移到边缘时自动展开停靠栏。",
+        ["Settings_HideDockHandle"] = "隐藏停靠栏标签",
+        ["Settings_HideDockHandleDesc"] = "将光标移到右边缘时停靠栏仍会打开。与“仅点击打开”不能同时使用。",
+        ["Settings_HideInFullscreen"] = "全屏时隐藏",
+        ["Settings_HideInFullscreenDesc"] = "浏览器全屏时（例如播放视频）隐藏停靠栏标签或悬浮按钮。",
+        ["Common_Edit"] = "编辑",
+        ["Common_Save"] = "保存",
+        ["EditApp_Title"] = "编辑应用",
+        ["EditApp_Name"] = "名称",
+        ["EditApp_UrlHint"] = "更改 URL 会重新加载该应用的面板。",
+        ["Manage_EditApp"] = "编辑名称和 URL",
     };
 
     private static readonly Dictionary<string, string> ZhHant = new()
@@ -1297,5 +1393,17 @@ internal static class Translations
         ["Settings_NavBackup"] = "備份",
         ["Common_Assign"] = "指派",
         ["Common_None"] = "無",
+        ["Settings_DockClickOnly"] = "僅在點擊標籤時開啟停駐列",
+        ["Settings_DockClickOnlyDesc"] = "關閉游標移到邊緣時自動展開停駐列。",
+        ["Settings_HideDockHandle"] = "隱藏停駐列標籤",
+        ["Settings_HideDockHandleDesc"] = "將游標移到右邊緣時停駐列仍會開啟。與「僅點擊開啟」無法同時使用。",
+        ["Settings_HideInFullscreen"] = "全螢幕時隱藏",
+        ["Settings_HideInFullscreenDesc"] = "瀏覽器全螢幕時（例如播放影片）隱藏停駐列標籤或浮動按鈕。",
+        ["Common_Edit"] = "編輯",
+        ["Common_Save"] = "儲存",
+        ["EditApp_Title"] = "編輯應用程式",
+        ["EditApp_Name"] = "名稱",
+        ["EditApp_UrlHint"] = "變更 URL 會重新載入該應用程式的面板。",
+        ["Manage_EditApp"] = "編輯名稱和 URL",
     };
 }

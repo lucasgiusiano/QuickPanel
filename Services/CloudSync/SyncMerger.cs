@@ -78,6 +78,9 @@ public static class SyncMerger
         dst.AutoHide     = src.AutoHide;
         dst.ShowBadges   = src.ShowBadges;
         dst.LiteMode     = src.LiteMode;
+        dst.DockClickToOpen  = src.DockClickToOpen;
+        dst.HideDockHandle   = src.HideDockHandle;
+        dst.HideInFullscreen = src.HideInFullscreen;
     }
 
     private static List<T> MergeById<T>(

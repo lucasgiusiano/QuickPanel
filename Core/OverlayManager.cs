@@ -84,6 +84,12 @@ public sealed class OverlayManager : IDisposable
             return; // owned window: Windows ya la oculta junto al owner
         }
 
+        // Pantalla completa (video/F11): ocultar pestaña del dock o botón flotante.
+        bool fullscreen = Win32.IsFullscreen(EdgeHwnd);
+        _dock?.SetFullscreen(fullscreen);
+        _button?.SetFullscreen(fullscreen);
+        if (fullscreen) CloseMenu();
+
         if (_dockMode)
         {
             _dock!.Reanchor(EdgeHwnd);
@@ -305,7 +311,7 @@ public sealed class OverlayManager : IDisposable
         {
             SettingsService.Current.Apps.Add(dlg.Result);
             SettingsService.Save();
-            _dock?.RebuildApps();
+            App.RefreshAppLists();
         }
     }
 
@@ -313,13 +319,33 @@ public sealed class OverlayManager : IDisposable
     {
         SettingsService.Current.Apps.RemoveAll(a => a.Id == app.Id);
         SettingsService.Save();
-        if (_appWindows.TryGetValue(app.Id, out var w))
-        {
-            w.ForceClose();
-            _appWindows.Remove(app.Id);
-        }
         CloseMenu();
+        App.CloseAppPanels(app.Id);
+        App.RefreshAppLists();
+    }
+
+    /// <summary>Editar nombre/URL de una app (desde el clic derecho del dock/menú).</summary>
+    public void EditApp(AppEntry app)
+    {
+        CloseMenu();
+        AppEditing.Edit(app, null);
+    }
+
+    /// <summary>Redibuja la lista de apps del dock o del menú abierto.</summary>
+    public void RefreshApps()
+    {
         _dock?.RebuildApps();
+        if (_menuOpen) _menu?.Relayout();
+    }
+
+    /// <summary>Destruye el panel de una app en esta ventana (si existe).</summary>
+    public void ClosePanel(string appId)
+    {
+        if (_appWindows.TryGetValue(appId, out var w))
+        {
+            try { w.ForceClose(); } catch { }
+            _appWindows.Remove(appId);
+        }
     }
 
     private SettingsWindow? _settingsWin;

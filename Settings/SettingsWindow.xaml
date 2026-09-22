@@ -154,16 +154,40 @@
                         <TextBlock Text="{loc:Loc Settings_MenuStyleDesc}"
                                    FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
                                    Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                            <RadioButton x:Name="ModeMaterial" Content="{loc:Loc MenuMode_Material}" GroupName="menumode" Margin="0,0,12,0"
-                                         Foreground="{DynamicResource Md3OnSurface}" Click="MenuMode_Click"/>
-                            <RadioButton x:Name="ModeDock" Content="{loc:Loc MenuMode_Dock}" GroupName="menumode"
-                                         Foreground="{DynamicResource Md3OnSurface}" Click="MenuMode_Click"/>
+                        <Border Style="{StaticResource Md3SegmentTrack}" Margin="0,0,0,16">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="ModeMaterial" Content="{loc:Loc MenuMode_Material}" GroupName="menumode"
+                                             Style="{StaticResource Md3Segment}" Click="MenuMode_Click"/>
+                                <RadioButton x:Name="ModeDock" Content="{loc:Loc MenuMode_Dock}" GroupName="menumode"
+                                             Style="{StaticResource Md3Segment}" Click="MenuMode_Click"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Opciones del Dock (solo visibles en modo Dock). "Solo clic" y "Ocultar
+                             pestaña" son excluyentes: sin pestaña no habría cómo abrir el dock. -->
+                        <StackPanel x:Name="DockOptions" Margin="0,0,0,4">
+                            <CheckBox x:Name="ChkDockClick" Content="{loc:Loc Settings_DockClickOnly}"
+                                      Style="{StaticResource Md3Switch}" Click="DockClick_Click"/>
+                            <TextBlock Text="{loc:Loc Settings_DockClickOnlyDesc}"
+                                       FontSize="11" TextWrapping="Wrap" Margin="0,0,68,12"
+                                       Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+
+                            <CheckBox x:Name="ChkHideHandle" Content="{loc:Loc Settings_HideDockHandle}"
+                                      Style="{StaticResource Md3Switch}" Click="HideHandle_Click"/>
+                            <TextBlock Text="{loc:Loc Settings_HideDockHandleDesc}"
+                                       FontSize="11" TextWrapping="Wrap" Margin="0,0,68,12"
+                                       Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
                         </StackPanel>
+
+                        <CheckBox x:Name="ChkFullscreen" Content="{loc:Loc Settings_HideInFullscreen}"
+                                  Style="{StaticResource Md3Switch}" Click="Fullscreen_Click"/>
+                        <TextBlock Text="{loc:Loc Settings_HideInFullscreenDesc}"
+                                   FontSize="11" TextWrapping="Wrap" Margin="0,0,68,20"
+                                   Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
 
                         <TextBlock Text="{loc:Loc Common_System}" Style="{StaticResource SettingLabel}"/>
                         <CheckBox x:Name="ChkStartup" Content="{loc:Loc Settings_StartWithWindows}"
-                                  Foreground="{DynamicResource Md3OnSurface}" Click="Startup_Click"/>
+                                  Style="{StaticResource Md3Switch}" Click="Startup_Click"/>
 
                         <TextBlock Text="{loc:Loc Settings_OpenAtStart}" Style="{StaticResource SettingLabel}" Margin="0,20,0,8"/>
                         <ComboBox x:Name="StartAppCombo" SelectionChanged="StartApp_Changed"
@@ -200,7 +224,7 @@
                         <StackPanel x:Name="MenuSizeRow" Orientation="Horizontal" Margin="0,0,0,20"/>
 
                         <CheckBox x:Name="ChkAutoHide" Content="{loc:Loc Settings_AutoHide}"
-                                  Foreground="{DynamicResource Md3OnSurface}" Click="AutoHide_Click"/>
+                                  Style="{StaticResource Md3Switch}" Click="AutoHide_Click"/>
                     </StackPanel>
 
                     <!-- ═══ Tema ═══ -->
@@ -209,30 +233,32 @@
                         <WrapPanel x:Name="Swatches" Margin="0,0,0,20"/>
 
                         <TextBlock Text="{loc:Loc Settings_Theme}" Style="{StaticResource SettingLabel}"/>
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton x:Name="ThemeDark" Content="{loc:Loc Theme_Dark}" GroupName="theme" Margin="0,0,12,0"
-                                         Foreground="{DynamicResource Md3OnSurface}" Click="Theme_Click" Tag="Dark"/>
-                            <RadioButton x:Name="ThemeLight" Content="{loc:Loc Theme_Light}" GroupName="theme" Margin="0,0,12,0"
-                                         Foreground="{DynamicResource Md3OnSurface}" Click="Theme_Click" Tag="Light"/>
-                            <RadioButton x:Name="ThemeSystem" Content="{loc:Loc Common_System}" GroupName="theme" Margin="0,0,12,0"
-                                         Foreground="{DynamicResource Md3OnSurface}" Click="Theme_Click" Tag="System"/>
-                        </StackPanel>
+                        <Border Style="{StaticResource Md3SegmentTrack}">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="ThemeDark" Content="{loc:Loc Theme_Dark}" GroupName="theme"
+                                             Style="{StaticResource Md3Segment}" Click="Theme_Click" Tag="Dark"/>
+                                <RadioButton x:Name="ThemeLight" Content="{loc:Loc Theme_Light}" GroupName="theme"
+                                             Style="{StaticResource Md3Segment}" Click="Theme_Click" Tag="Light"/>
+                                <RadioButton x:Name="ThemeSystem" Content="{loc:Loc Common_System}" GroupName="theme"
+                                             Style="{StaticResource Md3Segment}" Click="Theme_Click" Tag="System"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- ═══ Notificaciones ═══ -->
                     <StackPanel x:Name="SecNotifications" Visibility="Collapsed">
                         <TextBlock Text="{loc:Loc Settings_Notifications}" Style="{StaticResource SettingLabel}"/>
                         <CheckBox x:Name="ChkBadges" Content="{loc:Loc Settings_ShowUnread}"
-                                  Foreground="{DynamicResource Md3OnSurface}" Click="Badges_Click"/>
+                                  Style="{StaticResource Md3Switch}" Click="Badges_Click"/>
                     </StackPanel>
 
                     <!-- ═══ Rendimiento ═══ -->
                     <StackPanel x:Name="SecPerformance" Visibility="Collapsed">
                         <TextBlock Text="{loc:Loc Settings_Performance}" Style="{StaticResource SettingLabel}"/>
                         <CheckBox x:Name="ChkLite" Content="{loc:Loc Settings_LiteMode}"
-                                  Foreground="{DynamicResource Md3OnSurface}" Click="Lite_Click"/>
+                                  Style="{StaticResource Md3Switch}" Click="Lite_Click"/>
                         <TextBlock Text="{loc:Loc Settings_LiteModeDesc}"
-                                   FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   FontSize="11" TextWrapping="Wrap" Margin="0,0,68,0"
                                    Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
                     </StackPanel>
 

@@ -235,7 +235,11 @@ public partial class SettingsWindow : Window
         ChkAutoHide.IsChecked = s.AutoHide;
         ChkBadges.IsChecked = s.ShowBadges;
         ChkLite.IsChecked = s.LiteMode;
+        ChkDockClick.IsChecked = s.DockClickToOpen;
+        ChkHideHandle.IsChecked = s.HideDockHandle;
+        ChkFullscreen.IsChecked = s.HideInFullscreen;
         (s.MenuMode == MenuMode.Dock ? ModeDock : ModeMaterial).IsChecked = true;
+        UpdateDockOptions();
         PopulateStartAppCombo();
         PopulateLanguageCombo();
         UpdateFloatingMenuAvailability();
@@ -407,7 +411,53 @@ public partial class SettingsWindow : Window
         // El botón flotante y su menú de puntos no existen en modo Dock: ocultar esa
         // sección y quitar el atajo "Mover botón" (no aplica) de la lista de Atajos.
         UpdateFloatingMenuAvailability();
+        UpdateDockOptions();
         BuildActionHotkeys();
+    }
+
+    /// <summary>
+    /// Opciones del Dock: visibles solo en modo Dock. "Abrir solo con clic" y "Ocultar
+    /// pestaña" son excluyentes (sin pestaña no habría forma de abrir el dock): mientras una
+    /// está activa, la otra queda deshabilitada. El dock aplica los cambios en caliente.
+    /// </summary>
+    private void UpdateDockOptions()
+    {
+        var s = SettingsService.Current;
+        DockOptions.Visibility = s.MenuMode == MenuMode.Dock ? Visibility.Visible : Visibility.Collapsed;
+        ChkHideHandle.IsEnabled = !s.DockClickToOpen;
+        ChkDockClick.IsEnabled  = !s.HideDockHandle;
+    }
+
+    private void DockClick_Click(object sender, RoutedEventArgs e)
+    {
+        var s = SettingsService.Current;
+        s.DockClickToOpen = ChkDockClick.IsChecked == true;
+        if (s.DockClickToOpen && s.HideDockHandle)
+        {
+            s.HideDockHandle = false;          // defensivo: la UI ya lo impide
+            ChkHideHandle.IsChecked = false;
+        }
+        SettingsService.Save();
+        UpdateDockOptions();
+    }
+
+    private void HideHandle_Click(object sender, RoutedEventArgs e)
+    {
+        var s = SettingsService.Current;
+        s.HideDockHandle = ChkHideHandle.IsChecked == true;
+        if (s.HideDockHandle && s.DockClickToOpen)
+        {
+            s.DockClickToOpen = false;         // defensivo: la UI ya lo impide
+            ChkDockClick.IsChecked = false;
+        }
+        SettingsService.Save();
+        UpdateDockOptions();
+    }
+
+    private void Fullscreen_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsService.Current.HideInFullscreen = ChkFullscreen.IsChecked == true;
+        SettingsService.Save();
     }
 
     private void AutoHide_Click(object sender, RoutedEventArgs e)

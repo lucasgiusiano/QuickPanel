@@ -128,6 +128,18 @@ public sealed class EdgeWindowMonitor : IDisposable, IHotkeyTarget
         foreach (var o in _overlays.Values) o.ReanchorOpenPanels();
     }
 
+    /// <summary>Redibuja la lista de apps en los docks/menús de todas las ventanas.</summary>
+    public void RefreshAppLists()
+    {
+        foreach (var o in _overlays.Values) o.RefreshApps();
+    }
+
+    /// <summary>Cierra el panel de una app en todas las ventanas.</summary>
+    public void CloseAppPanels(string appId)
+    {
+        foreach (var o in _overlays.Values) o.ClosePanel(appId);
+    }
+
     /// <summary>Destruye y recrea todos los overlays (ej. tras cambiar el modo de menú
     /// Material ↔ Dock, que cambia qué tipo de ventana de control se usa).</summary>
     public void RebuildOverlays()
