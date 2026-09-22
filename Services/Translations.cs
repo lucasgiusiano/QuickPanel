@@ -173,6 +173,10 @@ internal static class Translations
         ["EditApp_Name"] = "Name",
         ["EditApp_UrlHint"] = "Changing the URL reloads the app's panel.",
         ["Manage_EditApp"] = "Edit name and URL",
+        ["Review_Title"] = "Enjoying QuickPanel?",
+        ["Review_Body"] = "A quick rating on the Microsoft Store helps a lot and takes a few seconds.",
+        ["Review_Later"] = "Not now",
+        ["Review_Rate"] = "Rate QuickPanel",
     };
 
     private static readonly Dictionary<string, string> Es = new()
@@ -327,6 +331,10 @@ internal static class Translations
         ["EditApp_Name"] = "Nombre",
         ["EditApp_UrlHint"] = "Cambiar la URL recarga el panel de la app.",
         ["Manage_EditApp"] = "Editar nombre y URL",
+        ["Review_Title"] = "¿Te está sirviendo QuickPanel?",
+        ["Review_Body"] = "Una reseña rápida en Microsoft Store ayuda un montón y lleva un par de segundos.",
+        ["Review_Later"] = "Ahora no",
+        ["Review_Rate"] = "Reseñar QuickPanel",
     };
 
     private static readonly Dictionary<string, string> De = new()
@@ -481,6 +489,10 @@ internal static class Translations
         ["EditApp_Name"] = "Name",
         ["EditApp_UrlHint"] = "Eine Änderung der URL lädt das Panel der App neu.",
         ["Manage_EditApp"] = "Name und URL bearbeiten",
+        ["Review_Title"] = "Gefällt dir QuickPanel?",
+        ["Review_Body"] = "Eine kurze Bewertung im Microsoft Store hilft sehr und dauert nur ein paar Sekunden.",
+        ["Review_Later"] = "Jetzt nicht",
+        ["Review_Rate"] = "QuickPanel bewerten",
     };
 
     private static readonly Dictionary<string, string> Fr = new()
@@ -635,6 +647,10 @@ internal static class Translations
         ["EditApp_Name"] = "Nom",
         ["EditApp_UrlHint"] = "Modifier l'URL recharge le panneau de l'app.",
         ["Manage_EditApp"] = "Modifier le nom et l'URL",
+        ["Review_Title"] = "QuickPanel vous plaît ?",
+        ["Review_Body"] = "Un avis rapide sur le Microsoft Store aide beaucoup et ne prend que quelques secondes.",
+        ["Review_Later"] = "Pas maintenant",
+        ["Review_Rate"] = "Noter QuickPanel",
     };
 
     private static readonly Dictionary<string, string> It = new()
@@ -789,6 +805,10 @@ internal static class Translations
         ["EditApp_Name"] = "Nome",
         ["EditApp_UrlHint"] = "Cambiare l'URL ricarica il pannello dell'app.",
         ["Manage_EditApp"] = "Modifica nome e URL",
+        ["Review_Title"] = "Ti piace QuickPanel?",
+        ["Review_Body"] = "Una recensione rapida sul Microsoft Store aiuta molto e richiede pochi secondi.",
+        ["Review_Later"] = "Non ora",
+        ["Review_Rate"] = "Recensisci QuickPanel",
     };
 
     private static readonly Dictionary<string, string> Pt = new()
@@ -943,6 +963,10 @@ internal static class Translations
         ["EditApp_Name"] = "Nome",
         ["EditApp_UrlHint"] = "Alterar a URL recarrega o painel do app.",
         ["Manage_EditApp"] = "Editar nome e URL",
+        ["Review_Title"] = "Está gostando do QuickPanel?",
+        ["Review_Body"] = "Uma avaliação rápida na Microsoft Store ajuda muito e leva poucos segundos.",
+        ["Review_Later"] = "Agora não",
+        ["Review_Rate"] = "Avaliar QuickPanel",
     };
 
     private static readonly Dictionary<string, string> Ja = new()
@@ -1097,6 +1121,10 @@ internal static class Translations
         ["EditApp_Name"] = "名前",
         ["EditApp_UrlHint"] = "URL を変更するとアプリのパネルが再読み込みされます。",
         ["Manage_EditApp"] = "名前と URL を編集",
+        ["Review_Title"] = "QuickPanel は役に立っていますか？",
+        ["Review_Body"] = "Microsoft Store での簡単な評価は数秒で済み、とても助かります。",
+        ["Review_Later"] = "後で",
+        ["Review_Rate"] = "QuickPanel を評価する",
     };
 
     private static readonly Dictionary<string, string> ZhHans = new()
@@ -1251,6 +1279,10 @@ internal static class Translations
         ["EditApp_Name"] = "名称",
         ["EditApp_UrlHint"] = "更改 URL 会重新加载该应用的面板。",
         ["Manage_EditApp"] = "编辑名称和 URL",
+        ["Review_Title"] = "QuickPanel 用得还顺手吗？",
+        ["Review_Body"] = "在 Microsoft Store 上简单评价一下，只需几秒钟，对我们帮助很大。",
+        ["Review_Later"] = "暂不",
+        ["Review_Rate"] = "评价 QuickPanel",
     };
 
     private static readonly Dictionary<string, string> ZhHant = new()
@@ -1405,5 +1437,9 @@ internal static class Translations
         ["EditApp_Name"] = "名稱",
         ["EditApp_UrlHint"] = "變更 URL 會重新載入該應用程式的面板。",
         ["Manage_EditApp"] = "編輯名稱和 URL",
+        ["Review_Title"] = "QuickPanel 用得順手嗎？",
+        ["Review_Body"] = "在 Microsoft Store 上簡單評價一下，只需幾秒鐘，對我們幫助很大。",
+        ["Review_Later"] = "暫不",
+        ["Review_Rate"] = "評價 QuickPanel",
     };
 }

@@ -61,6 +61,12 @@ public partial class App : Application
                 Loc.T("App_ChangeBrowser"),
                 "QuickPanel", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
+        else
+        {
+            // Solo si hay navegador compatible: no tiene sentido pedir una reseña de una
+            // app que el usuario ni siquiera puede usar todavía.
+            Services.ReviewPromptService.CheckOnStartup();
+        }
     }
 
     /// <summary>Re-registra los hotkeys tras cambios en Configuración / Administrar apps.</summary>
