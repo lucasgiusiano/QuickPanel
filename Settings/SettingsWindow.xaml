@@ -311,8 +311,24 @@
                         <CheckBox x:Name="ChkLite" Content="{loc:Loc Settings_LiteMode}"
                                   Style="{StaticResource Md3Switch}" Click="Lite_Click"/>
                         <TextBlock Text="{loc:Loc Settings_LiteModeDesc}"
-                                   FontSize="11" TextWrapping="Wrap" Margin="0,0,68,0"
+                                   FontSize="11" TextWrapping="Wrap" Margin="0,0,68,20"
                                    Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+
+                        <!-- Animación de apertura de los paneles. -->
+                        <TextBlock Text="{loc:Loc Settings_Animations}" Style="{StaticResource SettingLabel}"/>
+                        <TextBlock Text="{loc:Loc Settings_AnimationsDesc}"
+                                   FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+                        <Border Style="{StaticResource Md3SegmentTrack}">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="AnimQuick" Content="{loc:Loc Anim_Quick}" GroupName="anim"
+                                             Style="{StaticResource Md3Segment}" Click="Anim_Click" Tag="Quick"/>
+                                <RadioButton x:Name="AnimFancy" Content="{loc:Loc Anim_Fancy}" GroupName="anim"
+                                             Style="{StaticResource Md3Segment}" Click="Anim_Click" Tag="Fancy"/>
+                                <RadioButton x:Name="AnimOff" Content="{loc:Loc Anim_Off}" GroupName="anim"
+                                             Style="{StaticResource Md3Segment}" Click="Anim_Click" Tag="Off"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- ═══ Atajos ═══ -->

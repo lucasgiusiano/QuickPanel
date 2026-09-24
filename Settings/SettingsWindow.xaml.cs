@@ -235,6 +235,12 @@ public partial class SettingsWindow : Window
         ChkAutoHide.IsChecked = s.AutoHide;
         ChkBadges.IsChecked = s.ShowBadges;
         ChkLite.IsChecked = s.LiteMode;
+        (s.PanelAnimation switch
+        {
+            PanelAnimation.Fancy => AnimFancy,
+            PanelAnimation.Off   => AnimOff,
+            _                    => AnimQuick
+        }).IsChecked = true;
         ChkDockClick.IsChecked = s.DockClickToOpen;
         ChkHideHandle.IsChecked = s.HideDockHandle;
         ChkFullscreen.IsChecked = s.HideInFullscreen;
@@ -545,6 +551,15 @@ public partial class SettingsWindow : Window
         }
         SettingsService.Save();
         UpdateDockOptions();
+    }
+
+    /// <summary>Animación de apertura de paneles. Aplica desde la próxima apertura.</summary>
+    private void Anim_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton rb || rb.Tag is not string tag
+            || !Enum.TryParse<PanelAnimation>(tag, out var anim)) return;
+        SettingsService.Current.PanelAnimation = anim;
+        SettingsService.Save();
     }
 
     private void Fullscreen_Click(object sender, RoutedEventArgs e)

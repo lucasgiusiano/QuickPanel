@@ -193,6 +193,11 @@ internal static class Translations
         ["Edge_Top"] = "Top",
         ["Settings_MoveHandle"] = "Move tab (drag it)",
         ["Settings_NavDock"] = "Dock",
+        ["Settings_Animations"] = "Opening animation",
+        ["Settings_AnimationsDesc"] = "Panels grow from the icon that opened them while the app loads behind. Fancy is more elaborate; Quick is subtle and faster.",
+        ["Anim_Quick"] = "Quick",
+        ["Anim_Fancy"] = "Fancy",
+        ["Anim_Off"] = "Off",
     };
 
     private static readonly Dictionary<string, string> Es = new()
@@ -367,6 +372,11 @@ internal static class Translations
         ["Edge_Top"] = "Arriba",
         ["Settings_MoveHandle"] = "Mover pestaña (arrastrala)",
         ["Settings_NavDock"] = "Dock",
+        ["Settings_Animations"] = "Animación de apertura",
+        ["Settings_AnimationsDesc"] = "Los paneles se despliegan desde el ícono que los abrió mientras la app carga por detrás. Fancy es más elaborada; Quick, sutil y más rápida.",
+        ["Anim_Quick"] = "Quick",
+        ["Anim_Fancy"] = "Fancy",
+        ["Anim_Off"] = "Desactivadas",
     };
 
     private static readonly Dictionary<string, string> De = new()
@@ -541,6 +551,11 @@ internal static class Translations
         ["Edge_Top"] = "Oben",
         ["Settings_MoveHandle"] = "Reiter verschieben (ziehen)",
         ["Settings_NavDock"] = "Dock",
+        ["Settings_Animations"] = "Öffnungsanimation",
+        ["Settings_AnimationsDesc"] = "Panels wachsen aus dem Symbol, das sie geöffnet hat, während die App im Hintergrund lädt. Fancy ist aufwendiger, Quick dezent und schneller.",
+        ["Anim_Quick"] = "Quick",
+        ["Anim_Fancy"] = "Fancy",
+        ["Anim_Off"] = "Aus",
     };
 
     private static readonly Dictionary<string, string> Fr = new()
@@ -715,6 +730,11 @@ internal static class Translations
         ["Edge_Top"] = "Haut",
         ["Settings_MoveHandle"] = "Déplacer l'onglet (faites-le glisser)",
         ["Settings_NavDock"] = "Dock",
+        ["Settings_Animations"] = "Animation d'ouverture",
+        ["Settings_AnimationsDesc"] = "Les panneaux s'ouvrent depuis l'icône qui les a lancés pendant que l'app se charge en arrière-plan. Fancy est plus élaborée ; Quick, discrète et plus rapide.",
+        ["Anim_Quick"] = "Quick",
+        ["Anim_Fancy"] = "Fancy",
+        ["Anim_Off"] = "Désactivées",
     };
 
     private static readonly Dictionary<string, string> It = new()
@@ -889,6 +909,11 @@ internal static class Translations
         ["Edge_Top"] = "In alto",
         ["Settings_MoveHandle"] = "Sposta linguetta (trascinala)",
         ["Settings_NavDock"] = "Dock",
+        ["Settings_Animations"] = "Animazione di apertura",
+        ["Settings_AnimationsDesc"] = "I pannelli si aprono dall'icona che li ha avviati mentre l'app si carica in background. Fancy è più elaborata; Quick è discreta e più veloce.",
+        ["Anim_Quick"] = "Quick",
+        ["Anim_Fancy"] = "Fancy",
+        ["Anim_Off"] = "Disattivate",
     };
 
     private static readonly Dictionary<string, string> Pt = new()
@@ -1063,6 +1088,11 @@ internal static class Translations
         ["Edge_Top"] = "Em cima",
         ["Settings_MoveHandle"] = "Mover aba (arraste)",
         ["Settings_NavDock"] = "Dock",
+        ["Settings_Animations"] = "Animação de abertura",
+        ["Settings_AnimationsDesc"] = "Os painéis se abrem a partir do ícone que os iniciou enquanto o app carrega em segundo plano. Fancy é mais elaborada; Quick, sutil e mais rápida.",
+        ["Anim_Quick"] = "Quick",
+        ["Anim_Fancy"] = "Fancy",
+        ["Anim_Off"] = "Desativadas",
     };
 
     private static readonly Dictionary<string, string> Ja = new()
@@ -1237,6 +1267,11 @@ internal static class Translations
         ["Edge_Top"] = "上",
         ["Settings_MoveHandle"] = "タブを移動（ドラッグ）",
         ["Settings_NavDock"] = "ドック",
+        ["Settings_Animations"] = "開くときのアニメーション",
+        ["Settings_AnimationsDesc"] = "アプリをバックグラウンドで読み込みながら、パネルを開いたアイコンから展開します。Fancy はより凝った動き、Quick は控えめで高速です。",
+        ["Anim_Quick"] = "Quick",
+        ["Anim_Fancy"] = "Fancy",
+        ["Anim_Off"] = "オフ",
     };
 
     private static readonly Dictionary<string, string> ZhHans = new()
@@ -1411,6 +1446,11 @@ internal static class Translations
         ["Edge_Top"] = "上",
         ["Settings_MoveHandle"] = "移动标签（拖动）",
         ["Settings_NavDock"] = "停靠栏",
+        ["Settings_Animations"] = "打开动画",
+        ["Settings_AnimationsDesc"] = "面板会从打开它的图标展开,同时应用在后台加载。Fancy 更精致;Quick 更简洁、更快。",
+        ["Anim_Quick"] = "Quick",
+        ["Anim_Fancy"] = "Fancy",
+        ["Anim_Off"] = "关闭",
     };
 
     private static readonly Dictionary<string, string> ZhHant = new()
@@ -1585,5 +1625,10 @@ internal static class Translations
         ["Edge_Top"] = "上",
         ["Settings_MoveHandle"] = "移動標籤（拖曳）",
         ["Settings_NavDock"] = "停駐列",
+        ["Settings_Animations"] = "開啟動畫",
+        ["Settings_AnimationsDesc"] = "面板會從開啟它的圖示展開,同時應用程式在背景載入。Fancy 更精緻;Quick 更簡潔、更快。",
+        ["Anim_Quick"] = "Quick",
+        ["Anim_Fancy"] = "Fancy",
+        ["Anim_Off"] = "關閉",
     };
 }

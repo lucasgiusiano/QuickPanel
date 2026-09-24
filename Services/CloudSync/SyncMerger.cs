@@ -88,6 +88,7 @@ public static class SyncMerger
         dst.DesktopMonitors  = src.DesktopMonitors;
         dst.DockEdge         = src.DockEdge;
         dst.DesktopDockEdge  = src.DesktopDockEdge;
+        dst.PanelAnimation   = src.PanelAnimation;
     }
 
     private static List<T> MergeById<T>(

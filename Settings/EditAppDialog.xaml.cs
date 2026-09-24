@@ -97,6 +97,7 @@ public static class AppEditing
 
             // El panel vivo sigue en la URL vieja: destruirlo para que se recree con la nueva.
             App.CloseAppPanels(app.Id);
+            PanelPreviewCache.Remove(app.Id); // la captura es del sitio anterior
         }
 
         SettingsService.Save();

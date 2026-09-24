@@ -24,6 +24,20 @@ public partial class AppHostWindow : Window
     private bool _forceClose;
     private bool _pinned;
 
+    // ── Animación de apertura ──
+    // El panel carga "encubierto" (DWM cloak: mostrado pero sin componerse) mientras una
+    // ventana doble anima su apertura encima; al terminar, se descubre.
+    private readonly bool _startCloaked;
+    private bool _cloaked;
+    private readonly TaskCompletionSource<bool> _firstContent = new();
+    private System.Windows.Threading.DispatcherTimer? _previewTimer;
+
+    /// <summary>El panel se cerró (destruido).</summary>
+    public bool IsClosed { get; private set; }
+
+    /// <summary>Visible de verdad para el usuario (mostrado, no oculto ni encubierto).</summary>
+    public bool IsShownToUser => IsVisible && !_hidden && !_cloaked;
+
     /// <summary>Id de la app que hostea esta ventana.</summary>
     public string AppId => _app.Id;
 
@@ -42,9 +56,10 @@ public partial class AppHostWindow : Window
     public AppHostWindow(
         AppEntry app, IntPtr edgeHwnd, PanelSide side, double originRelY,
         Func<double, PanelGeometry.Rect> computeBounds, Func<double> maxWidth,
-        Func<bool> isAnchorAlive)
+        Func<bool> isAnchorAlive, bool startCloaked = false)
     {
         _app = app;
+        _startCloaked = startCloaked;
         _isAnchorAlive = isAnchorAlive;
         _edgeHwnd = edgeHwnd;
         _side = side;
@@ -60,6 +75,12 @@ public partial class AppHostWindow : Window
         UpdatePinButton();
 
         SourceInitialized += OnSourceInitialized;
+        Closed += (_, _) =>
+        {
+            IsClosed = true;
+            _previewTimer?.Stop();
+            _firstContent.TrySetResult(false);
+        };
         Loaded += async (_, _) =>
         {
             InitKeepAliveToggle();
@@ -130,6 +151,87 @@ public partial class AppHostWindow : Window
         // navegador; DWMWA_COLOR_NONE lo saca.
         int borderColor = unchecked((int)Win32.DWMWA_COLOR_NONE);
         Win32.DwmSetWindowAttribute(hwnd, Win32.DWMWA_BORDER_COLOR, ref borderColor, sizeof(int));
+
+        // Animación de apertura: encubrir antes del primer frame para que no parpadee.
+        if (_startCloaked) SetCloaked(true);
+    }
+
+    private void SetCloaked(bool cloaked)
+    {
+        _cloaked = cloaked;
+        Win32.SetCloak(new WindowInteropHelper(this).Handle, cloaked);
+    }
+
+    /// <summary>Geometría que tendrá el panel al mostrarse (destino de la animación).</summary>
+    public PanelGeometry.Rect TargetRect() => _computeBounds(EffectiveWidth);
+
+    /// <summary>
+    /// Muestra el panel encubierto: queda posicionado y cargando (si estaba suspendido se
+    /// reanuda) pero sin verse, hasta <see cref="Reveal"/>. Lo usa la animación de apertura.
+    /// </summary>
+    public void ShowCloaked()
+    {
+        _hidden = false;
+        _suspendTimer?.Stop();
+        ResumeIfSuspended();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        SetCloaked(true);
+        Show();
+        AnchorToEdge();
+    }
+
+    /// <summary>Descubre el panel debajo de la animación, antes de que termine (así al
+    /// llegar ya está pintado, enfocado y usable). False si mientras tanto se ocultó o se
+    /// cerró (la animación se descarta).</summary>
+    public bool Reveal()
+    {
+        if (IsClosed || _hidden) return false;
+        SetCloaked(false);
+        AnchorToEdge();
+        Activate();
+        Topmost = true; Topmost = false;
+        ForceWebViewRepaint();
+        StartPreviewCapture();
+        return true;
+    }
+
+    // ── Capturas para la animación ──
+
+    /// <summary>
+    /// Mientras el panel está a la vista, captura su contenido cada pocos segundos (y poco
+    /// después de la primera carga). Así, al volver a abrirlo —en esta u otra ventana— la
+    /// animación muestra cómo estaba en vez de un genérico. Capturar al ocultar no sirve:
+    /// habría que demorar el ocultado hasta que termine la captura.
+    /// </summary>
+    private void StartPreviewCapture()
+    {
+        if (SettingsService.Current.PanelAnimation == PanelAnimation.Off) return;
+        _previewTimer ??= new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+        _previewTimer.Tick -= OnPreviewTick;
+        _previewTimer.Tick += OnPreviewTick;
+        _previewTimer.Start();
+    }
+
+    private async void OnPreviewTick(object? sender, EventArgs e) => await CapturePreviewAsync();
+
+    private async Task CapturePreviewAsync()
+    {
+        if (IsClosed || _hidden || _cloaked || _suspended || Web.CoreWebView2 == null) return;
+        try
+        {
+            using var ms = new MemoryStream();
+            await Web.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Jpeg, ms);
+            if (ms.Length == 0) return;
+            ms.Position = 0;
+            var img = new BitmapImage();
+            img.BeginInit();
+            img.CacheOption = BitmapCacheOption.OnLoad;
+            img.StreamSource = ms;
+            img.EndInit();
+            img.Freeze();
+            PanelPreviewCache.Set(_app.Id, img);
+        }
+        catch { /* navegando / sin contenido todavía: se reintenta en el próximo tick */ }
     }
 
     /// <summary>
@@ -137,9 +239,13 @@ public partial class AppHostWindow : Window
     /// de Configuración. Un solo lugar decide, así que cambiar el estándar reacomoda
     /// las apps vinculadas y deja quietas a las que tienen tamaño propio.
     /// </summary>
-    private double EffectiveWidth =>
+    private double EffectiveWidth => EffectiveWidthFor(_app);
+
+    /// <summary>Mismo cálculo, sin instancia: la animación de apertura necesita el destino
+    /// del panel antes de crearlo.</summary>
+    public static double EffectiveWidthFor(AppEntry app) =>
         Math.Max(PanelGeometry.MinPanel,
-            _app.HasCustomWidth ? _app.CustomWidth : SettingsService.Current.PanelWidth);
+            app.HasCustomWidth ? app.CustomWidth : SettingsService.Current.PanelWidth);
 
     public void AnchorToEdge()
     {
@@ -334,6 +440,18 @@ public partial class AppHostWindow : Window
                 SettingsService.Save();
             };
 
+            // Primera carga: habilita el final de la animación de apertura y toma la primera
+            // captura un momento después (las web apps siguen pintando tras cargar).
+            Web.CoreWebView2.NavigationCompleted += (_, _) =>
+            {
+                if (_firstContent.TrySetResult(true))
+                {
+                    var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
+                    t.Tick += async (_, _) => { t.Stop(); await CapturePreviewAsync(); };
+                    t.Start();
+                }
+            };
+
             Web.CoreWebView2.Navigate(_app.Url);
         }
         catch (Exception ex)
@@ -341,6 +459,7 @@ public partial class AppHostWindow : Window
             // E_ABORT: el panel se cerró (por la app que lo abrió, o por el usuario)
             // antes de que WebView2 terminara de inicializar. No es un error real —
             // asumimos que el panel simplemente no llegó a abrirse, sin avisar nada.
+            _firstContent.TrySetResult(false);
             if ((uint)ex.HResult == 0x80004004) { ForceClose(); return; }
 
             MessageBox.Show(string.Format(Loc.T("AppHost_WebView2Failed"), ex.Message),
@@ -409,6 +528,8 @@ public partial class AppHostWindow : Window
         ResumeIfSuspended();
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         Opacity = 1;
+        if (_cloaked) SetCloaked(false);
+        StartPreviewCapture();
 
         // ORDEN CLAVE: mostrar primero, luego posicionar, luego forzar repintado.
         // Redimensionar la ventana mientras está oculta deja el WebView2 en blanco
@@ -428,7 +549,10 @@ public partial class AppHostWindow : Window
     private void HidePanel()
     {
         _hidden = true;
+        _previewTimer?.Stop();
         Hide();
+        // Si se ocultó a mitad de la animación de apertura, que no quede encubierto.
+        if (_cloaked) SetCloaked(false);
 
         // Modo Lite: bajar memoria de inmediato y suspender tras unos segundos
         // (si el panel sigue oculto). Conserva sesión; reabrir lo reactiva.

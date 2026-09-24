@@ -41,6 +41,17 @@ public enum DockEdge
     Top
 }
 
+/// <summary>Animación al abrir un panel: crece desde el ícono (o el botón flotante) que lo abrió.</summary>
+public enum PanelAnimation
+{
+    /// <summary>Corta y sutil (~180ms). Default.</summary>
+    Quick,
+    /// <summary>Despliegue completo desde el ícono, con leve rebote (~420ms).</summary>
+    Fancy,
+    /// <summary>Sin animación: el panel aparece al instante (comportamiento clásico).</summary>
+    Off
+}
+
 /// <summary>Posición relativa (0..1) del botón flotante dentro de su área de referencia.</summary>
 public class RelPoint
 {
@@ -126,6 +137,10 @@ public class QuickPanelSettings
     /// <summary>Modo Lite: optimiza RAM (suspende paneles ocultos, baja memoria,
     /// tope de paneles vivos, apaga autofill). Para equipos con poca memoria.</summary>
     public bool LiteMode { get; set; } = false;
+
+    /// <summary>Animación de apertura de los paneles (Rendimiento). La animación también
+    /// le da tiempo a la app para cargar: arranca en paralelo con la carga real.</summary>
+    public PanelAnimation PanelAnimation { get; set; } = PanelAnimation.Quick;
 
     /// <summary>Atajos globales de acciones. Clave = nombre de HotkeyAction.</summary>
     public Dictionary<string, Hotkey> ActionHotkeys { get; set; } = new();

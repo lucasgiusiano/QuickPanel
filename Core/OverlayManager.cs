@@ -55,6 +55,14 @@ public sealed class OverlayManager : IDisposable
             _button.Show();
         }
 
+        // Precrear la ventana de la animación de apertura en segundo plano, para que el
+        // primer clic no pague el costo de crear una ventana transparente.
+        System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(new Action(() =>
+        {
+            if (!_disposed && SettingsService.Current.PanelAnimation != PanelAnimation.Off)
+                _ = Proxy;
+        }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
         Reposition();
         TryLaunchStartApp();
     }
@@ -214,10 +222,16 @@ public sealed class OverlayManager : IDisposable
     private readonly Dictionary<string, double> _iconOffsets = new();
 
     /// <summary>Abre una app. <paramref name="iconRectDip"/> es el rect del ícono que la abrió
-    /// (dock horizontal: el panel se alinea con él); null = centro de la barra.</summary>
+    /// (dock horizontal: el panel se alinea con él; animación: crece desde ahí); null = centro
+    /// de la barra.</summary>
     public void OpenApp(AppEntry app, double originRelY, PanelGeometry.Rect? iconRectDip = null)
     {
         CloseMenu();
+
+        // Una apertura nueva interrumpe la animación en curso (si la hay).
+        _revealTicket++;
+        _proxy?.HideNow();
+        var anim = SettingsService.Current.PanelAnimation;
 
         if (_dockMode && _dock!.IsHorizontal)
         {
@@ -233,15 +247,28 @@ public sealed class OverlayManager : IDisposable
             if (kv.Key != app.Id && kv.Value.IsVisible)
                 kv.Value.HideFromHotkey();
 
-        if (_appWindows.TryGetValue(app.Id, out var existing))
+        _appWindows.TryGetValue(app.Id, out var existing);
+        if (existing != null)
         {
             // Recalcular el lado por si el botón se movió desde la última apertura.
             existing.UpdateSide(CurrentSideFor(app.Id));
-            existing.ShowAndFocus();
             TouchLru(app.Id);
+        }
+
+        // Sin animación, o ya visible (nada que desplegar): comportamiento clásico.
+        if (anim == PanelAnimation.Off || existing?.IsShownToUser == true)
+        {
+            if (existing != null) existing.ShowAndFocus();
+            else CreatePanel(app, originRelY, cloaked: false).Show();
             return;
         }
 
+        _ = RevealAsync(app, existing, originRelY, anim, iconRectDip);
+    }
+
+    /// <summary>Crea el panel de una app y lo registra (sin mostrarlo).</summary>
+    private AppHostWindow CreatePanel(AppEntry app, double originRelY, bool cloaked)
+    {
         // Modo Lite: tope de paneles vivos. Antes de crear uno nuevo, si ya se
         // alcanzó el máximo, matar (ForceClose) el menos usado recientemente.
         EnforceLiveLimit();
@@ -253,7 +280,10 @@ public sealed class OverlayManager : IDisposable
             app, Anchor.OwnerHwnd, CurrentSideFor(id), originRelY,
             computeBounds: w => PanelGeometry.Compute(Anchor.BoundsDip, Placement, CurrentSideFor(id), w, AnchorRectFor(id)),
             maxWidth: () => PanelGeometry.MaxWidth(Anchor.BoundsDip, Placement, CurrentSideFor(id), AnchorRectFor(id)),
-            isAnchorAlive: () => Anchor.IsAlive);
+            isAnchorAlive: () => Anchor.IsAlive,
+            // Con animación, el panel arranca encubierto: carga por detrás mientras
+            // la animación corre encima.
+            startCloaked: cloaked);
 
         win.Closed += (_, _) =>
         {
@@ -269,7 +299,98 @@ public sealed class OverlayManager : IDisposable
         };
         _appWindows[app.Id] = win;
         TouchLru(app.Id);
-        win.Show();
+        return win;
+    }
+
+    // ── Animación de apertura ──
+
+    /// <summary>Ventana doble de esta ventana/monitor, creada una vez y reutilizada.</summary>
+    private PanelRevealWindow? _proxy;
+
+    /// <summary>Se incrementa en cada apertura: una animación vieja que "despierta" con un
+    /// ticket distinto sabe que fue interrumpida y no toca nada.</summary>
+    private int _revealTicket;
+
+    private PanelRevealWindow Proxy
+    {
+        get
+        {
+            if (_proxy == null) { _proxy = new PanelRevealWindow(); _proxy.Prewarm(); }
+            return _proxy;
+        }
+    }
+
+    /// <summary>
+    /// Anima la apertura en este orden, pensado para que no haya demora al hacer clic ni
+    /// un instante "muerto" al final:
+    /// 1. El doble (última captura de la app, o tarjeta lisa) aparece y empieza a crecer
+    ///    desde el ícono EN EL PRIMER FRAME, antes de cualquier trabajo pesado.
+    /// 2. Recién entonces se crea/muestra el panel real, encubierto, y empieza a cargar.
+    /// 3. Antes del final, cuando el doble ya lo tapa casi entero, el panel real se
+    ///    descubre, se enfoca y se repinta debajo: al llegar la animación ya es usable.
+    /// 4. El doble se desvanece encima.
+    /// </summary>
+    private async Task RevealAsync(AppEntry app, AppHostWindow? existing, double originRelY,
+                                   PanelAnimation anim, PanelGeometry.Rect? iconRectDip)
+    {
+        int ticket = _revealTicket;
+        AppHostWindow? win = existing;
+        var proxy = Proxy;
+        try
+        {
+            // Destino calculado sin crear el panel (su creación es lo pesado).
+            var target = existing?.TargetRect() ?? PanelGeometry.Compute(
+                Anchor.BoundsDip, Placement, CurrentSideFor(app.Id),
+                AppHostWindow.EffectiveWidthFor(app), AnchorRectFor(app.Id));
+
+            PanelPreviewCache.TryGet(app.Id, out var preview);
+            proxy.Prepare(app, preview, target, RevealOrigin(app.Id, iconRectDip),
+                          fancy: anim == PanelAnimation.Fancy);
+            var (firstFrame, uncover, done) = proxy.Play();
+
+            await firstFrame;                       // el doble ya se ve y está animando
+            if (ticket != _revealTicket) return;
+
+            // Trabajo pesado del panel real, ahora que la animación ya arrancó.
+            if (win != null) win.ShowCloaked();
+            else { win = CreatePanel(app, originRelY, cloaked: true); win.Show(); }
+
+            await uncover;
+            if (ticket != _revealTicket) return;
+            if (!win.Reveal()) { proxy.HideNow(); return; }   // se ocultó/cerró mientras tanto
+
+            await done;
+            if (ticket != _revealTicket) return;
+            proxy.FadeOut();
+        }
+        catch
+        {
+            // Ante cualquier falla de la animación, el panel igual tiene que aparecer.
+            if (ticket != _revealTicket) return;
+            try { proxy.HideNow(); } catch { }
+            if (win == null) { win = CreatePanel(app, originRelY, cloaked: false); win.Show(); }
+            else if (!win.IsClosed) win.Reveal();
+        }
+    }
+
+    /// <summary>
+    /// Desde dónde crece el panel: el ícono que lo abrió en el dock; en Material, el botón
+    /// flotante en su posición ACTUAL (se puede mover y cambia por ventana/monitor), así
+    /// que se lee en cada apertura.
+    /// </summary>
+    private PanelGeometry.Rect RevealOrigin(string appId, PanelGeometry.Rect? iconRectDip)
+    {
+        if (!_dockMode)
+        {
+            const double fab = 56, halo = 4; // FAB de 56 dentro de su ventana de 64
+            return new PanelGeometry.Rect(_button!.Left + halo, _button!.Top + halo, fab, fab);
+        }
+        if (iconRectDip is { } r) return r;
+
+        // Atajo de teclado (sin clic): desde el centro de la barra / del ícono proyectado.
+        var a = AnchorRectFor(appId);
+        const double half = 22;
+        return new PanelGeometry.Rect(a.CenterX - half, a.CenterY - half, half * 2, half * 2);
     }
 
     // ── Geometría de paneles según dock/botón ──
@@ -500,6 +621,9 @@ public sealed class OverlayManager : IDisposable
     {
         _disposed = true;
         CloseMenu();
+        _revealTicket++;
+        try { _proxy?.Close(); } catch { }
+        _proxy = null;
         foreach (var w in _appWindows.Values)
         {
             try { w.ForceClose(); } catch { }

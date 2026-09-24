@@ -13,6 +13,20 @@ public static class Win32
     public const int GWL_EXSTYLE = -20;
     public const int WS_EX_TOOLWINDOW = 0x00000080;
     public const int WS_EX_NOACTIVATE = 0x08000000;
+    public const int WS_EX_TRANSPARENT = 0x00000020;   // click-through
+    public const int DWMWA_CLOAK = 13;
+
+    /// <summary>
+    /// "Encubre" una ventana con DWM: sigue mostrada para la app (layout, carga del
+    /// WebView2, foco) pero no se compone en pantalla. Se usa para que un panel cargue
+    /// por detrás mientras corre la animación de apertura, y aparezca recién al final.
+    /// </summary>
+    public static void SetCloak(IntPtr hwnd, bool cloak)
+    {
+        if (hwnd == IntPtr.Zero) return;
+        int v = cloak ? 1 : 0;
+        try { DwmSetWindowAttribute(hwnd, DWMWA_CLOAK, ref v, sizeof(int)); } catch { }
+    }
 
     // DWM
     public const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
