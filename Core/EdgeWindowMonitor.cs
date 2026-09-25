@@ -190,6 +190,11 @@ public sealed class EdgeWindowMonitor : IDisposable, IHotkeyTarget
         foreach (var o in AllOverlays) o.RefreshApps();
     }
 
+    public void RefreshDockLayouts()
+    {
+        foreach (var o in AllOverlays) o.RefreshDockLayout();
+    }
+
     /// <summary>Cierra el panel de una app en todas las ventanas.</summary>
     public void CloseAppPanels(string appId)
     {

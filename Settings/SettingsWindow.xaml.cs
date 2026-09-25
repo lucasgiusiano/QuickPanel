@@ -31,6 +31,7 @@ public partial class SettingsWindow : Window
         BuildSwatches();
         BuildPanelSizeRow();
         BuildMenuSizeRow();
+        BuildDockSizeRow();
         LoadState();
         RefreshSyncState();
 
@@ -124,6 +125,51 @@ public partial class SettingsWindow : Window
         _menuL = SizeOption(MenuSizeRow, "L", "58", DotsGlyph(1.0),  MenuSize_Click);
     }
 
+    // ── Selector de tamaño del dock (ícono: barra con íconos) ──
+    // Normal es el tamaño de siempre y el máximo; Medium y Slim lo achican.
+
+    private RadioButton? _dockNormal, _dockMedium, _dockSlim;
+
+    private void BuildDockSizeRow()
+    {
+        DockSizeRow.Children.Clear();
+        _dockNormal = SizeOption(DockSizeRow, "Normal", "1",    BarGlyph(1.0),  DockSize_Click);
+        _dockMedium = SizeOption(DockSizeRow, "Medium", "0.84", BarGlyph(0.84), DockSize_Click);
+        _dockSlim   = SizeOption(DockSizeRow, "Slim",   "0.69", BarGlyph(0.69), DockSize_Click);
+    }
+
+    /// <summary>Ícono de "barra del dock": píldora vertical con puntos (las apps). El
+    /// grosor cambia con el tamaño, así se ve de un vistazo cuál es el más delgado.</summary>
+    private FrameworkElement BarGlyph(double scale)
+    {
+        double w = Math.Round(14 * scale), dot = Math.Round(7 * scale);
+        var sp = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+        for (int i = 0; i < 3; i++)
+            sp.Children.Add(new Ellipse
+            {
+                Width = dot, Height = dot, Margin = new Thickness(0, 1.5, 0, 1.5),
+                Fill = (Brush)FindResource("Md3OnSurfaceVariant")
+            });
+        return new Border
+        {
+            Width = w, Height = 28, CornerRadius = new CornerRadius(w / 2),
+            Background = (Brush)FindResource("Md3SurfaceContainerHigh"),
+            BorderBrush = (Brush)FindResource("Md3OnSurfaceVariant"),
+            BorderThickness = new Thickness(1.2),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = sp
+        };
+    }
+
+    private void DockSize_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton rb || rb.Tag is not string tag) return;
+        SettingsService.Current.DockScale = double.Parse(tag, System.Globalization.CultureInfo.InvariantCulture);
+        SettingsService.Save();
+        App.RefreshDockLayouts(); // en caliente, en todas las ventanas/monitores
+    }
+
     /// <summary>
     /// Tarjeta de opción de tamaño: ícono representativo arriba, letra S/M/L abajo,
     /// con badge de plan superpuesto si corresponde.
@@ -133,7 +179,7 @@ public partial class SettingsWindow : Window
     {
         var rb = new RadioButton
         {
-            GroupName = host == PanelSizeRow ? "panelsize" : "menusize",
+            GroupName = host.Name,   // un grupo por fila (panel, menú, dock)
             Tag       = tag,
             Margin    = new Thickness(0, 0, 10, 0),
             Style     = (Style)FindResource("SizeCardRadio")
@@ -229,6 +275,13 @@ public partial class SettingsWindow : Window
             <= 40 => _menuS,
             >= 58 => _menuL,
             _     => _menuM
+        })!.IsChecked = true;
+
+        (s.DockScale switch
+        {
+            <= 0.75 => _dockSlim,
+            < 0.95  => _dockMedium,
+            _       => _dockNormal
         })!.IsChecked = true;
 
         ChkStartup.IsChecked = s.RunAtStartup;

@@ -233,6 +233,13 @@
                          "Solo clic" y "Ocultar pestaña" son excluyentes: sin pestaña no habría
                          cómo abrir el dock. -->
                     <StackPanel x:Name="SecDock" Visibility="Collapsed">
+                        <!-- Tamaño del dock: Normal (el actual, el máximo), Medium y Slim. -->
+                        <TextBlock Text="{loc:Loc Settings_DockSize}" Style="{StaticResource SettingLabel}"/>
+                        <TextBlock Text="{loc:Loc Settings_DockSizeDesc}"
+                                   FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Md3OnSurfaceVariant}"/>
+                        <StackPanel x:Name="DockSizeRow" Orientation="Horizontal" Margin="0,0,0,20"/>
+
                         <!-- Borde del dock. "Arriba" solo aparece en modo escritorio: en el
                              navegador taparía las pestañas y la barra de direcciones. -->
                         <TextBlock Text="{loc:Loc Settings_DockEdge}" Style="{StaticResource SettingLabel}"/>

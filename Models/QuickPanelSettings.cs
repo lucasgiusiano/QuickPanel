@@ -120,6 +120,9 @@ public class QuickPanelSettings
     /// <summary>Auto-ocultar el botón flotante cuando el mouse está lejos.</summary>
     public bool AutoHide { get; set; } = false;
 
+    /// <summary>Tamaño del dock como escala: 1 = Normal, 0.84 = Medium, 0.69 = Slim.</summary>
+    public double DockScale { get; set; } = 1.0;
+
     /// <summary>Dock: abrir solo al hacer clic en la pestaña (sin despliegue por proximidad).
     /// Excluyente con <see cref="HideDockHandle"/>: sin pestaña no habría forma de abrirlo.</summary>
     public bool DockClickToOpen { get; set; } = false;

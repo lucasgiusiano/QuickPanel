@@ -198,6 +198,8 @@ internal static class Translations
         ["Anim_Quick"] = "Quick",
         ["Anim_Fancy"] = "Fancy",
         ["Anim_Off"] = "Off",
+        ["Settings_DockSize"] = "Dock size",
+        ["Settings_DockSizeDesc"] = "Normal is the classic size; Medium and Slim make the bar thinner and its icons smaller.",
     };
 
     private static readonly Dictionary<string, string> Es = new()
@@ -377,6 +379,8 @@ internal static class Translations
         ["Anim_Quick"] = "Quick",
         ["Anim_Fancy"] = "Fancy",
         ["Anim_Off"] = "Desactivadas",
+        ["Settings_DockSize"] = "Tamaño del dock",
+        ["Settings_DockSizeDesc"] = "Normal es el tamaño clásico; Medium y Slim hacen la barra más delgada y sus íconos más chicos.",
     };
 
     private static readonly Dictionary<string, string> De = new()
@@ -556,6 +560,8 @@ internal static class Translations
         ["Anim_Quick"] = "Quick",
         ["Anim_Fancy"] = "Fancy",
         ["Anim_Off"] = "Aus",
+        ["Settings_DockSize"] = "Dock-Größe",
+        ["Settings_DockSizeDesc"] = "Normal ist die klassische Größe; Medium und Slim machen die Leiste schmaler und die Symbole kleiner.",
     };
 
     private static readonly Dictionary<string, string> Fr = new()
@@ -735,6 +741,8 @@ internal static class Translations
         ["Anim_Quick"] = "Quick",
         ["Anim_Fancy"] = "Fancy",
         ["Anim_Off"] = "Désactivées",
+        ["Settings_DockSize"] = "Taille du dock",
+        ["Settings_DockSizeDesc"] = "Normal est la taille classique ; Medium et Slim rendent la barre plus fine et ses icônes plus petites.",
     };
 
     private static readonly Dictionary<string, string> It = new()
@@ -914,6 +922,8 @@ internal static class Translations
         ["Anim_Quick"] = "Quick",
         ["Anim_Fancy"] = "Fancy",
         ["Anim_Off"] = "Disattivate",
+        ["Settings_DockSize"] = "Dimensione del dock",
+        ["Settings_DockSizeDesc"] = "Normal è la dimensione classica; Medium e Slim rendono la barra più sottile e le icone più piccole.",
     };
 
     private static readonly Dictionary<string, string> Pt = new()
@@ -1093,6 +1103,8 @@ internal static class Translations
         ["Anim_Quick"] = "Quick",
         ["Anim_Fancy"] = "Fancy",
         ["Anim_Off"] = "Desativadas",
+        ["Settings_DockSize"] = "Tamanho do dock",
+        ["Settings_DockSizeDesc"] = "Normal é o tamanho clássico; Medium e Slim deixam a barra mais fina e os ícones menores.",
     };
 
     private static readonly Dictionary<string, string> Ja = new()
@@ -1272,6 +1284,8 @@ internal static class Translations
         ["Anim_Quick"] = "Quick",
         ["Anim_Fancy"] = "Fancy",
         ["Anim_Off"] = "オフ",
+        ["Settings_DockSize"] = "ドックのサイズ",
+        ["Settings_DockSizeDesc"] = "Normal は従来のサイズです。Medium と Slim ではバーが細くなり、アイコンが小さくなります。",
     };
 
     private static readonly Dictionary<string, string> ZhHans = new()
@@ -1451,6 +1465,8 @@ internal static class Translations
         ["Anim_Quick"] = "Quick",
         ["Anim_Fancy"] = "Fancy",
         ["Anim_Off"] = "关闭",
+        ["Settings_DockSize"] = "停靠栏大小",
+        ["Settings_DockSizeDesc"] = "Normal 为经典大小;Medium 和 Slim 会让栏更窄、图标更小。",
     };
 
     private static readonly Dictionary<string, string> ZhHant = new()
@@ -1630,5 +1646,7 @@ internal static class Translations
         ["Anim_Quick"] = "Quick",
         ["Anim_Fancy"] = "Fancy",
         ["Anim_Off"] = "關閉",
+        ["Settings_DockSize"] = "停駐列大小",
+        ["Settings_DockSizeDesc"] = "Normal 為經典大小;Medium 和 Slim 會讓列更窄、圖示更小。",
     };
 }

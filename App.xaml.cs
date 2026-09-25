@@ -85,6 +85,10 @@ public partial class App : Application
     public static void RefreshAppLists() =>
         (Current as App)?._monitor?.RefreshAppLists();
 
+    /// <summary>Reaplica el layout de todos los docks (tras cambiar su tamaño).</summary>
+    public static void RefreshDockLayouts() =>
+        (Current as App)?._monitor?.RefreshDockLayouts();
+
     /// <summary>Cierra (destruye) el panel de una app en todas las ventanas de navegador.
     /// Usado al cambiarle la URL: se vuelve a crear con la nueva al abrirla.</summary>
     public static void CloseAppPanels(string appId) =>

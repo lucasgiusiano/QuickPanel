@@ -25,6 +25,7 @@ internal sealed class IconDragReorder
     private FrameworkElement? _pressed;
     private Action? _pressedClick;
     private Point _start;
+    private Point _startLocal;   // en coords del contenedor del ícono (puede estar escalado)
     private bool _dragging;
     private bool _ending;
     private FrameworkElement? _hover;
@@ -53,6 +54,7 @@ internal sealed class IconDragReorder
             _pressed = el;
             _pressedClick = onClick;
             _start = e.GetPosition(_surface);
+            _startLocal = e.GetPosition(ParentOf(el));
             _dragging = false;
             el.CaptureMouse();
             e.Handled = true;
@@ -74,8 +76,11 @@ internal sealed class IconDragReorder
             if (el.RenderTransform is TransformGroup g && g.Children.Count == 2
                 && g.Children[1] is TranslateTransform tt)
             {
-                tt.X = d.X;
-                tt.Y = d.Y;
+                // Desplazamiento medido en el espacio del contenedor: si el dock está en
+                // tamaño Medium/Slim (contenido escalado), el ícono sigue igual al cursor.
+                var dl = e.GetPosition(ParentOf(el)) - _startLocal;
+                tt.X = dl.X;
+                tt.Y = dl.Y;
             }
             UpdateHover(el, p);
         };
@@ -105,6 +110,9 @@ internal sealed class IconDragReorder
             Reset(el);
         };
     }
+
+    private IInputElement ParentOf(FrameworkElement el) =>
+        VisualTreeHelper.GetParent(el) as IInputElement ?? _surface;
 
     private void BeginDrag(FrameworkElement el)
     {

@@ -44,14 +44,25 @@ public partial class DockBarWindow : Window
     // El navegador está en pantalla completa (video/F11): lo informa el OverlayManager.
     private bool _fullscreen;
 
-    private const double BarThick = 64;         // grosor de la barra (ancho si es vertical, alto si horizontal)
+    private const double BaseBarThick = 64;     // grosor de la barra a tamaño Normal (ancho si es vertical, alto si horizontal)
     private const double BarMarginEdge = 14;    // separación de la barra respecto al borde de la referencia
     private const double BarMarginAlong = 16;   // margen en los extremos de la barra
     private const double WinThick = 220;        // profundidad de la ventana (más que la barra: pestaña + cápsula)
     private const double BrowserCaptionInset = 46; // navegador, bordes laterales: franja de botones cerrar/min/max
     private const double BrowserInset = 14;     // navegador: resto de extremos
     private const double DesktopInset = 8;      // escritorio: sin chrome que esquivar
-    private const double TabLong = 64, TabShort = 18;
+    private const double BaseTabLong = 64, BaseTabShort = 18;
+
+    /// <summary>
+    /// Escala del dock (Configuración → Dock → Tamaño): 1 = Normal, ~0.84 = Medium,
+    /// ~0.69 = Slim. Se lee en vivo, así cambiarla se aplica sin recrear el dock.
+    /// </summary>
+    private static double Scale => Math.Clamp(SettingsService.Current.DockScale, 0.5, 1.0);
+
+    private static double BarThick => BaseBarThick * Scale;
+    private static double TabLong  => BaseTabLong * Scale;
+    // La pestaña se achica menos que el resto: por debajo de ~14px cuesta acertarle.
+    private static double TabShort => Math.Max(14, BaseTabShort * Scale);
     private const double HotZoneInner = 16;     // cuánto entra (desde el borde hacia adentro) la franja que
                                                 // dispara el despliegue. Pegada al borde, pero lo bastante ancha
                                                 // para seguir siendo alcanzable bajo el ~8px de desborde que
@@ -157,6 +168,14 @@ public partial class DockBarWindow : Window
         // navegador); su posición a lo largo del borde la pone ApplyTabPosition.
         Tab.Width  = h ? TabLong : TabShort;
         Tab.Height = h ? TabShort : TabLong;
+        TabGlyph.FontSize = 20 * Math.Max(0.8, Scale);
+
+        // Tamaño: todo el contenido de la barra (logo, "+", apps, carpetas, badges, ⚙)
+        // se escala junto con un LayoutTransform, así las proporciones quedan idénticas a
+        // las del tamaño Normal en los 4 bordes. El grosor de la barra acompaña.
+        double k = Scale;
+        BarDock.LayoutTransform = k >= 0.999 ? Transform.Identity : new ScaleTransform(k, k);
+        Bar.CornerRadius = new CornerRadius(32 * k);
         switch (_edge)
         {
             case DockEdge.Left:
@@ -785,11 +804,19 @@ public partial class DockBarWindow : Window
     {
         try
         {
-            var px = el.PointToScreen(new Point(0, 0));
-            double sc = VisualTreeHelper.GetDpi(this).DpiScaleX;
-            return new PanelGeometry.Rect(px.X / sc, px.Y / sc, el.ActualWidth, el.ActualHeight);
+            // Rect visual (incluye la escala del tamaño Medium/Slim), en DIPs de la ventana.
+            var r = el.TransformToAncestor(this).TransformBounds(new Rect(el.RenderSize));
+            return new PanelGeometry.Rect(Left + r.Left, Top + r.Top, r.Width, r.Height);
         }
         catch { return null; }
+    }
+
+    /// <summary>Reaplica el layout completo (tras cambiar el tamaño del dock).</summary>
+    public void RefreshLayout()
+    {
+        ApplyEdgeLayout();
+        RebuildApps();
+        Reanchor();
     }
 
     /// <summary>Dock horizontal: la rueda del mouse desplaza la lista de apps a lo ancho.</summary>

@@ -532,6 +532,13 @@ public sealed class OverlayManager : IDisposable
         if (_menuOpen) _menu?.Relayout();
     }
 
+    /// <summary>Reaplica el layout del dock (tamaño) y re-ancla los paneles a la barra nueva.</summary>
+    public void RefreshDockLayout()
+    {
+        _dock?.RefreshLayout();
+        ReanchorOpenPanels();
+    }
+
     /// <summary>Destruye el panel de una app en esta ventana (si existe).</summary>
     public void ClosePanel(string appId)
     {
