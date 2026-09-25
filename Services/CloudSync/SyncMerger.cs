@@ -54,14 +54,31 @@ public static class SyncMerger
         result.SyncJournal = MergeJournal(lj, rj, result, now);
 
         // ── 4) Campos locales (no se sincronizan): preservar los del local ─
-        result.CloudProvider = local.CloudProvider;
-        result.CloudAccount  = local.CloudAccount;
-        result.SyncInterval  = local.SyncInterval;
-        // Posiciones por monitor: dependen del hardware de cada PC.
-        result.DockHandlePositions    = local.DockHandlePositions;
-        result.DesktopButtonPositions = local.DesktopButtonPositions;
+        PreserveDeviceLocal(local, result);
 
         return new MergeResult(result, conflicts);
+    }
+
+    /// <summary>
+    /// Campos propios de cada equipo, que nunca viajan entre PCs: la cuenta y frecuencia
+    /// de sync, y todo lo que depende del hardware (una notebook puede necesitar Modo Lite
+    /// y un dock más chico; cada PC tiene sus propios monitores). Se copian del local sobre
+    /// <paramref name="dst"/> en el merge y también al bajar la nube pisando lo local.
+    /// </summary>
+    public static void PreserveDeviceLocal(QuickPanelSettings local, QuickPanelSettings dst)
+    {
+        dst.CloudProvider = local.CloudProvider;
+        dst.CloudAccount  = local.CloudAccount;
+        dst.SyncInterval  = local.SyncInterval;
+
+        dst.LiteMode        = local.LiteMode;
+        dst.DockScale       = local.DockScale;
+        dst.AnchorMode      = local.AnchorMode;
+        dst.DesktopMonitors = local.DesktopMonitors;
+
+        // Posiciones por monitor.
+        dst.DockHandlePositions    = local.DockHandlePositions;
+        dst.DesktopButtonPositions = local.DesktopButtonPositions;
     }
 
     /// <summary>Copia los campos globales sin Id desde la fuente ganadora.</summary>
@@ -80,16 +97,12 @@ public static class SyncMerger
         dst.StartAppId   = src.StartAppId;
         dst.AutoHide     = src.AutoHide;
         dst.ShowBadges   = src.ShowBadges;
-        dst.LiteMode     = src.LiteMode;
         dst.DockClickToOpen  = src.DockClickToOpen;
         dst.HideDockHandle   = src.HideDockHandle;
         dst.HideInFullscreen = src.HideInFullscreen;
-        dst.AnchorMode       = src.AnchorMode;
-        dst.DesktopMonitors  = src.DesktopMonitors;
         dst.DockEdge         = src.DockEdge;
         dst.DesktopDockEdge  = src.DesktopDockEdge;
         dst.PanelAnimation   = src.PanelAnimation;
-        dst.DockScale        = src.DockScale;
     }
 
     private static List<T> MergeById<T>(

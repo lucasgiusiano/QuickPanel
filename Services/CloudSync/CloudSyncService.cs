@@ -253,6 +253,8 @@ public static class CloudSyncService
         if (json == null) return false;
         var loaded = SettingsService.Deserialize(json);
         if (loaded == null) return false;
+        // Aun pisando lo local, los campos propios de este equipo se conservan.
+        SyncMerger.PreserveDeviceLocal(SettingsService.Current, loaded);
         SettingsService.Replace(loaded);
         SettingsService.ClearDirty();
         return true;

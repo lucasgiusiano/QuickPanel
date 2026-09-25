@@ -45,12 +45,16 @@ public partial class App : Application
         _hotkeys = new HotkeyService(_monitor);
 
         // Cloud Sync: refresca desde la nube al arrancar y activa el modo automático elegido.
+        // Con "Solo manual" no se sincroniza nada solo, tampoco al arrancar: únicamente
+        // con los botones de Configuración.
         if (Services.CloudSync.CloudSyncService.IsLinked)
         {
             Services.CloudSync.CloudSyncService.SyncedInBackground += OnBackgroundSynced;
+            bool manualOnly = SettingsService.Current.SyncInterval
+                              == Services.CloudSync.SyncInterval.ManualOnly;
             _ = System.Threading.Tasks.Task.Run(async () =>
             {
-                await Services.CloudSync.CloudSyncService.SyncAsync();
+                if (!manualOnly) await Services.CloudSync.CloudSyncService.SyncAsync();
                 Services.CloudSync.CloudSyncService.StartAutoSync();
             });
         }
